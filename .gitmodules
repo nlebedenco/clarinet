@@ -1,0 +1,6 @@
+[submodule "3rdparty/mbedtls"]
+	path = 3rdparty/mbedtls
+	url = git@github.com:ARMmbed/mbedtls.git
+[submodule "3rdparty/enet"]
+	path = 3rdparty/enet
+	url = https://github.com/lsalzman/enet
