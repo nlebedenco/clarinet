@@ -1,0 +1,234 @@
+/* cmakeconfig.h.in */
+
+/***************************
+ * Platforms
+ ***************************/
+ 
+/* On Linux */
+#cmakedefine HAVE_LINUX 1
+
+/* On FreeBSD */
+#cmakedefine HAVE_FREEBSD 1
+
+/* On Windows */
+#cmakedefine HAVE_WINDOWS 1
+
+/* On macOS */
+#cmakedefine HAVE_MACOS 1
+
+/* On iOS */
+#cmakedefine HAVE_IOS 1
+
+/* On watchOS */
+#cmakedefine HAVE_WATCHOS 1
+
+/* On tvOS */
+#cmakedefine HAVE_TVOS 1
+
+/* On Android */
+#cmakedefine HAVE_ANDROID 1
+
+
+/***************************
+ * Non-standard functions
+ ***************************/
+
+/* define if __atomic_load_n is supported by the compiler */
+#cmakedefine HAVE___ATOMIC_LOAD_N 1
+
+/* define if __atomic_store_n is supported by the compiler */
+#cmakedefine HAVE___ATOMIC_STORE_N 1
+
+/* Define to 1 if you have the `strerror' function. */
+#cmakedefine HAVE_STRERROR 1
+
+/* Define to 1 if you have the `strerror_r' function. */
+#cmakedefine HAVE_STRERROR_R 1
+
+/* Define to 1 if you have a GNU-style `strerror_r' function. */
+#cmakedefine HAVE_GNU_STRERROR_R 1
+
+/* Define to 1 if you have a POSIX-style `strerror_r' function. */
+#cmakedefine HAVE_POSIX_STRERROR_R 1
+
+/* Define to 1 if you have the `_wcserror_s' function. */
+#cmakedefine HAVE__WCSERROR_S 1
+
+/* Define to 1 if you have the `snprintf' function. */
+#cmakedefine HAVE_SNPRINTF 1
+
+/* Define to 1 if you have the `asprintf' function. */
+#cmakedefine HAVE_ASPRINTF 1
+
+/* Define to 1 if you have the `vasprintf' function. */
+#cmakedefine HAVE_VASPRINTF 1
+
+/* Define to 1 if you have the `vsnprintf' function. */
+#cmakedefine HAVE_VSNPRINTF 1
+
+/* Define to 1 if you have the `vsyslog' function. */
+#cmakedefine HAVE_VSYSLOG 1
+
+/* Define to 1 if you have the `strlcat' function. */
+#cmakedefine HAVE_STRLCAT 1
+
+/* Define to 1 if you have the `strlcpy' function. */
+#cmakedefine HAVE_STRLCPY 1
+
+/* Define to 1 if you have the `strtok_r' function. */
+#cmakedefine HAVE_STRTOK_R 1
+
+/* Define to 1 if you have the type `socklen_t'. */
+#cmakedefine HAVE_SOCKLEN_T 1
+
+/* Define to 1 if you have the type `sockaddr_storage'. */
+#cmakedefine HAVE_STRUCT_SOCKADDR_STORAGE 1
+
+/* Define to 1 if `sa_len' is a member of `struct sockaddr'. */
+#cmakedefine HAVE_STRUCT_SOCKADDR_SA_LEN 1
+
+/* Define to 1 if `sin6_addr' is a member of `struct sockaddr_in6'. */
+#cmakedefine HAVE_SOCKADDR_IN6_SIN6_ADDR 1
+
+/* Define to 1 if `sin6_scopeid' is a member of `struct sockaddr_in6'. */
+#cmakedefine HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
+
+/* define if we have the Linux getnetbyname_r() */
+#cmakedefine HAVE_GETNETBYNAME_R 1
+
+/* define if we have the Linux getprotobyname_r() */
+#cmakedefine HAVE_GETPROTOBYNAME_R 1
+
+/* Define to 1 if you have the `fcntl' function. */
+#cmakedefine HAVE_FCNTL 1
+
+/* Define to 1 if you have the `poll' function. */
+#cmakedefine HAVE_POLL 1
+
+/* Define to 1 if you have the `clock_gettime' function. */
+#cmakedefine HAVE_CLOCK_GETTIME 1
+
+/***************************
+ * Standard headers
+ ***************************/
+
+/* Define to 1 if you have the ANSI C header files. */
+#cmakedefine STDC_HEADERS 1
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#cmakedefine HAVE_STDIO_H 1
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#cmakedefine HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the <stdarg.h> header file. */
+#cmakedefine HAVE_STDARG_H  1
+
+/* Define to 1 if you have the <string.h> header file. */
+#cmakedefine HAVE_STRING_H 1
+
+/* Define to 1 if you have the <float.h> header file. */
+#cmakedefine HAVE_FLOAT_H 1
+
+
+/***************************
+ * Non-standard headers
+ ***************************/
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#cmakedefine HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#cmakedefine HAVE_INTTYPES_H 1
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#cmakedefine HAVE_UNISTD_H 1
+
+/* Define to 1 if you have the <sys/bitypes.h> header file. */
+#cmakedefine HAVE_SYS_BITYPES_H 1
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#cmakedefine HAVE_SYS_TYPES_H 1
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#cmakedefine HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#cmakedefine HAVE_SYS_SOCKET_H 1
+
+/* Define to 1 if you have the <sys/select.h> header file. */
+#cmakedefine HAVE_SYS_SELECT_H 1
+
+/* Define to 1 if you have the <sys/ioccom.h> header file. */
+#cmakedefine HAVE_SYS_IOCCOM_H 1
+
+/* Define to 1 if you have the <sys/sockio.h> header file. */
+#cmakedefine HAVE_SYS_SOCKIO_H 1
+
+/* Define to 1 if strings.h declares `ffs' */
+#cmakedefine STRINGS_H_DECLARES_FFS 1
+
+
+/***************************
+ * Version
+ ***************************/
+
+/* Define to the DLL-preferred version string of this package. */
+#cmakedefine PACKAGE_VERSION_DLL @PACKAGE_VERSION_DLL@
+
+/* Define to the full name of this package. */
+#cmakedefine PACKAGE_NAME "@PACKAGE_NAME@"
+
+/* Define to the full name and version of this package. */
+#cmakedefine PACKAGE_STRING "@PACKAGE_STRING@"
+
+/* Define to the version of this package. */
+#cmakedefine PACKAGE_VERSION "@PACKAGE_VERSION@"
+
+
+/***************************
+ * MbedTLS
+ ***************************/
+
+/* Use MbedTLS */
+#cmakedefine HAVE_MBEDTLS 1
+
+
+/***************************
+ * ENet (Lee Salzman's)
+ ***************************/
+
+/* Use ENet */
+#cmakedefine HAVE_ENET 1
+
+
+/***************************
+ * Features
+ ***************************/
+
+/* Profiler *
+#cmakedefine ENABLE_PROFILER 1 
+
+/* Profiler *
+#cmakedefine ENABLE_LOG 1 
+
+/* IPv6 */
+#cmakedefine ENABLE_IPV6 1
+
+/* TCP */
+#cmakedefine ENABLE_TCP 1
+
+/* TLS */
+#cmakedefine ENABLE_TLS 1
+
+/* UDP */
+#cmakedefine ENABLE_UDP 1
+
+/* DTLS */
+#cmakedefine ENABLE_DTLS 1
+
+/* DTLC */
+#cmakedefine ENABLE_DTLC 1
+
+/* UDTP */
+#cmakedefine ENABLE_UDTP 1
