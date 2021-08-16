@@ -1,6 +1,11 @@
 # cmake 3.14 or later is required so we can use git, check if build is for IOS and policies.
 cmake_minimum_required(VERSION 3.15)
 
+# For project version variables
+if(POLICY CMP0048)
+    cmake_policy(SET CMP0048 NEW)
+endif()
+
 # Only interpret if() arguments as variables or keywords when unquoted.
 if(POLICY CMP0054)
     cmake_policy(SET CMP0054 NEW)
@@ -23,7 +28,7 @@ if(POLICY CMP0091)
 endif()
 
 # Set custom cmake modules path
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
+list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
 
 # Set custom cmake helpers path
 set (CMAKE_HELPER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Helpers/)
@@ -61,8 +66,25 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 ########################################################################################################################
 #   Project
 ########################################################################################################################
-project(clarinet)
+project(clarinet 
+    VERSION 0.0.1.0
+    DESCRIPTION "Experimental network transport protocol implementations"
+    HOMEPAGE_URL ""
+)
+string(SUBSTRING ${PROJECT_NAME} 0 1 FIRST_LETTER)
+string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
+string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PACKAGE_NAME "${PROJECT_NAME}")
+set(PACKAGE_DESCRIPTON ${PROJECT_DESCRIPTION})
+set(PACKAGE_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
+if(WIN32)
+    if(BUILD_SHARED_LIBS)
+        set(PROJECT_FILENAME_DLL ${PROJECT_NAME}.dll)
+        set(PACKAGE_VERSION_DLL ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},${PROJECT_VERSION_TWEAK})
+    endif(BUILD_SHARED_LIBS)
+endif(WIN32)
+message(STATUS "Configuring ${PACKAGE_NAME} ${PROJECT_VERSION}")
+    
 option(ENABLE_PROFILER "Enable profiler" OFF)
 option(ENABLE_LOG "Enable log" ON)
 option(ENABLE_IPV6 "Enable IPv6" ON)
@@ -415,38 +437,6 @@ else(UNIX)
     endif(WIN32)
 endif(UNIX)   
 
-
-########################################################################################################################
-#   Version
-########################################################################################################################
-
-# Get, parse, format and set clarinet's version string from [clarinet_root]/VERSION so it can be used in clarinet.rc
-# or in code.
-
-# Get MAJOR, MINOR, PATCH & SUFFIX
-file(STRINGS ${${PROJECT_NAME}_SOURCE_DIR}/VERSION
-    PACKAGE_VERSION
-    LIMIT_COUNT 1 # Read only the first line
-)
-
-# Get "just" MAJOR
-string(REGEX MATCH "^([0-9]+)" PACKAGE_VERSION_MAJOR "${PACKAGE_VERSION}")
-
-# Get MAJOR, MINOR & PATCH
-string(REGEX MATCH "^([0-9]+.)?([0-9]+.)?([0-9]+)" PACKAGE_VERSION_NOSUFFIX "${PACKAGE_VERSION}")
-
-if(WIN32)
-    # Convert PACKAGE_VERSION_NOSUFFIX to Windows preferred version format
-    string(REPLACE "." "," PACKAGE_VERSION_PREDLL ${PACKAGE_VERSION_NOSUFFIX})
-
-    # Append NANO (used for Windows internal versioning) to PACKAGE_VERSION_PREDLL
-    # 0 means unused.
-    set(PACKAGE_VERSION_DLL ${PACKAGE_VERSION_PREDLL},0)
-endif(WIN32)
-
-set(PACKAGE_NAME "${PROJECT_NAME}")
-set(PACKAGE_STRING "${PROJECT_NAME} ${PACKAGE_VERSION}")
-
 ########################################################################################################################
 #   Targets
 ########################################################################################################################
@@ -778,11 +768,17 @@ if(ENABLE_ENET)
     message(CHECK_START "Adding ENet")
     list(APPEND CMAKE_MESSAGE_INDENT "  ")
     set(ENET_DIR 3rdparty/enet)
+    # ENet requires a CMake version that is too old so a warning is generated over policy CMP0048.
+    # We use CMAKE_PROJECT_INCLUDE_BEFORE here to inject a policy setting and silence the warning without having to 
+    # modify ENet's CMakeLists.txt. This is safe as long as ENet does not define a VERSION variable of its own.
+    set(CMAKE_PROJECT_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/EnableCMP0048.cmake)
     # Add submodule
     add_git_submodule(${ENET_DIR})
+    unset(CMAKE_PROJECT_INCLUDE_BEFORE)  # if you don't want to affect subsequent add_subdirectory calls.
     set(HAVE_ENET YES)    
     target_link_libraries(${PROJECT_NAME} 
-        PRIVATE enet
+        PRIVATE 
+            enet
     )
     list(POP_BACK CMAKE_MESSAGE_INDENT)
     message(CHECK_PASS "done")
@@ -901,13 +897,7 @@ message(STATUS "TLS: ${ENABLE_TLS}")
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 
 # Save configuration
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmakeconfig.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
-
-########################################################################################################################
-# Export
-########################################################################################################################
-
-# TODO
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
 
 
 ########################################################################################################################
@@ -917,16 +907,81 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmakeconfig.h.in ${CMAKE_CURREN
 # Include GNU standard installation directories, which actually are also defined, to some degree, by autotools, and at 
 # least some of which are general UN*X conventions.
 include(GNUInstallDirs)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PACKAGE_NAME})
 
-# TODO
+install(TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}-targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
+# This is required so that the exported target has the name PACKAGE_NAME and not PROJECT_NAME
+set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PACKAGE_NAME})
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# The private dependencies of a static library still need to be exported because they are needed to properly link the 
+# consumers of the static library. This applies even to interface libraries because their INTERFACE_LINK_LIBRARIES might
+# specify something that provides symbols needed by the static library. Note that only the linking of private libraries 
+# is promoted to public, not the whole set of transitive requirements (meaning that consumers of the target static lib 
+# do not also get compiler options, etc, from private libs, only the linking of it).
+
+# Export the targets to a script
+install(EXPORT ${PROJECT_NAME}-targets
+    FILE
+        ${PACKAGE_NAME}Targets.cmake
+    NAMESPACE
+        ${PACKAGE_NAME}::
+    DESTINATION
+        ${INSTALL_CONFIGDIR}
+)
+
+# Create a ConfigVersion.cmake file
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}ConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/${PACKAGE_NAME}Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Config.cmake
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+)
+
+# Create pkg-config file
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PACKAGE_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
+
+# Install the config, configversion and custom find modules
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}ConfigVersion.cmake
+    DESTINATION 
+        ${INSTALL_CONFIGDIR}
+)
+
+install(FILES 
+    ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc 
+    DESTINATION 
+        ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
+
+# Exporting from the build tree
+export(EXPORT ${PROJECT_NAME}-targets
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Targets.cmake
+    NAMESPACE ${PACKAGE_NAME}::)
+
+# Do not export the package by default
+cmake_policy(SET CMP0090 NEW)
+
+# Register package in the User Package Registry
+export(PACKAGE ${PACKAGE_NAME})
 
 ########################################################################################################################
 # Uninstall
 ########################################################################################################################
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PACKAGE_NAME}Uninstall.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
     IMMEDIATE @ONLY)
 
 add_custom_target(UNINSTALL COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)

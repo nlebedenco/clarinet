@@ -47,3 +47,14 @@ fail on a x86 NTCP.
 
 It's not currently possible to have cmake generating a single Visual Studio solution for both x64 and Win32 because the 
 build folders need to be separate.
+
+#### Shared vs Static Lib
+
+The variable `BUILD_SHARED_LIBS` controls if cmake will produce a shared lib or a static lib. By default, CMake 
+produces a static lib. For a a shared lib use:
+
+`cmake \path\to\build\_dir -DBUILD_SHARED_LIBS=ON`
+ 
+Note that `BUILD_SHARED_LIBS` is not transitive and does not affect dependencies which will always be linked statically 
+linked unless otherwise noted.
+

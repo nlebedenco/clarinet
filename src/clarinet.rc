@@ -19,12 +19,12 @@
       BEGIN
         VALUE "Comments",         ""
         VALUE "CompanyName",      "Default Company"
-        VALUE "FileDescription",  "Experimental network transport protocol implementations"
+        VALUE "FileDescription",  PACKAGE_DESCRIPTION
         VALUE "FileVersion",      "PACKAGE_VERSION_DLL"
         VALUE "InternalName",     PACKAGE_NAME
         VALUE "LegalCopyright",   "Copyright (c) Default Name"
         VALUE "LegalTrademarks",  ""
-        VALUE "OriginalFilename", "clarinet.dll"
+        VALUE "OriginalFilename", "PACKAGE_FILENAME_DLL"
         VALUE "ProductName",      PACKAGE_NAME
         VALUE "ProductVersion",   PACKAGE_VERSION
       END
