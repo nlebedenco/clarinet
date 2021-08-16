@@ -41,20 +41,65 @@ cmake --build .
 ```
 
 Note that despite the NTCP having a `Platform` environment it cannot be reliably used. On the x64 NTCP, `platform=x64` 
-which matches the platform name used in VS project files but on the x86 NTCP `platform=x86` (at least for VS2017 and 
-VS2019 installations) while the VS project files generated expect Win32 so calling `cmake -A %platform%` will normally 
-fail on a x86 NTCP.
+which matches the platform name used in VS project files but on the x86 NTCP we have `platform=x86` (at least for 
+VS2017 and VS2019 installations) while VS project files expect Win32. In this case calling `cmake -A %platform%` will 
+fail with VS generators.
 
 It's not currently possible to have cmake generating a single Visual Studio solution for both x64 and Win32 because the 
 build folders need to be separate.
 
-#### Shared vs Static Lib
+#### Shared vs Static build
 
-The variable `BUILD_SHARED_LIBS` controls if cmake will produce a shared lib or a static lib. By default, CMake 
-produces a static lib. For a a shared lib use:
+The variable `BUILD_SHARED_LIBS` is used to control whether cmake will produce a shared lib or a static lib. 
+By default, cmake produces a static lib. For a shared lib (.so/.dll) use:
 
-`cmake \path\to\build\_dir -DBUILD_SHARED_LIBS=ON`
+```
+cmake \path\to\clarinet -DBUILD_SHARED_LIBS=ON
+``` 
  
-Note that `BUILD_SHARED_LIBS` is not transitive and does not affect dependencies which will always be linked statically 
-linked unless otherwise noted.
+Note that `BUILD_SHARED_LIBS` is defined as an option so it does not affect submodules which will always be linked 
+statically unless otherwise noted.
 
+#### Debug vs Release
+
+The variable `CMAKE_BUILD_TYPE` is used to control whether the project must be built for Debug, Release, MinSizeRel or 
+RelWithDebInfo in *single-config generators*. Default build type is Debug. A build type can be explicitly set a follows: 
+
+```
+cmake \path\to\clarinet -DCMAKE_BUILD_TYPE=Release
+```
+
+On *multi-config generators* such as the Visual Studio generator on Windows there is no need to reconfigure the build.
+A config argument can be used alongside the build argument as follows:
+
+```
+cmake --build \path\to\build_dir --config Release`
+```
+
+#### Install
+
+The variable `CMAKE_INSTALL_PREFIX` can be used to customize the install directory as follows:
+
+```
+cmake \path\to\clarinet -DCMAKE_INSTALL_PREFIX:PATH=\path\to\install_dir 
+```
+
+Note that setting `CMAKE_INSTALL_PREFIX` is not strictly required but recommended to avoid polluting the system. 
+Also note that the default installation directory on Windows is `%ProgramFiles(x86)%\clarinet` which normally requires 
+administrative privileges.
+
+For DLL platforms (all Windows-based systems including Cygwin), the DLL is treated as RUNTIME and the import library is 
+treated as an ARCHIVE target although it's not a static lib really.
+
+Then the library and its dependencies can be instaled using:
+
+```
+cmake --build \path\to\build_dir --target install
+```
+
+## TODO
+
+- Use cmocka for tests (check https://github.com/OlivierLDff/cmocka-cmake-example)
+- Use travis for automatic build check
+- Optionally run tests under Valgrind to detect memory leaks
+- Use Coverity for static source analysis

@@ -208,10 +208,10 @@
  * Features
  ***************************/
 
-/* Profiler *
+/* Profiler */
 #cmakedefine ENABLE_PROFILER 1 
 
-/* Profiler *
+/* Log */
 #cmakedefine ENABLE_LOG 1 
 
 /* IPv6 */

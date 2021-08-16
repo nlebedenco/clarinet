@@ -40,16 +40,6 @@ set(CMAKE_PREDEFINED_TARGETS_FOLDER "cmake")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER ${CMAKE_PREDEFINED_TARGETS_FOLDER})
 
-# If this is the root project, we only care about Debug and Release targets no MinSizeRel or RelDebInfo.
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    if(CMAKE_CONFIGURATION_TYPES)
-      set(CMAKE_CONFIGURATION_TYPES Debug Release)
-      set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING 
-        "Reset the configurations to what we need" 
-        FORCE)
-    endif(CMAKE_CONFIGURATION_TYPES)
-endif()
-
 # If we're building with Visual Studio, we require at least Visual Studio 2015, in order to get sufficient C99 
 # compatibility.
 if(MSVC AND MSVC_VERSION LESS 1900)
@@ -67,20 +57,20 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 #   Project
 ########################################################################################################################
 project(clarinet 
-    VERSION 0.0.1.0
-    DESCRIPTION "Experimental network transport protocol implementations"
+    VERSION 0.0.1
+    DESCRIPTION "Experimental network transport protocol stack"
     HOMEPAGE_URL ""
 )
 string(SUBSTRING ${PROJECT_NAME} 0 1 FIRST_LETTER)
 string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
 string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PACKAGE_NAME "${PROJECT_NAME}")
-set(PACKAGE_DESCRIPTON ${PROJECT_DESCRIPTION})
-set(PACKAGE_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
+set(PACKAGE_DESCRIPTION ${PROJECT_DESCRIPTION})
+set(PACKAGE_VERSION ${PROJECT_VERSION})
 
 if(WIN32)
     if(BUILD_SHARED_LIBS)
         set(PROJECT_FILENAME_DLL ${PROJECT_NAME}.dll)
-        set(PACKAGE_VERSION_DLL ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},${PROJECT_VERSION_TWEAK})
+        set(PACKAGE_VERSION_DLL ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0)
     endif(BUILD_SHARED_LIBS)
 endif(WIN32)
 message(STATUS "Configuring ${PACKAGE_NAME} ${PROJECT_VERSION}")
@@ -92,13 +82,13 @@ option(ENABLE_UDP "Enable UDP" ON)
 option(ENABLE_TCP "Enable TCP" ON)
 
 include(CMakeDependentOption)
-CMAKE_DEPENDENT_OPTION(ENABLE_ENET "Enable ENet" ON "ENABLE_UDP" OFF)
-CMAKE_DEPENDENT_OPTION(ENABLE_DTLS "Enable DTLS" ON "ENABLE_UDP" OFF)
-CMAKE_DEPENDENT_OPTION(ENABLE_DTLC "Enable DTLC" ON "ENABLE_UDP" OFF)
-CMAKE_DEPENDENT_OPTION(ENABLE_UDTP "Enable UDTP" ON "ENABLE_DTLS OR ENABLE_DTLC" OFF)
-CMAKE_DEPENDENT_OPTION(ENABLE_TLS  "Enable TLS"  ON "ENABLE_TCP" OFF)
+CMAKE_DEPENDENT_OPTION(ENABLE_ENET "Enable ENet" ON  "ENABLE_UDP" OFF)
+CMAKE_DEPENDENT_OPTION(ENABLE_DTLS "Enable DTLS" OFF "ENABLE_UDP" OFF)
+CMAKE_DEPENDENT_OPTION(ENABLE_DTLC "Enable DTLC" ON  "ENABLE_UDP" OFF)
+CMAKE_DEPENDENT_OPTION(ENABLE_UDTP "Enable UDTP" ON  "ENABLE_DTLS OR ENABLE_DTLC" OFF)
+CMAKE_DEPENDENT_OPTION(ENABLE_TLS  "Enable TLS"  OFF "ENABLE_TCP" OFF)
 
-option(USE_STATIC_RT "Use static runtime" ON)
+option(USE_STATIC_RT "Use static runtime" OFF)
 option(USE_STACK_PROTECTION "Use stack protection if supported by the compiler" ON)
 option(USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" ON)
 
@@ -447,12 +437,14 @@ add_library(${PROJECT_NAME}
     src/clarinet.c
     src/clarinet_udp.c
     src/clarinet_tcp.c
-)    
+)
+
+set_property(TARGET ${PROJECT_NAME} PROPERTY PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h)
 
 # Add DLL resource file on Windows
 if (WIN32)
     if (BUILD_SHARED_LIBS)    
-        target_sources(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src/clarinet.rc)
+        target_sources(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src/${PROJECT_NAME}.rc)
     endif (BUILD_SHARED_LIBS)    
 endif(WIN32)
 
@@ -569,16 +561,24 @@ else(BUILD_SHARED_LIBS)
 endif(BUILD_SHARED_LIBS)    
     
 # Static link to the system runtime library.
-if(USE_STATIC_RT)
-    message(STATUS "Using STATIC system runtime")   
+
+if (BUILD_SHARED_LIBS)
+    if(USE_STATIC_RT)
+        message(STATUS "Using STATIC system runtime")   
         if(MSVC)
             set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         else(MSVC)
             target_link_options(${PROJECT_NAME} PRIVATE -static-libgcc)
         endif(MSVC)
-else(USE_STATIC_RT)
+    else(USE_STATIC_RT)
+        message(STATUS "Using SHARED system runtime")
+    endif(USE_STATIC_RT)
+else (BUILD_SHARED_LIBS)
+    if(USE_STATIC_RT)
+        message(STATUS "Ignoring option USE_STATIC_RT (irrelevant for static libraries).")   
+    endif(USE_STATIC_RT)
     message(STATUS "Using SHARED system runtime")
-endif(USE_STATIC_RT)
+endif (BUILD_SHARED_LIBS)
 
 # Runtime stack protection.
 if(USE_STACK_PROTECTION)
@@ -768,13 +768,9 @@ if(ENABLE_ENET)
     message(CHECK_START "Adding ENet")
     list(APPEND CMAKE_MESSAGE_INDENT "  ")
     set(ENET_DIR 3rdparty/enet)
-    # ENet requires a CMake version that is too old so a warning is generated over policy CMP0048.
-    # We use CMAKE_PROJECT_INCLUDE_BEFORE here to inject a policy setting and silence the warning without having to 
-    # modify ENet's CMakeLists.txt. This is safe as long as ENet does not define a VERSION variable of its own.
-    set(CMAKE_PROJECT_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/EnableCMP0048.cmake)
+    set(CMAKE_PROJECT_enet_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/ENetIncludeBefore.cmake)
     # Add submodule
     add_git_submodule(${ENET_DIR})
-    unset(CMAKE_PROJECT_INCLUDE_BEFORE)  # if you don't want to affect subsequent add_subdirectory calls.
     set(HAVE_ENET YES)    
     target_link_libraries(${PROJECT_NAME} 
         PRIVATE 
@@ -907,25 +903,70 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BIN
 # Include GNU standard installation directories, which actually are also defined, to some degree, by autotools, and at 
 # least some of which are general UN*X conventions.
 include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/${PACKAGE_NAME})
-
-install(TARGETS ${PROJECT_NAME}
-    EXPORT ${PROJECT_NAME}-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-
-# This is required so that the exported target has the name PACKAGE_NAME and not PROJECT_NAME
-set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PACKAGE_NAME})
-
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+set(INSTALL_CONFIGDIR cmake)
 
 # The private dependencies of a static library still need to be exported because they are needed to properly link the 
 # consumers of the static library. This applies even to interface libraries because their INTERFACE_LINK_LIBRARIES might
 # specify something that provides symbols needed by the static library. Note that only the linking of private libraries 
 # is promoted to public, not the whole set of transitive requirements (meaning that consumers of the target static lib 
-# do not also get compiler options, etc, from private libs, only the linking of it).
+# do not also get compiler options, etc, from private libs, only the linking of it). MbedTLS exports its targets 
+# properly but ENet does not so we need to do it here. 
+if (HAVE_ENET)
+    install(TARGETS enet
+        EXPORT enet-targets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        EXCLUDE_FROM_ALL
+    )
+    install(EXPORT enet-targets
+        FILE ENetTargets.cmake
+        NAMESPACE ENet::
+        DESTINATION ${INSTALL_CONFIGDIR}
+        EXCLUDE_FROM_ALL
+    )
+    export(EXPORT enet-targets
+        FILE ${CMAKE_CURRENT_BINARY_DIR}/ENetTargets.cmake
+        NAMESPACE ENet::
+    )
+endif (HAVE_ENET)
 
+# This is required so that the exported target has the name PACKAGE_NAME and not PROJECT_NAME
+set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PACKAGE_NAME})
+
+# Install project
+install(TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}-targets
+    # For DLL platforms (all Windows-based systems including Cygwin), the DLL is treated as RUNTIME and the import 
+    # library is treated as an ARCHIVE target although it's not a static lib really.
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} 
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} 
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+)
+
+# We need to install static libraries manually when configured to produce a static lib while taking care to NOT include 
+# header files (or cmake files). Static library dependencies are not *automagically* installed and with EXCLUDE_FROM_ALL 
+# the targets in each subdir (git submodule) are not installed by the ALL target. 
+# NOTE: Since Cmake 3.13 install(TARGETS) can install targets that were created in other directories. When using such 
+# cross-directory install rules, running make install (or similar) from a subdirectory will not guarantee that targets 
+# from other directories are up-to-date.
+if (NOT BUILD_SHARED_LIBS)
+    # Install ENet static lib
+    if(HAVE_ENET)
+        install(TARGETS enet 
+            EXPORT ${PROJECT_NAME}-targets
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        )
+    endif(HAVE_ENET)
+    # Install MbedTLS static libs
+    if(HAVE_MBEDTLS)
+        install(TARGETS mbedtls mbedx509 mbedcrypto
+            EXPORT ${PROJECT_NAME}-targets
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        )
+    endif(HAVE_MBEDTLS)
+endif (NOT BUILD_SHARED_LIBS)
+  
 # Export the targets to a script
 install(EXPORT ${PROJECT_NAME}-targets
     FILE
@@ -950,9 +991,16 @@ configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/${PACKAGE_NAME}Con
 )
 
 # Create pkg-config file
+set(PKG_CONFIG_LINK_LIBRARIES "")
+get_target_property(PKG_CONFIG_LINK_LIBRARIES ${PROJECT_NAME} INTERFACE_LINK_LIBRARIES)
+string(REPLACE "PKG_CONFIG_LINK_LIBRARIES-NOTFOUND" "" PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES})
+if (NOT PKG_CONFIG_LINK_LIBRARIES STREQUAL "")
+    string(REGEX REPLACE "\\$\\<LINK_ONLY:([^>]*)\\>" "-l\\1 " PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES}) 
+endif()
+string(PREPEND PKG_CONFIG_LINK_LIBRARIES "-l${PROJECT_NAME} ")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PACKAGE_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
-# Install the config, configversion and custom find modules
+# Install the Config, ConfigVersion and custom find modules
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}ConfigVersion.cmake
@@ -960,15 +1008,18 @@ install(FILES
         ${INSTALL_CONFIGDIR}
 )
 
+# Install pkgconfig file
 install(FILES 
     ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc 
     DESTINATION 
-        ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
+        ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
+)
 
-# Exporting from the build tree
+# Export from the build tree
 export(EXPORT ${PROJECT_NAME}-targets
     FILE ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Targets.cmake
-    NAMESPACE ${PACKAGE_NAME}::)
+    NAMESPACE ${PACKAGE_NAME}::
+)
 
 # Do not export the package by default
 cmake_policy(SET CMP0090 NEW)
