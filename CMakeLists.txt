@@ -976,7 +976,7 @@ write_basic_package_version_file(
 )
 
 # Create Config file
-configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/${PROJECT_NAME_CAPITALIZED}Config.cmake.in
+configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Config.cmake
     INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
@@ -989,7 +989,7 @@ if (NOT PKG_CONFIG_LINK_LIBRARIES STREQUAL "")
     string(REGEX REPLACE "\\$\\<LINK_ONLY:([^>]*)\\>" "-l\\1 " PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES}) 
 endif()
 string(PREPEND PKG_CONFIG_LINK_LIBRARIES "-l${PROJECT_NAME} ")
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME_CAPITALIZED}.pc.in ${PROJECT_NAME}.pc @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
 # Install the Config, ConfigVersion and custom find modules
 install(FILES
@@ -1022,7 +1022,7 @@ export(PACKAGE ${PROJECT_NAME_CAPITALIZED})
 # Uninstall
 ########################################################################################################################
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME_CAPITALIZED}Uninstall.cmake.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
     IMMEDIATE @ONLY)
 
