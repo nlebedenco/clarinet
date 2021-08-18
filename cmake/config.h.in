@@ -1,32 +1,64 @@
 /* cmakeconfig.h.in */
 
 /***************************
- * Platforms
+ * Standard headers
  ***************************/
- 
-/* On Linux */
-#cmakedefine HAVE_LINUX 1
 
-/* On FreeBSD */
-#cmakedefine HAVE_FREEBSD 1
+/* Define to 1 if you have the ANSI C header files. */
+#cmakedefine STDC_HEADERS 1
 
-/* On Windows */
-#cmakedefine HAVE_WINDOWS 1
+/* Define to 1 if you have the <stdio.h> header file. */
+#cmakedefine HAVE_STDIO_H 1
 
-/* On macOS */
-#cmakedefine HAVE_MACOS 1
+/* Define to 1 if you have the <stdlib.h> header file. */
+#cmakedefine HAVE_STDLIB_H 1
 
-/* On iOS */
-#cmakedefine HAVE_IOS 1
+/* Define to 1 if you have the <stdarg.h> header file. */
+#cmakedefine HAVE_STDARG_H  1
 
-/* On watchOS */
-#cmakedefine HAVE_WATCHOS 1
+/* Define to 1 if you have the <string.h> header file. */
+#cmakedefine HAVE_STRING_H 1
 
-/* On tvOS */
-#cmakedefine HAVE_TVOS 1
+/* Define to 1 if you have the <float.h> header file. */
+#cmakedefine HAVE_FLOAT_H 1
 
-/* On Android */
-#cmakedefine HAVE_ANDROID 1
+
+/***************************
+ * Non-standard headers
+ ***************************/
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#cmakedefine HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#cmakedefine HAVE_INTTYPES_H 1
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#cmakedefine HAVE_UNISTD_H 1
+
+/* Define to 1 if you have the <sys/bitypes.h> header file. */
+#cmakedefine HAVE_SYS_BITYPES_H 1
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#cmakedefine HAVE_SYS_TYPES_H 1
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#cmakedefine HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#cmakedefine HAVE_SYS_SOCKET_H 1
+
+/* Define to 1 if you have the <sys/select.h> header file. */
+#cmakedefine HAVE_SYS_SELECT_H 1
+
+/* Define to 1 if you have the <sys/ioccom.h> header file. */
+#cmakedefine HAVE_SYS_IOCCOM_H 1
+
+/* Define to 1 if you have the <sys/sockio.h> header file. */
+#cmakedefine HAVE_SYS_SOCKIO_H 1
+
+/* Define to 1 if strings.h declares `ffs' */
+#cmakedefine STRINGS_H_DECLARES_FFS 1
 
 
 /***************************
@@ -108,85 +140,28 @@
 /* Define to 1 if you have the `clock_gettime' function. */
 #cmakedefine HAVE_CLOCK_GETTIME 1
 
-/***************************
- * Standard headers
- ***************************/
-
-/* Define to 1 if you have the ANSI C header files. */
-#cmakedefine STDC_HEADERS 1
-
-/* Define to 1 if you have the <stdio.h> header file. */
-#cmakedefine HAVE_STDIO_H 1
-
-/* Define to 1 if you have the <stdlib.h> header file. */
-#cmakedefine HAVE_STDLIB_H 1
-
-/* Define to 1 if you have the <stdarg.h> header file. */
-#cmakedefine HAVE_STDARG_H  1
-
-/* Define to 1 if you have the <string.h> header file. */
-#cmakedefine HAVE_STRING_H 1
-
-/* Define to 1 if you have the <float.h> header file. */
-#cmakedefine HAVE_FLOAT_H 1
-
-
-/***************************
- * Non-standard headers
- ***************************/
-
-/* Define to 1 if you have the <stdint.h> header file. */
-#cmakedefine HAVE_STDINT_H 1
-
-/* Define to 1 if you have the <inttypes.h> header file. */
-#cmakedefine HAVE_INTTYPES_H 1
-
-/* Define to 1 if you have the <unistd.h> header file. */
-#cmakedefine HAVE_UNISTD_H 1
-
-/* Define to 1 if you have the <sys/bitypes.h> header file. */
-#cmakedefine HAVE_SYS_BITYPES_H 1
-
-/* Define to 1 if you have the <sys/types.h> header file. */
-#cmakedefine HAVE_SYS_TYPES_H 1
-
-/* Define to 1 if you have the <sys/stat.h> header file. */
-#cmakedefine HAVE_SYS_STAT_H 1
-
-/* Define to 1 if you have the <sys/socket.h> header file. */
-#cmakedefine HAVE_SYS_SOCKET_H 1
-
-/* Define to 1 if you have the <sys/select.h> header file. */
-#cmakedefine HAVE_SYS_SELECT_H 1
-
-/* Define to 1 if you have the <sys/ioccom.h> header file. */
-#cmakedefine HAVE_SYS_IOCCOM_H 1
-
-/* Define to 1 if you have the <sys/sockio.h> header file. */
-#cmakedefine HAVE_SYS_SOCKIO_H 1
-
-/* Define to 1 if strings.h declares `ffs' */
-#cmakedefine STRINGS_H_DECLARES_FFS 1
-
 
 /***************************
  * Version
  ***************************/
 
 /* Define to the full name of this package. */
-#cmakedefine PACKAGE_NAME "@PACKAGE_NAME@"
+#define CONFIG_NAME "@PROJECT_NAME@"
 
 /* Define to the description of this package. */
-#cmakedefine PACKAGE_DESCRIPTION "@PACKAGE_DESCRIPTION@"
+#define CONFIG_DESCRIPTION "@PROJECT_DESCRIPTION@"
 
 /* Define to the version of this package. */
-#cmakedefine PACKAGE_VERSION "@PACKAGE_VERSION@"
+#define CONFIG_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define CONFIG_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define CONFIG_VERSION_PATCH @PROJECT_VERSION_PATCH@
 
-/* Define to the file name of this package. */
-#cmakedefine PACKAGE_FILENAME_DLL @PROJECT_FILENAME_DLL@
+/* Define to the file version of this package (used in windows DLL only). */
+#define CONFIG_FILEVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
 
-/* Define to the DLL-preferred version string of this package. */
-#cmakedefine PACKAGE_VERSION_DLL @PACKAGE_VERSION_DLL@
+/* Define to the file name of this package (used in windows DLL only). */
+#define CONFIG_FILENAME @PROJECT_FILENAME@
+
 
 /***************************
  * MbedTLS

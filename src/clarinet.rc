@@ -2,8 +2,8 @@
 #include <winver.h>
 
   VS_VERSION_INFO VERSIONINFO
-    FILEVERSION    PACKAGE_VERSION_DLL
-    PRODUCTVERSION PACKAGE_VERSION_DLL
+    FILEVERSION    CONFIG_FILEVERSION
+    PRODUCTVERSION CONFIG_FILEVERSION
     FILEFLAGSMASK  0x3fL
     FILEOS         VOS__WINDOWS32
     FILETYPE       VFT_DLL
@@ -19,14 +19,14 @@
       BEGIN
         VALUE "Comments",         ""
         VALUE "CompanyName",      "Default Company"
-        VALUE "FileDescription",  PACKAGE_DESCRIPTION
-        VALUE "FileVersion",      "PACKAGE_VERSION_DLL"
-        VALUE "InternalName",     PACKAGE_NAME
+        VALUE "FileDescription",  CONFIG_DESCRIPTION
+        VALUE "FileVersion",      "CONFIG_FILEVERSION"
+        VALUE "InternalName",     CONFIG_NAME
         VALUE "LegalCopyright",   "Copyright (c) Default Name"
         VALUE "LegalTrademarks",  ""
-        VALUE "OriginalFilename", "PACKAGE_FILENAME_DLL"
-        VALUE "ProductName",      PACKAGE_NAME
-        VALUE "ProductVersion",   PACKAGE_VERSION
+        VALUE "OriginalFilename", "CONFIG_FILENAME"
+        VALUE "ProductName",      CONFIG_NAME
+        VALUE "ProductVersion",   CONFIG_VERSION_MAJOR.CONFIG_VERSION_MINOR.CONFIG_VERSION_PATCH
       END
     END
   BLOCK "VarFileInfo"

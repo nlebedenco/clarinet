@@ -56,26 +56,41 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 ########################################################################################################################
 #   Project
 ########################################################################################################################
+# Project name is used for the main target name and file name.
+# Version is exported in the DLL details (.rc file) and accessible to the user through the library API so numeric values
+# cannot be greater than 255.
+# Description is exported in the DLL details (.rc file) and accessible to the user through the library API.
 project(clarinet 
     VERSION 0.0.1
     DESCRIPTION "Experimental network transport protocol stack"
     HOMEPAGE_URL ""
 )
+
+message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
+
+# Require out-of-source builds this will return false if the file exists but is not accessible by the user
+# but in this case there is a good chance the directory is not writable either.
+file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" CMAKE_LISTS_FILE)
+if(EXISTS "${CMAKE_LISTS_FILE}")
+    message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
+endif()
+
+# Define an upper case and capitalized project names
+string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE) 
 string(SUBSTRING ${PROJECT_NAME} 0 1 FIRST_LETTER)
 string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
-string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PACKAGE_NAME "${PROJECT_NAME}")
-set(PACKAGE_DESCRIPTION ${PROJECT_DESCRIPTION})
-set(PACKAGE_VERSION ${PROJECT_VERSION})
+string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PROJECT_NAME_CAPITALIZED "${PROJECT_NAME}")
 
 if(WIN32)
     if(BUILD_SHARED_LIBS)
-        set(PROJECT_FILENAME_DLL ${PROJECT_NAME}.dll)
-        set(PACKAGE_VERSION_DLL ${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0)
+        set(PROJECT_FILENAME ${PROJECT_NAME}.dll)
     endif(BUILD_SHARED_LIBS)
 endif(WIN32)
-message(STATUS "Configuring ${PACKAGE_NAME} ${PROJECT_VERSION}")
+
+########################################################################################################################
+#   Options
+########################################################################################################################
     
-option(ENABLE_PROFILER "Enable profiler" OFF)
 option(ENABLE_LOG "Enable log" ON)
 option(ENABLE_IPV6 "Enable IPv6" ON)
 option(ENABLE_UDP "Enable UDP" ON)
@@ -88,6 +103,7 @@ CMAKE_DEPENDENT_OPTION(ENABLE_DTLC "Enable DTLC" ON  "ENABLE_UDP" OFF)
 CMAKE_DEPENDENT_OPTION(ENABLE_UDTP "Enable UDTP" ON  "ENABLE_DTLS OR ENABLE_DTLC" OFF)
 CMAKE_DEPENDENT_OPTION(ENABLE_TLS  "Enable TLS"  OFF "ENABLE_TCP" OFF)
 
+option(USE_PROFILER "Use profiler" OFF)
 option(USE_STATIC_RT "Use static runtime" OFF)
 option(USE_STACK_PROTECTION "Use stack protection if supported by the compiler" ON)
 option(USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" ON)
@@ -100,15 +116,15 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static" OFF)
 #   Configuration
 ########################################################################################################################
 
+include(CheckIncludeFile)
+include(CheckIncludeFiles)
+include(CheckCCompilerFlag)
 include(CheckFunctionExists)
 include(CMakePushCheckState)
 include(CheckSymbolExists)
-include(CheckIncludeFiles)
-include(CheckIncludeFile)
 include(CheckStructHasMember)
 include(CheckTypeSize)
 include(CheckLibraryExists)
-include(CheckCCompilerFlag)
 
 # For checking if a compiler flag works and add to the target if it does.
 macro(target_check_and_add_compile_option _target _scope _option _result)
@@ -396,36 +412,6 @@ if(NOT WIN32)
   endif(NOT CMAKE_USE_PTHREADS_INIT)
 endif(NOT WIN32)
 
-# Determine the system for config.h
-if(UNIX)
-    if(APPLE)
-        if(IOS)
-            set(HAVE_IOS TRUE)
-        else(IOS)
-            if (CMAKE_SYSTEM_NAME STREQUAL tvOS)
-                set(HAVE_TVOS TRUE)
-            elseif(CMAKE_SYSTEM_NAME STREQUAL watchOS)
-                set(HAVE_WATCHOS TRUE)
-            else()
-                set(HAVE_MACOS TRUE)
-            endif()
-        endif(IOS)
-    else(APPLE)
-        if(ANDROID)
-            set(HAVE_ANDROID TRUE)
-        else(ANDROID)
-            if (CMAKE_SYSTEM_NAME MATCHES Linux)
-                set(HAVE_LINUX TRUE)
-            elseif(${CMAKE_SYSTEM_NAME} MATCHES FreeBSD)
-                set(HAVE_FREEBSD TRUE)
-            endif()
-        endif(ANDROID)           
-    endif(APPLE)
-else(UNIX)    
-    if(WIN32)
-        set(HAVE_WINDOWS TRUE)
-    endif(WIN32)
-endif(UNIX)   
 
 ########################################################################################################################
 #   Targets
@@ -439,7 +425,21 @@ add_library(${PROJECT_NAME}
     src/clarinet_tcp.c
 )
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h)
+# It's useful to declare an alias so super-projects can link to our library by using namespaces regardless of adding the 
+# targets by using find_package() or add_subdirectory()
+add_library(${PROJECT_NAME_CAPITALIZED}::${PROJECT_NAME_CAPITALIZED} ALIAS ${PROJECT_NAME})
+
+# Set project version for platforms add that information to the binary
+# Hide symbols and inline functions (i.e. -fvisibility=hidden and -fvisibility-inlines-hidden)
+# Set up public header
+# Enable position independent code (i.e. -fPIC) if building shared lib.
+set_target_properties(${PROJECT_NAME} PROPERTIES        
+    VERSION ${PROJECT_VERSION}
+    C_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+    PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h
+    POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
+)
 
 # Add DLL resource file on Windows
 if (WIN32)
@@ -448,14 +448,7 @@ if (WIN32)
     endif (BUILD_SHARED_LIBS)    
 endif(WIN32)
 
-# Hide symbols and inline functions (i.e. -fvisibility=hidden and -fvisibility-inlines-hidden)
-set_property(TARGET ${PROJECT_NAME} PROPERTY C_VISIBILITY_PRESET hidden)
-set_property(TARGET ${PROJECT_NAME} PROPERTY VISIBILITY_INLINES_HIDDEN ON)
-
 if(WIN32)
-    if(BUILD_SHARED_LIBS)
-        set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${PACKAGE_VERSION_NOSUFFIX})
-    endif()    
     if(MSVC)
         set_target_properties(${PROJECT_NAME} PROPERTIES
             COMPILE_PDB_NAME ${PROJECT_NAME}
@@ -469,40 +462,42 @@ if(WIN32)
         )
     endif()
 else(WIN32) # UN*X
+    set_target_properties(${PROJECT_NAME} PROPERTIES 
+        OUTPUT_NAME "${PROJECT_NAME}"
+    )
     if(BUILD_SHARED_LIBS)
         if(APPLE)
             set_target_properties(${PROJECT_NAME} PROPERTIES
-                VERSION ${PACKAGE_VERSION}
                 SOVERSION A
             )
         else(APPLE)
             set_target_properties(${PROJECT_NAME} PROPERTIES
-                VERSION ${PACKAGE_VERSION}
-                SOVERSION ${PACKAGE_VERSION_MAJOR}
+                SOVERSION ${PROJECT_VERSION_MAJOR}
             )
         endif(APPLE)
     endif(BUILD_SHARED_LIBS)
-    set_target_properties(${PROJECT_NAME} PROPERTIES 
-        OUTPUT_NAME "${PROJECT_NAME}"
-    )
 endif(WIN32)
 
 # Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that 
-# we're exporting functions defined in our public header files, rather than importing those functions.
-string(TOUPPER "${PROJECT_NAME}_EXPORT" EXPORT_SYMBOL)
-target_compile_definitions(${PROJECT_NAME} 
-    PRIVATE 
-        ${EXPORT_SYMBOL}
-)
+# we're supposed to exporting symbols defined in our public header files.
+if (BUILD_SHARED_LIBS)
+    target_compile_definitions(${PROJECT_NAME} 
+        PRIVATE 
+            ${PROJECT_NAME_UPPERCASE}_EXPORT
+    )
+else(BUILD_SHARED_LIBS)
+    target_compile_definitions(${PROJECT_NAME} 
+        PUBLIC 
+            ${PROJECT_NAME_UPPERCASE}_STATIC
+    )
+endif(BUILD_SHARED_LIBS)
   
-# Enable position independent code (i.e. -fPIC). Only makes sense for shared lib.
-set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
-
 # We require C99
 target_compile_features(${PROJECT_NAME}
-    PRIVATE
+    PUBLIC
         c_std_99
         c_function_prototypes
+    PRIVATE
         c_variadic_macros
 )
 
@@ -535,12 +530,6 @@ if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
 
-# Custom compiler definitions
-target_compile_definitions(${PROJECT_NAME} 
-    PRIVATE 
-        HAVE_CONFIG_H
-)
-
 # If we're building with MinGW, we need to specify _WIN32_WINNT as 0x0600 ("NT 6.0", a/k/a Vista/Windows Server 2008) 
 # or higher in order to get the full IPv6 API, including inet_ntop(), and we need to specify it as 0x0601 ("NT 6.1", 
 # a.k.a Windows 7) or higher in order to get NdisMediumIP.
@@ -559,9 +548,18 @@ if (BUILD_SHARED_LIBS)
 else(BUILD_SHARED_LIBS)
     message(STATUS "Target library type is STATIC")
 endif(BUILD_SHARED_LIBS)    
+
+# Profiler support.
+if(USE_PROFILER)
+    if(MSVC)
+        target_link_options(${PROJECT_NAME} PRIVATE /PROFILE)
+    else(MSVC)
+        target_compile_options(${PROJECT_NAME} PRIVATE -pg)
+        target_link_options(${PROJECT_NAME} PRIVATE -pg)
+    endif(MSVC)
+endif(USE_PROFILER)
     
 # Static link to the system runtime library.
-
 if (BUILD_SHARED_LIBS)
     if(USE_STATIC_RT)
         message(STATUS "Using STATIC system runtime")   
@@ -657,16 +655,6 @@ if(USE_SPECTRE_MITIGATION)
     endif()
 endif(USE_SPECTRE_MITIGATION)
 
-# Adjust compile options and link flags for the profiler.
-if(ENABLE_PROFILER)
-    if(MSVC)
-        target_link_options(${PROJECT_NAME} PRIVATE /PROFILE)
-    else(MSVC)
-        target_compile_options(${PROJECT_NAME} PRIVATE -pg)
-        target_link_options(${PROJECT_NAME} PRIVATE -pg)
-    endif(MSVC)
-endif(ENABLE_PROFILER)
-
 # Add warning options if we have a .devel file.
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.devel OR EXISTS ${CMAKE_BINARY_DIR}/.devel)
     # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so we
@@ -735,6 +723,11 @@ endif()
 # See: Sanitizer options libpcap/CMakeLists.txtx
 # See: https://docs.microsoft.com/en-us/cpp/sanitizers/asan?view=msvc-160
 # See: https://devblogs.microsoft.com/cppblog/address-sanitizer-for-msvc-now-generally-available/
+
+
+########################################################################################################################
+#   Submodules
+########################################################################################################################
 
 # Include support to add git submodules
 include(AddGitSubmodule)
@@ -874,13 +867,15 @@ if(NOT "${EXTRA_CFLAGS}" STREQUAL "")
     message(STATUS "Extra compile options: (${EXTRA_CFLAGS})")
 endif()
 
+# Save configuration
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
+
 ########################################################################################################################
 # Report Features
 ########################################################################################################################
 
 message(CHECK_START "Library features")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
-message(STATUS "Profiler: ${ENABLE_PROFILER}")
 message(STATUS "Log: ${ENABLE_LOG}")
 message(STATUS "IPv6: ${ENABLE_IPV6}")
 message(STATUS "UDP: ${ENABLE_UDP}")
@@ -891,9 +886,6 @@ message(STATUS "ENET: ${ENABLE_ENET}")
 message(STATUS "TCP: ${ENABLE_TCP}")
 message(STATUS "TLS: ${ENABLE_TLS}")
 list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-# Save configuration
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
 
 
 ########################################################################################################################
@@ -930,8 +922,8 @@ if (HAVE_ENET)
     )
 endif (HAVE_ENET)
 
-# This is required so that the exported target has the name PACKAGE_NAME and not PROJECT_NAME
-set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PACKAGE_NAME})
+# This is required so that the exported target has the name PROJECT_NAME_CAPITALIZED and not PROJECT_NAME
+set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PROJECT_NAME_CAPITALIZED})
 
 # Install project
 install(TARGETS ${PROJECT_NAME}
@@ -970,9 +962,9 @@ endif (NOT BUILD_SHARED_LIBS)
 # Export the targets to a script
 install(EXPORT ${PROJECT_NAME}-targets
     FILE
-        ${PACKAGE_NAME}Targets.cmake
+        ${PROJECT_NAME_CAPITALIZED}Targets.cmake
     NAMESPACE
-        ${PACKAGE_NAME}::
+        ${PROJECT_NAME_CAPITALIZED}::
     DESTINATION
         ${INSTALL_CONFIGDIR}
 )
@@ -980,13 +972,14 @@ install(EXPORT ${PROJECT_NAME}-targets
 # Create a ConfigVersion.cmake file
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}ConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}ConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
 
-configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/${PACKAGE_NAME}Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Config.cmake
+# Create Config file
+configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/${PROJECT_NAME_CAPITALIZED}Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Config.cmake
     INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
 
@@ -998,12 +991,12 @@ if (NOT PKG_CONFIG_LINK_LIBRARIES STREQUAL "")
     string(REGEX REPLACE "\\$\\<LINK_ONLY:([^>]*)\\>" "-l\\1 " PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES}) 
 endif()
 string(PREPEND PKG_CONFIG_LINK_LIBRARIES "-l${PROJECT_NAME} ")
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PACKAGE_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME_CAPITALIZED}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
 # Install the Config, ConfigVersion and custom find modules
 install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}ConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}ConfigVersion.cmake
     DESTINATION 
         ${INSTALL_CONFIGDIR}
 )
@@ -1017,21 +1010,21 @@ install(FILES
 
 # Export from the build tree
 export(EXPORT ${PROJECT_NAME}-targets
-    FILE ${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_NAME}Targets.cmake
-    NAMESPACE ${PACKAGE_NAME}::
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Targets.cmake
+    NAMESPACE ${PROJECT_NAME_CAPITALIZED}::
 )
 
 # Do not export the package by default
 cmake_policy(SET CMP0090 NEW)
 
 # Register package in the User Package Registry
-export(PACKAGE ${PACKAGE_NAME})
+export(PACKAGE ${PROJECT_NAME_CAPITALIZED})
 
 ########################################################################################################################
 # Uninstall
 ########################################################################################################################
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PACKAGE_NAME}Uninstall.cmake.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME_CAPITALIZED}Uninstall.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
     IMMEDIATE @ONLY)
 

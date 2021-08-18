@@ -45,6 +45,8 @@ which matches the platform name used in VS project files but on the x86 NTCP we 
 VS2017 and VS2019 installations) while VS project files expect Win32. In this case calling `cmake -A %platform%` will 
 fail with VS generators.
 
+A Visual Studio solution is created in the buildir after the first configuration which can be used to build any of the 
+supported types (Debug, Release, MinSizeRel or RelWithDebInfo)
 It's not currently possible to have cmake generating a single Visual Studio solution for both x64 and Win32 because the 
 build folders need to be separate.
 
@@ -94,8 +96,20 @@ treated as an ARCHIVE target although it's not a static lib really.
 Then the library and its dependencies can be instaled using:
 
 ```
+cmake --install \path\to\build_dir
+```
+
+which is equivalent to:
+
+```
 cmake --build \path\to\build_dir --target install
 ```
+
+#### Compiler Warnings
+
+Additional compilation warnings are enabled if a file named `.devel` exists in either the project directory or the build 
+directory.
+
 
 ## TODO
 

@@ -15,6 +15,7 @@ obj/
 *.user
 *_ReSharper.*
 *.log
+.devel
 
 build/
 
