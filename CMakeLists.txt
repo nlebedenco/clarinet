@@ -438,7 +438,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     C_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
     PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h
-    POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
+    POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
 
 # Add DLL resource file on Windows
@@ -736,7 +736,6 @@ include(AddGitSubmodule)
 if(ENABLE_TLS OR ENABLE_DTLS)
     message(CHECK_START "Adding MbedTLS")
     list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    set(MBEDTLS_DIR 3rdparty/mbedtls)
     # Use MbedTLS static libs only
     set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "Build mbed TLS static library." FORCE)
     set(USE_SHARED_MBEDTLS_LIBRARY OFF CACHE BOOL "Build mbed TLS shared library." FORCE)
@@ -744,7 +743,7 @@ if(ENABLE_TLS OR ENABLE_DTLS)
     set(ENABLE_PROGRAMS OFF CACHE BOOL "Build mbed TLS programs." FORCE)
     set(ENABLE_TESTING OFF CACHE BOOL "Build mbed TLS tests." FORCE)
     # Add submodule
-    add_git_submodule(${MBEDTLS_DIR})
+    add_git_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mbedtls)
     set(HAVE_MBEDTLS YES)
     target_link_libraries(${PROJECT_NAME} 
         PRIVATE 
@@ -760,10 +759,9 @@ endif()
 if(ENABLE_ENET)
     message(CHECK_START "Adding ENet")
     list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    set(ENET_DIR 3rdparty/enet)
     set(CMAKE_PROJECT_enet_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/ENetIncludeBefore.cmake)
     # Add submodule
-    add_git_submodule(${ENET_DIR})
+    add_git_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/enet)
     set(HAVE_ENET YES)    
     target_link_libraries(${PROJECT_NAME} 
         PRIVATE 
