@@ -78,7 +78,10 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
-message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
+get_directory_property(PROJECT_HAS_PARENT PARENT_DIRECTORY)
+if(NOT PROJECT_HAS_PARENT)
+    message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
+endif()
 
 # Define an upper case and capitalized project names
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE) 
@@ -555,7 +558,8 @@ else(BUILD_SHARED_LIBS)
 endif(BUILD_SHARED_LIBS)    
 
 # Profiler support.
-if(USE_PROFILER)
+message(STATUS "Profiler support is ${USE_PROFILER}")
+if(USE_PROFILER)   
     if(MSVC)
         target_link_options(${PROJECT_NAME} PRIVATE /PROFILE)
     else(MSVC)
@@ -876,7 +880,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BIN
 # Report Features
 ########################################################################################################################
 
-message(CHECK_START "Library features")
+message(STATUS "Configured features")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 message(STATUS "Log: ${ENABLE_LOG}")
 message(STATUS "IPv6: ${ENABLE_IPV6}")
