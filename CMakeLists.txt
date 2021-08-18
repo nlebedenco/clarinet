@@ -52,7 +52,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 
-
 ########################################################################################################################
 #   Project
 ########################################################################################################################
@@ -66,14 +65,20 @@ project(clarinet
     HOMEPAGE_URL ""
 )
 
-message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
-
 # Require out-of-source builds this will return false if the file exists but is not accessible by the user
 # but in this case there is a good chance the directory is not writable either.
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" CMAKE_LISTS_FILE)
 if(EXISTS "${CMAKE_LISTS_FILE}")
     message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
 endif()
+
+# Set installation prefix automatically to custom path if not explicitly specified on the command line
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE )
+endif()
+
+message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
+message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
 
 # Define an upper case and capitalized project names
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE) 
@@ -724,7 +729,6 @@ endif()
 # See: https://docs.microsoft.com/en-us/cpp/sanitizers/asan?view=msvc-160
 # See: https://devblogs.microsoft.com/cppblog/address-sanitizer-for-msvc-now-generally-available/
 
-
 ########################################################################################################################
 #   Submodules
 ########################################################################################################################
@@ -1018,13 +1022,3 @@ cmake_policy(SET CMP0090 NEW)
 # Register package in the User Package Registry
 export(PACKAGE ${PROJECT_NAME_CAPITALIZED})
 
-########################################################################################################################
-# Uninstall
-########################################################################################################################
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
-    IMMEDIATE @ONLY)
-
-add_custom_target(UNINSTALL COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
-set_target_properties(UNINSTALL PROPERTIES FOLDER ${CMAKE_PREDEFINED_TARGETS_FOLDER})
