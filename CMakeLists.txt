@@ -427,10 +427,15 @@ endif(NOT WIN32)
 
 # Add library without a specific STATIC/SHARED because cmake uses the value of BUILD_SHARED_LIBS to determine whether 
 # it should one or the other.
-add_library(${PROJECT_NAME}
-    src/clarinet.c
-    src/clarinet_udp.c
-    src/clarinet_tcp.c
+add_library(${PROJECT_NAME})
+target_sources(${PROJECT_NAME}
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h>
+        $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>       
+    PRIVATE
+        src/${PROJECT_NAME}.c
+        src/${PROJECT_NAME}_udp.c
+        src/${PROJECT_NAME}_tcp.c
 )
 
 # It's useful to declare an alias so super-projects can link to our library by using namespaces regardless of adding the 
