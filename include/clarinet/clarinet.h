@@ -25,36 +25,36 @@ extern "C" {
  * 
  * The common case is for the header to accompany a shared library so the user must define CLARINET_STATIC when 
  * using static linkage. This is more convenient because static libraries tend to be compiled beside the final binary 
- * (either executable or shared library) and build requirements offer less attriction.
+ * (either executable or shared library) and in such circumstances arbitrary build requirements produce less attriction.
  */
 #ifdef CLARINET_STATIC
-	#define CLARINET_VISIBLITY
+    #define CLARINET_VISIBLITY
 #else 
-	#ifdef _WIN32
-		#ifdef CLARINET_EXPORT
-			#define CLARINET_VISIBLITY 	__declspec(dllexport)
-		#else
-			#define CLARINET_VISIBLITY 	__declspec(dllimport)
-		#endif
-	#else /* UN*X */
-		#ifdef CLARINET_EXPORT
-			#if CLARINET_IS_AT_LEAST_GNUC_VERSION(3,4)
-				/*
-				* GCC 3.4 and later (or some compiler asserting compatibility with
-				* GCC 3.4 and later) so we have __attribute__((visibility()).
-				*/
-				#define CLARINET_VISIBLITY	__attribute__((visibility("default")))
-			#else 
-				#define CLARINET_VISIBLITY
-			#endif
-		#else 
-			#define CLARINET_VISIBLITY
-		#endif
-	#endif
+    #ifdef _WIN32
+        #ifdef CLARINET_EXPORT
+            #define CLARINET_VISIBLITY     __declspec(dllexport)
+        #else
+            #define CLARINET_VISIBLITY     __declspec(dllimport)
+        #endif
+    #else /* UN*X */
+        #ifdef CLARINET_EXPORT
+            #if CLARINET_IS_AT_LEAST_GNUC_VERSION(3,4)
+                /*
+                * GCC 3.4 and later (or some compiler asserting compatibility with
+                * GCC 3.4 and later) so we have __attribute__((visibility()).
+                */
+                #define CLARINET_VISIBLITY    __attribute__((visibility("default")))
+            #else 
+                #define CLARINET_VISIBLITY
+            #endif
+        #else 
+            #define CLARINET_VISIBLITY
+        #endif
+    #endif
 #endif
 
 #define CLARINET_API CLARINET_VISIBLITY extern
-	
+    
 /** 
  * Data Structures 
  *

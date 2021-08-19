@@ -13,6 +13,13 @@ cmake /path/to/clarinet
 cmake --build .
 ```
 
+Unlike on Windows, the loader on Unix systems never checks the current directory for shared objects. This is 
+inconvenient because projects with executables linked against a shared library produced in a sub-project cannot be 
+immediately executed after installation if the install prefix was customized. On the other hand, one generally does not 
+want to pollute system folders with development libraries. A possible compromise in this case is to temporarily set 
+$LD_LIBRARY_PATH to point to the devel libdir used by cmake to install the libraries. See the ld.so(8) man page for more 
+details. 
+
 #### Windows
 
 On windows you might have to open a Native Tools Command Prompt (NTCP) rather than a normal command prompt if cmake was 

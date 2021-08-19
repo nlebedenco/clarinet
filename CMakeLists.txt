@@ -15,7 +15,7 @@ if(POLICY CMP0063)
     cmake_policy(SET CMP0063 NEW)
 endif()
 
-# We want find_file() and find_library() to honor {packagename}_ROOT, as that appears to be the only way, with the 
+# We want find_file() and find_library() to honor {packagename}_ROOT, as that appears to be the only way, with the
 # Visual Studio 2019 IDE and its CMake support, to tell CMake where to look for dependencies.
 if(POLICY CMP0074)
     cmake_policy(SET CMP0074 NEW)
@@ -39,17 +39,18 @@ set(CMAKE_PREDEFINED_TARGETS_FOLDER "cmake")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER ${CMAKE_PREDEFINED_TARGETS_FOLDER})
 
-# If we're building with Visual Studio, we require at least Visual Studio 2015, in order to get sufficient C99 
+# If we're building with Visual Studio, we require at least Visual Studio 2015, in order to get sufficient C99
 # compatibility.
 if(MSVC AND MSVC_VERSION LESS 1900)
     message(FATAL_ERROR "Visual Studio 2015 or later is required")
 endif()
 
-# Windows DLLs go into RUNTIME_OUTPUT_DIRECTORY so executables can find their libraries. Set output directories here 
+# Windows DLLs go into RUNTIME_OUTPUT_DIRECTORY so executables can find their libraries. Set output directories here
 # for all targets so we can find dynamic libraries when any of the executables are run.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
+
 
 ########################################################################################################################
 #   Project
@@ -58,7 +59,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 # Version is exported in the DLL details (.rc file) and accessible to the user through the library API so numeric values
 # cannot be greater than 255.
 # Description is exported in the DLL details (.rc file) and accessible to the user through the library API.
-project(clarinet 
+project(clarinet
     VERSION 0.0.1
     DESCRIPTION "Experimental network transport protocol stack"
     HOMEPAGE_URL ""
@@ -83,7 +84,7 @@ if(NOT PROJECT_HAS_PARENT)
 endif()
 
 # Define an upper case and capitalized project names
-string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE) 
+string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE)
 string(SUBSTRING ${PROJECT_NAME} 0 1 FIRST_LETTER)
 string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
 string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PROJECT_NAME_CAPITALIZED "${PROJECT_NAME}")
@@ -97,7 +98,7 @@ endif(WIN32)
 ########################################################################################################################
 #   Options
 ########################################################################################################################
-    
+
 option(ENABLE_LOG "Enable log" ON)
 option(ENABLE_IPV6 "Enable IPv6" ON)
 option(ENABLE_UDP "Enable UDP" ON)
@@ -115,7 +116,7 @@ option(USE_STATIC_RT "Use static runtime" OFF)
 option(USE_STACK_PROTECTION "Use stack protection if supported by the compiler" ON)
 option(USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" ON)
 
-# Automatically used by cmake to change the default for add_library() 
+# Automatically used by cmake to change the default for add_library()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static" OFF)
 
 
@@ -146,7 +147,7 @@ endmacro()
 
 # Based on https://gist.github.com/likema/97841d77e5f384fbdb46629c5b429013
 # by Like Ma
-# Check ANSI C headers. Once done it will define STDC_HEADERS, HAVE_STDLIB_H, HAVE_STDARG_H, HAVE_STRING_H and 
+# Check ANSI C headers. Once done it will define STDC_HEADERS, HAVE_STDLIB_H, HAVE_STDARG_H, HAVE_STRING_H and
 # HAVE_FLOAT_H, if they exist
 macro(check_stdc_headers)
     if(NOT CMAKE_REQUIRED_QUIET)
@@ -176,14 +177,14 @@ if(NOT WIN32)
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
     check_include_file(sys/stat.h HAVE_SYS_STAT_H)
     check_include_file(sys/socket.h HAVE_SYS_SOCKET_H)
-    check_include_file(sys/select.h HAVE_SYS_SELECT_H)   
+    check_include_file(sys/select.h HAVE_SYS_SELECT_H)
     check_include_file(sys/ioccom.h HAVE_SYS_IOCCOM_H)
     check_include_file(sys/sockio.h HAVE_SYS_SOCKIO_H)
 endif(NOT WIN32)
 
 # Check for __atomic_load_n() and __atomic_store_n() builtins.
-# We can't use check_function_exists(), as it tries to declare the function, and attempting to declare a compiler 
-# builtin can produce an error. We don't use check_symbol_exists() as it expects a header file to be specified to 
+# We can't use check_function_exists(), as it tries to declare the function, and attempting to declare a compiler
+# builtin can produce an error. We don't use check_symbol_exists() as it expects a header file to be specified to
 # declare the function, but there isn't such a header file. Hence we use check_c_source_compiles().
 check_c_source_compiles("int main(void) { int i = 17; return __atomic_load_n(&i, __ATOMIC_RELAXED); }"
                         HAVE___ATOMIC_LOAD_N)
@@ -204,8 +205,8 @@ else(HAVE_STRERROR_R)
     check_function_exists(_wcserror_s HAVE__WCSERROR_S)
 endif(HAVE_STRERROR_R)
 
-# Make sure we have vsnprintf() and snprintf(); we require them. We use check_symbol_exists(), as they aren't 
-# necessarily external functions - in Visual Studio, for example, they're inline functions calling a common external 
+# Make sure we have vsnprintf() and snprintf(); we require them. We use check_symbol_exists(), as they aren't
+# necessarily external functions - in Visual Studio, for example, they're inline functions calling a common external
 # function.
 check_symbol_exists(vsnprintf "stdio.h" HAVE_VSNPRINTF)
 if(NOT HAVE_VSNPRINTF)
@@ -235,19 +236,19 @@ endif(NOT WIN32)
 # Store libraries discovered by the tests.
 set(PRIVATE_LINK_LIBRARIES "")
 
-# We require getaddrinfo(), inet_ntop() and inet_pton(). On UN*X systems, we also prefer versions of recvmsg() that 
-# conform to the Single UNIX Specification, so that we can check whether a datagram received with recvmsg() was 
-# truncated when received due to the buffer being too small. On Windows, getaddrinfo(), inet_pton() and inet_ntop() are 
+# We require getaddrinfo(), inet_ntop() and inet_pton(). On UN*X systems, we also prefer versions of recvmsg() that
+# conform to the Single UNIX Specification, so that we can check whether a datagram received with recvmsg() was
+# truncated when received due to the buffer being too small. On Windows, getaddrinfo(), inet_pton() and inet_ntop() are
 # in the ws2_32 library. On most UN*X systems, they're available in the system library.
 #
-# Under Solaris, we need to link with libsocket and libnsl to get getaddrinfo() and getnameinfo() and, if we have 
-# libxnet, we need to link with libxnet before libsocket to get a version of recvmsg() that conforms to the Single 
+# Under Solaris, we need to link with libsocket and libnsl to get getaddrinfo() and getnameinfo() and, if we have
+# libxnet, we need to link with libxnet before libsocket to get a version of recvmsg() that conforms to the Single
 # UNIX Specification.
 #
-# We use getaddrinfo() because we want a portable thread-safe way of getting information for a host name or port; there 
+# We use getaddrinfo() because we want a portable thread-safe way of getting information for a host name or port; there
 # exist _r versions of gethostbyname() and getservbyname() on some platforms, but not on all platforms.
 #
-# NOTE: if you hand check_library_exists a variable that's been set as the last argument, it skips the test, so we need 
+# NOTE: if you hand check_library_exists a variable that's been set as the last argument, it skips the test, so we need
 # different variables.
 if(WIN32)
     # We need winsock2.h and ws2tcpip.h
@@ -301,13 +302,13 @@ else(WIN32)
             set(PRIVATE_LINK_LIBRARIES ${PRIVATE_LINK_LIBRARIES} xnet)
         endif(LIBXNET_HAS_RECVMSG)
     endif(NOT STDLIBS_HAVE_GETADDRINFO)
-  
+
     # Requires inet_pton
     check_function_exists("inet_pton" HAS_INET_PTON)
     if (NOT HAS_INET_PTON)
         message(FATAL_ERROR "inet_pton is required, but was not found")
     endif()
-    
+
     # Requires inet_ntop
     check_function_exists("inet_ntop" HAS_INET_NTOP)
     if (NOT HAS_INET_NTOP)
@@ -315,8 +316,8 @@ else(WIN32)
     endif()
 endif(WIN32)
 
-# Check for reentrant versions of getnetbyname_r() as provided by Linux (glibc). 
-# Only do the check if we have a declaration of getnetbyname_r(); without it, we can't check which API it has.  
+# Check for reentrant versions of getnetbyname_r() as provided by Linux (glibc).
+# Only do the check if we have a declaration of getnetbyname_r(); without it, we can't check which API it has.
 # (We assume that if there's a declaration, it has a prototype, so that the API can be checked.)
 if(NOT WIN32)
     cmake_push_check_state()
@@ -330,8 +331,8 @@ endif(NOT WIN32)
 
 # Check for time functions.
 if(WIN32)
-    # Check for timeGetTime on winmm. It is not affected by ACPI and process migration between multiple CPUs like 
-    # QueryPerformanceCounter. It can have a better resolution than GetTickCount (up to 1ms) and it is not affected by 
+    # Check for timeGetTime on winmm. It is not affected by ACPI and process migration between multiple CPUs like
+    # QueryPerformanceCounter. It can have a better resolution than GetTickCount (up to 1ms) and it is not affected by
     # system time changes.
     cmake_push_check_state()
         set(CMAKE_REQUIRED_LIBRARIES winmm)
@@ -361,7 +362,7 @@ else(WIN32)
 endif(WIN32)
 
 # Check for sockaddr_storage and socklen_t.
-# There's no check_type() macro that it only checks for the existence of the structure type so we use check_type_size() 
+# There's no check_type() macro that it only checks for the existence of the structure type so we use check_type_size()
 # and ignore the size.
 cmake_push_check_state()
     if(WIN32)
@@ -381,7 +382,7 @@ else(WIN32)
 endif(WIN32)
 
 # Check for IPv6 support by checking if sockaddr_in6 exists and has sin6_addr.
-if(ENABLE_IPV6)                          
+if(ENABLE_IPV6)
     if(WIN32)
         check_struct_has_member("struct sockaddr_in6" sin6_addr ws2tcpip.h
                           HAVE_SOCKADDR_IN6_SIN6_ADDR)
@@ -424,20 +425,20 @@ endif(NOT WIN32)
 #   Targets
 ########################################################################################################################
 
-# Add library without a specific STATIC/SHARED because cmake uses the value of BUILD_SHARED_LIBS to determine whether 
+# Add library without a specific STATIC/SHARED because cmake uses the value of BUILD_SHARED_LIBS to determine whether
 # it should one or the other.
 add_library(${PROJECT_NAME})
 target_sources(${PROJECT_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h>
-        $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>       
+        $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>
     PRIVATE
         src/${PROJECT_NAME}.c
         src/${PROJECT_NAME}_udp.c
         src/${PROJECT_NAME}_tcp.c
 )
 
-# It's useful to declare an alias so super-projects can link to our library by using namespaces regardless of adding the 
+# It's useful to declare an alias so super-projects can link to our library by using namespaces regardless of adding the
 # targets by using find_package() or add_subdirectory()
 add_library(${PROJECT_NAME_CAPITALIZED}::${PROJECT_NAME_CAPITALIZED} ALIAS ${PROJECT_NAME})
 
@@ -445,7 +446,7 @@ add_library(${PROJECT_NAME_CAPITALIZED}::${PROJECT_NAME_CAPITALIZED} ALIAS ${PRO
 # Hide symbols and inline functions (i.e. -fvisibility=hidden and -fvisibility-inlines-hidden)
 # Set up public header
 # Enable position independent code (i.e. -fPIC) if building shared lib.
-set_target_properties(${PROJECT_NAME} PROPERTIES        
+set_target_properties(${PROJECT_NAME} PROPERTIES
     VERSION ${PROJECT_VERSION}
     C_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
@@ -455,9 +456,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # Add DLL resource file on Windows
 if (WIN32)
-    if (BUILD_SHARED_LIBS)    
+    if (BUILD_SHARED_LIBS)
         target_sources(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src/${PROJECT_NAME}.rc)
-    endif (BUILD_SHARED_LIBS)    
+    endif (BUILD_SHARED_LIBS)
 endif(WIN32)
 
 if(WIN32)
@@ -474,7 +475,7 @@ if(WIN32)
         )
     endif()
 else(WIN32) # UN*X
-    set_target_properties(${PROJECT_NAME} PROPERTIES 
+    set_target_properties(${PROJECT_NAME} PROPERTIES
         OUTPUT_NAME "${PROJECT_NAME}"
     )
     if(BUILD_SHARED_LIBS)
@@ -490,20 +491,20 @@ else(WIN32) # UN*X
     endif(BUILD_SHARED_LIBS)
 endif(WIN32)
 
-# Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that 
+# Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that
 # we're supposed to exporting symbols defined in our public header files.
 if (BUILD_SHARED_LIBS)
-    target_compile_definitions(${PROJECT_NAME} 
-        PRIVATE 
+    target_compile_definitions(${PROJECT_NAME}
+        PRIVATE
             ${PROJECT_NAME_UPPERCASE}_EXPORT
     )
 else(BUILD_SHARED_LIBS)
-    target_compile_definitions(${PROJECT_NAME} 
-        PUBLIC 
+    target_compile_definitions(${PROJECT_NAME}
+        PUBLIC
             ${PROJECT_NAME_UPPERCASE}_STATIC
     )
 endif(BUILD_SHARED_LIBS)
-  
+
 # We require C99
 target_compile_features(${PROJECT_NAME}
     PUBLIC
@@ -513,17 +514,17 @@ target_compile_features(${PROJECT_NAME}
         c_variadic_macros
 )
 
-# Our headers are located in two different places: inside src/ (private prototypes and definitions) and in include/, 
-# where our public headers live. For building our library we need all headers in both locations, so INCLUDE_DIRS must 
-# contain src/, as well as include/. On the other hand, users of clarinet only need to know about the location of the 
-# public headers, so INTERFACE_INCLUDE_DIRS only needs to contain include/, but not src/. There is still a problem, 
-# though. While building clarinet, include/ is at /project/dir/include/, but after installing our library, it will be 
-# under ${CMAKE_INSTALL_PREFIX}/include/. Therefore, the location of this directory needs to be different depending on 
-# whether we are building or installing the library. To solve this problem, we use generator expressions, which set the 
+# Our headers are located in two different places: inside src/ (private prototypes and definitions) and in include/,
+# where our public headers live. For building our library we need all headers in both locations, so INCLUDE_DIRS must
+# contain src/, as well as include/. On the other hand, users of clarinet only need to know about the location of the
+# public headers, so INTERFACE_INCLUDE_DIRS only needs to contain include/, but not src/. There is still a problem,
+# though. While building clarinet, include/ is at /project/dir/include/, but after installing our library, it will be
+# under ${CMAKE_INSTALL_PREFIX}/include/. Therefore, the location of this directory needs to be different depending on
+# whether we are building or installing the library. To solve this problem, we use generator expressions, which set the
 # correct path depending on the situation.
 target_include_directories(${PROJECT_NAME}
-    PUBLIC 
-        $<INSTALL_INTERFACE:include>    
+    PUBLIC
+        $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -531,26 +532,26 @@ target_include_directories(${PROJECT_NAME}
 )
 
 # Link private libraries
-target_link_libraries(${PROJECT_NAME} 
-    PRIVATE 
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
         ${PRIVATE_LINK_LIBRARIES}
 )
 
-# Treat source files as being in UTF-8 with MSVC if it's not using the Clang front end. We assume that UTF-8 source is 
+# Treat source files as being in UTF-8 with MSVC if it's not using the Clang front end. We assume that UTF-8 source is
 # OK with other compilers and with MSVC if it's using the Clang front end.
 if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
 
-# If we're building with MinGW, we need to specify _WIN32_WINNT as 0x0600 ("NT 6.0", a/k/a Vista/Windows Server 2008) 
-# or higher in order to get the full IPv6 API, including inet_ntop(), and we need to specify it as 0x0601 ("NT 6.1", 
+# If we're building with MinGW, we need to specify _WIN32_WINNT as 0x0600 ("NT 6.0", a/k/a Vista/Windows Server 2008)
+# or higher in order to get the full IPv6 API, including inet_ntop(), and we need to specify it as 0x0601 ("NT 6.1",
 # a.k.a Windows 7) or higher in order to get NdisMediumIP.
 #
-# NOTE: clarinet does *NOT* work with msvcrt.dll; it must link with a newer version of the C library, 
+# NOTE: clarinet does *NOT* work with msvcrt.dll; it must link with a newer version of the C library,
 # i.e. Visual Studio 2015 or later, as it depends on C99 features introduced in VS 2015.
 if(MINGW)
-    target_compile_definitions(${PROJECT_NAME} 
-        PRIVATE 
+    target_compile_definitions(${PROJECT_NAME}
+        PRIVATE
             _WIN32_WINNT=0x0601)
 endif(MINGW)
 
@@ -559,11 +560,11 @@ if (BUILD_SHARED_LIBS)
     message(STATUS "Target library type is SHARED")
 else(BUILD_SHARED_LIBS)
     message(STATUS "Target library type is STATIC")
-endif(BUILD_SHARED_LIBS)    
+endif(BUILD_SHARED_LIBS)
 
 # Profiler support.
 message(STATUS "Profiler support is ${USE_PROFILER}")
-if(USE_PROFILER)   
+if(USE_PROFILER)
     if(MSVC)
         target_link_options(${PROJECT_NAME} PRIVATE /PROFILE)
     else(MSVC)
@@ -571,30 +572,27 @@ if(USE_PROFILER)
         target_link_options(${PROJECT_NAME} PRIVATE -pg)
     endif(MSVC)
 endif(USE_PROFILER)
-    
+
 # Static link to the system runtime library.
+message(STATUS "Static runtime is ${USE_STATIC_RT}")
 if (BUILD_SHARED_LIBS)
     if(USE_STATIC_RT)
-        message(STATUS "System runtime linked is STATIC")
         if(MSVC)
             set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         else(MSVC)
             target_link_options(${PROJECT_NAME} PRIVATE -static-libgcc)
         endif(MSVC)
-    else(USE_STATIC_RT)
-        message(STATUS "System runtime linked is SHARED")
     endif(USE_STATIC_RT)
 else (BUILD_SHARED_LIBS)
     if(USE_STATIC_RT)
-        message(STATUS "Ignoring option USE_STATIC_RT (irrelevant for static libraries).")   
+        message(STATUS "Ignoring option USE_STATIC_RT (irrelevant for static libraries).")
     endif(USE_STATIC_RT)
-    message(STATUS "System runtime linked is SHARED")
 endif (BUILD_SHARED_LIBS)
 
 # Runtime stack protection.
-message(STATUS "Runtime stack protection is ${USE_STACK_PROTECTION}")
+message(STATUS "Stack protection is ${USE_STACK_PROTECTION}")
 if(USE_STACK_PROTECTION)
-    if(MSVC)    
+    if(MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE /GS)
     else(MSVC)
         # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
@@ -605,7 +603,7 @@ if(USE_STACK_PROTECTION)
         endif()
     endif(MSVC)
 else(USE_STACK_PROTECTION)
-    if(MSVC)    
+    if(MSVC)
         target_compile_options(${PROJECT_NAME} PRIVATE /GS-)
     else(MSVC)
         # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
@@ -615,7 +613,7 @@ else(USE_STACK_PROTECTION)
             target_compile_options(${PROJECT_NAME} PRIVATE -fno-stack-protector-strong)
         endif()
     endif(MSVC)
-endif(USE_STACK_PROTECTION)    
+endif(USE_STACK_PROTECTION)
 
 # Runtime spectre mitigation
 message(STATUS "Spectre mitigation is ${USE_SPECTRE_MITIGATION}")
@@ -623,16 +621,16 @@ if(USE_SPECTRE_MITIGATION)
     if(MSVC)
         check_c_compiler_flag(/guard:cf COMPILER_SUPPORTS_GUARDCF)
         if(COMPILER_SUPPORTS_GUARDCF)
-            target_compile_options(${PROJECT_NAME} PRIVATE /guard:cf) 
-            # For now we assume the liker also supports the complementary flag 
-            target_link_options(${PROJECT_NAME} PRIVATE /guard:cf) 
+            target_compile_options(${PROJECT_NAME} PRIVATE /guard:cf)
+            # For now we assume the liker also supports the complementary flag
+            target_link_options(${PROJECT_NAME} PRIVATE /guard:cf)
         endif()
         check_c_compiler_flag(/Qspectre COMPILER_SUPPORTS_QSPECTRE)
         if(COMPILER_SUPPORTS_QSPECTRE)
             target_compile_options(${PROJECT_NAME} PRIVATE /Qspectre)
-            # For now we assume the liker also supports the complementary flag  
-            target_link_options(${PROJECT_NAME} PRIVATE /DYNAMICBASE) 
-        endif()       
+            # For now we assume the liker also supports the complementary flag
+            target_link_options(${PROJECT_NAME} PRIVATE /DYNAMICBASE)
+        endif()
     else(MSVC)
         if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
             check_c_compiler_flag(-mretpoline COMPILER_SUPPORTS_RETPOLINE)
@@ -660,34 +658,34 @@ endif(USE_SPECTRE_MITIGATION)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.devel OR EXISTS ${CMAKE_BINARY_DIR}/.devel)
     # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so we
     # check for clang and treat that differently.
-    if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")  
+    if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
         # Enable all warnings first
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wall)
 
-        # Unfortunately, MSVC does not appear to have an equivalent to "__attribute__((unused))" to mark a particular 
-        # function parameter as being known to be unused, so that the compiler won't warn about it (for example, the 
-        # function might have that parameter because a pointer to it is being used, and the signature of that function 
+        # Unfortunately, MSVC does not appear to have an equivalent to "__attribute__((unused))" to mark a particular
+        # function parameter as being known to be unused, so that the compiler won't warn about it (for example, the
+        # function might have that parameter because a pointer to it is being used, and the signature of that function
         # includes that parameter). C++ lets you give a parameter a type but no name, but C doesn't have that.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4100)
-        
-        # In theory, we care whether somebody uses f() rather than f(void) to declare a function with no arguments, 
-        # but, in practice, there are places in the Windows header files that appear to do that, so we squelch that 
+
+        # In theory, we care whether somebody uses f() rather than f(void) to declare a function with no arguments,
+        # but, in practice, there are places in the Windows header files that appear to do that, so we squelch that
         # warning.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4255)
 
         # Windows FD_SET() generates this, so we suppress it.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4548)
 
-        # Perhaps testing something #defined to be 0 with #ifdef is an error, and it should be tested with #if, but 
+        # Perhaps testing something #defined to be 0 with #ifdef is an error, and it should be tested with #if, but
         # perhaps it's not, and Microsoft does that in its headers, so we squelch that warning.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4574)
-        
+
         # The Windows headers also test not-defined values in #if, so we don't want warnings about that, either.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4668)
-        
+
         # Disable warnings about whether a function is, or isn't, going to be expanded inline.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4710 -wd4711)
-        
+
         # Disable warnings about whether we're adding padding bytes after structure members.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4820)
 
@@ -697,7 +695,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.devel OR EXISTS ${CMAKE_BINARY_DIR}/.deve
         # Treat all (remaining) warnings as errors.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -WX)
     else()
-        # Other compilers, including MSVC with a Clang front end and Microsoft's code generator.  We currently treat 
+        # Other compilers, including MSVC with a Clang front end and Microsoft's code generator.  We currently treat
         # them as if they all support GCC-style -W options.
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wall)
         target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wcomma)
@@ -745,14 +743,14 @@ if(ENABLE_TLS OR ENABLE_DTLS)
     # Add submodule
     add_git_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mbedtls)
     set(HAVE_MBEDTLS YES)
-    target_link_libraries(${PROJECT_NAME} 
-        PRIVATE 
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
             mbedtls
             mbedx509
             mbedcrypto
-    )      
+    )
     list(POP_BACK CMAKE_MESSAGE_INDENT)
-    message(CHECK_PASS "done")   
+    message(CHECK_PASS "done")
 endif()
 
 # ENet
@@ -762,16 +760,16 @@ if(ENABLE_ENET)
     set(CMAKE_PROJECT_enet_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/ENetIncludeBefore.cmake)
     # Add submodule
     add_git_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/enet)
-    set(HAVE_ENET YES)    
-    target_link_libraries(${PROJECT_NAME} 
-        PRIVATE 
+    set(HAVE_ENET YES)
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
             enet
     )
     list(POP_BACK CMAKE_MESSAGE_INDENT)
     message(CHECK_PASS "done")
 endif(ENABLE_ENET)
 
-# On macOS, build target for the appropriate architectures, if CMAKE_OSX_ARCHITECTURES isn't set (if it is, let that 
+# On macOS, build target for the appropriate architectures, if CMAKE_OSX_ARCHITECTURES isn't set (if it is, let that
 # control the architectures for which to build it).
 if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
     # Get the major version of Darwin.
@@ -855,8 +853,8 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
     set_target_properties(${LIBRARY_NAME} PROPERTIES OSX_ARCHITECTURES "${OSX_LIBRARY_ARCHITECTURES}")
 endif()
 
-# Extra compiler options for targets to request -Werror or its equivalent if required.  
-# The CMake variable name cannot be CFLAGS because that is already used for a different purpose in CMake.  
+# Extra compiler options for targets to request -Werror or its equivalent if required.
+# The CMake variable name cannot be CFLAGS because that is already used for a different purpose in CMake.
 # usage: cmake -DEXTRA_CFLAGS='-Wall -Wextra -Werror' ...
 if(NOT "${EXTRA_CFLAGS}" STREQUAL "")
     foreach(_extra_cflag ${EXTRA_CFLAGS})
@@ -890,17 +888,17 @@ list(POP_BACK CMAKE_MESSAGE_INDENT)
 # Install
 ########################################################################################################################
 
-# Include GNU standard installation directories, which actually are also defined, to some degree, by autotools, and at 
+# Include GNU standard installation directories, which actually are also defined, to some degree, by autotools, and at
 # least some of which are general UN*X conventions.
 include(GNUInstallDirs)
 set(INSTALL_CONFIGDIR cmake)
 
-# The private dependencies of a static library still need to be exported because they are needed to properly link the 
+# The private dependencies of a static library still need to be exported because they are needed to properly link the
 # consumers of the static library. This applies even to interface libraries because their INTERFACE_LINK_LIBRARIES might
-# specify something that provides symbols needed by the static library. Note that only the linking of private libraries 
-# is promoted to public, not the whole set of transitive requirements (meaning that consumers of the target static lib 
-# do not also get compiler options, etc, from private libs, only the linking of it). MbedTLS exports its targets 
-# properly but ENet does not so we need to do it here. 
+# specify something that provides symbols needed by the static library. Note that only the linking of private libraries
+# is promoted to public, not the whole set of transitive requirements (meaning that consumers of the target static lib
+# do not also get compiler options, etc, from private libs, only the linking of it). MbedTLS exports its targets
+# properly but ENet does not so we need to do it here.
 if (HAVE_ENET)
     install(TARGETS enet
         EXPORT enet-targets
@@ -926,24 +924,24 @@ set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PROJECT_NAME_CAPI
 # Install project
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}-targets
-    # For DLL platforms (all Windows-based systems including Cygwin), the DLL is treated as RUNTIME and the import 
+    # For DLL platforms (all Windows-based systems including Cygwin), the DLL is treated as RUNTIME and the import
     # library is treated as an ARCHIVE target although it's not a static lib really.
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} 
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} 
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
 )
 
-# We need to install static libraries manually when configured to produce a static lib while taking care to NOT include 
-# header files (or cmake files). Static library dependencies are not *automagically* installed and with EXCLUDE_FROM_ALL 
-# the targets in each subdir (git submodule) are not installed by the ALL target. 
-# NOTE: Since Cmake 3.13 install(TARGETS) can install targets that were created in other directories. When using such 
-# cross-directory install rules, running make install (or similar) from a subdirectory will not guarantee that targets 
+# We need to install static libraries manually when configured to produce a static lib while taking care to NOT include
+# header files (or cmake files). Static library dependencies are not *automagically* installed and with EXCLUDE_FROM_ALL
+# the targets in each subdir (git submodule) are not installed by the ALL target.
+# NOTE: Since Cmake 3.13 install(TARGETS) can install targets that were created in other directories. When using such
+# cross-directory install rules, running make install (or similar) from a subdirectory will not guarantee that targets
 # from other directories are up-to-date.
 if (NOT BUILD_SHARED_LIBS)
     # Install ENet static lib
     if(HAVE_ENET)
-        install(TARGETS enet 
+        install(TARGETS enet
             EXPORT ${PROJECT_NAME}-targets
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         )
@@ -956,7 +954,7 @@ if (NOT BUILD_SHARED_LIBS)
         )
     endif(HAVE_MBEDTLS)
 endif (NOT BUILD_SHARED_LIBS)
-  
+
 # Export the targets to a script
 install(EXPORT ${PROJECT_NAME}-targets
     FILE
@@ -986,7 +984,7 @@ set(PKG_CONFIG_LINK_LIBRARIES "")
 get_target_property(PKG_CONFIG_LINK_LIBRARIES ${PROJECT_NAME} INTERFACE_LINK_LIBRARIES)
 string(REPLACE "PKG_CONFIG_LINK_LIBRARIES-NOTFOUND" "" PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES})
 if (NOT PKG_CONFIG_LINK_LIBRARIES STREQUAL "")
-    string(REGEX REPLACE "\\$\\<LINK_ONLY:([^>]*)\\>" "-l\\1 " PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES}) 
+    string(REGEX REPLACE "\\$\\<LINK_ONLY:([^>]*)\\>" "-l\\1 " PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES})
 endif()
 string(PREPEND PKG_CONFIG_LINK_LIBRARIES "-l${PROJECT_NAME} ")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
@@ -995,14 +993,14 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}.pc.in ${PROJECT
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}ConfigVersion.cmake
-    DESTINATION 
+    DESTINATION
         ${INSTALL_CONFIGDIR}
 )
 
 # Install pkgconfig file
-install(FILES 
-    ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc 
-    DESTINATION 
+install(FILES
+    ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc
+    DESTINATION
         ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
 )
 
