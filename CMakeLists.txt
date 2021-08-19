@@ -621,20 +621,18 @@ endif(USE_STACK_PROTECTION)
 message(STATUS "Spectre mitigation is ${USE_SPECTRE_MITIGATION}")
 if(USE_SPECTRE_MITIGATION)
     if(MSVC)
-        if(NOT (MSVC_VERSION LESS 1912))
-            target_compile_options(${PROJECT_NAME} 
-                PRIVATE 
-                    /guard:cf 
-                    /Qspectre
-            )
-            target_link_options(${PROJECT_NAME} 
-                PRIVATE 
-                    /guard:cf 
-                    /DYNAMICBASE
-            )
-        else()
-            message(STATUS "Spectre mitigation flags /guard:cf /Qspectre are not supported by the compiler.")
+        check_c_compiler_flag(/guard:cf COMPILER_SUPPORTS_GUARDCF)
+        if(COMPILER_SUPPORTS_GUARDCF)
+            target_compile_options(${PROJECT_NAME} PRIVATE /guard:cf) 
+            # For now we assume the liker also supports the complementary flag 
+            target_link_options(${PROJECT_NAME} PRIVATE /guard:cf) 
         endif()
+        check_c_compiler_flag(/Qspectre COMPILER_SUPPORTS_QSPECTRE)
+        if(COMPILER_SUPPORTS_QSPECTRE)
+            target_compile_options(${PROJECT_NAME} PRIVATE /Qspectre)
+            # For now we assume the liker also supports the complementary flag  
+            target_link_options(${PROJECT_NAME} PRIVATE /DYNAMICBASE) 
+        endif()       
     else(MSVC)
         if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
             check_c_compiler_flag(-mretpoline COMPILER_SUPPORTS_RETPOLINE)
