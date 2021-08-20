@@ -22,10 +22,15 @@
 /* Define to 1 if you have the <float.h> header file. */
 #cmakedefine HAVE_FLOAT_H 1
 
+/* Define to 1 if you have the <setjmp.h> header file. */
+#cmakedefine HAVE_SETJMP_H 1
 
 /***************************
  * Non-standard headers
  ***************************/
+
+/* Define to 1 if you have the <stddef.h> header file. */
+#cmakedefine HAVE_STDDEF_H 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #cmakedefine HAVE_STDINT_H 1

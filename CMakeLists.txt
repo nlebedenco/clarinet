@@ -116,26 +116,27 @@ option(USE_STATIC_RT "Use static runtime" OFF)
 option(USE_STACK_PROTECTION "Use stack protection if supported by the compiler" ON)
 option(USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" ON)
 
+# Defaults to build testing only if this is the top cmake project. 
+# The reason for this is that if someone else includes this package, and they use BUILD_TESTING, they probably do not 
+# our tests to build. In the rare case that they really do want to enable testing on both packages, they can force 
+# a cache override for this option.
+if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING ON)
+else()
+    set(DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING OFF)
+endif()    
+option(${PROJECT_NAME_UPPERCASE}_BUILD_TESTING "Build ${PROJECT_NAME} tests" ${DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING})
+
 # Automatically used by cmake to change the default for add_library()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static" OFF)
 
 
 ########################################################################################################################
-#   Configuration
+#   Macros
 ########################################################################################################################
 
-include(CheckIncludeFile)
-include(CheckIncludeFiles)
-include(CheckCCompilerFlag)
-include(CheckFunctionExists)
-include(CMakePushCheckState)
-include(CheckSymbolExists)
-include(CheckStructHasMember)
-include(CheckTypeSize)
-include(CheckLibraryExists)
-
 # For checking if a compiler flag works and add to the target if it does.
-macro(target_check_and_add_compile_option _target _scope _option _result)
+macro(target_compile_option _target _scope _option _result)
     message(STATUS "Checking C compiler flag ${_option}")
     string(REPLACE "=" "-" _temp_option_variable ${_option})
     string(REGEX REPLACE "^-" "" _option_variable ${_temp_option_variable})
@@ -153,7 +154,7 @@ macro(check_stdc_headers)
     if(NOT CMAKE_REQUIRED_QUIET)
         message (CHECK_START "Checking whether system has ANSI C header files")
     endif(NOT CMAKE_REQUIRED_QUIET)
-    check_include_files("stdio.h;stdlib.h;stdarg.h;string.h;float.h" STDC_HEADERS)
+    check_include_files("stdio.h;stdlib.h;stdarg.h;string.h;float.h;setjmp.h" STDC_HEADERS)
     if(STDC_HEADERS)
         message (CHECK_PASS "found")
         set(STDC_HEADERS 1 CACHE INTERNAL "System has ANSI C header files")
@@ -162,14 +163,186 @@ macro(check_stdc_headers)
         set(HAVE_STDARG_H 1 CACHE INTERNAL "Have include stdarg.h")
         set(HAVE_STRING_H 1 CACHE INTERNAL "Have include string.h")
         set(HAVE_FLOAT_H 1 CACHE INTERNAL "Have include float.h")
+        set(HAVE_SETJMP_H 1 CACHE INTERNAL "Have include setjmp.h")
     else(STDC_HEADERS)
         message(CHECK_FAIL "not found")
         set(STDC_HEADERS 0 CACHE INTERNAL "System has ANSI C header files")
     endif(STDC_HEADERS)
 endmacro()
 
+# Profiler support.
+macro(target_profiler _target)
+    if(USE_PROFILER)
+        if(MSVC)
+            target_link_options(${_target} PRIVATE /PROFILE)
+        else(MSVC)
+            target_compile_options(${_target} PRIVATE -pg)
+            target_link_options(${_target} PRIVATE -pg)
+        endif(MSVC)
+    endif(USE_PROFILER)
+endmacro()
+
+# Static link to the system runtime library.
+macro(target_static_runtime _target)
+    if(USE_STATIC_RT)
+        if(MSVC)
+            set_property(TARGET ${_target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        else(MSVC)
+            target_link_options(${_target} PRIVATE -static-libgcc)
+        endif(MSVC)
+    endif(USE_STATIC_RT)
+endmacro()
+
+# Runtime stack protection.
+macro(target_stack_protection _target)
+    if(USE_STACK_PROTECTION)
+        if(MSVC)
+            target_compile_options(${_target} PRIVATE /GS)
+        else(MSVC)
+            # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
+            # We perform the test regardless but won't accept a positive if WIN32 until this bug is fixed.
+            check_c_compiler_flag(-fstack-protector-strong COMPILER_SUPPORTS_STACK_PROTECTOR_STRONG)
+            if(COMPILER_SUPPORTS_STACK_PROTECTOR_STRONG AND NOT WIN32)
+                target_compile_options(${_target} PRIVATE -fstack-protector-strong)
+            endif()
+        endif(MSVC)
+    else(USE_STACK_PROTECTION)
+        if(MSVC)
+            target_compile_options(${_target} PRIVATE /GS-)
+        else(MSVC)
+            # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
+            # We perform the test regardless but won't accept a positive if WIN32 until this bug is fixed.
+            check_c_compiler_flag(-fno-stack-protector COMPILER_SUPPORTS_NO_STACK_PROTECTOR)
+            if(COMPILER_SUPPORTS_NO_STACK_PROTECTOR AND NOT WIN32)
+                target_compile_options(${_target} PRIVATE -fno-stack-protector-strong)
+            endif()
+        endif(MSVC)
+    endif(USE_STACK_PROTECTION)
+endmacro()
+
+# Runtime spectre mitigation
+macro(target_spectre_mitigation _target)
+    if(USE_SPECTRE_MITIGATION)
+        if(MSVC)
+            check_c_compiler_flag(/guard:cf COMPILER_SUPPORTS_GUARDCF)
+            if(COMPILER_SUPPORTS_GUARDCF)
+                target_compile_options(${_target} PRIVATE /guard:cf)
+                # For now we assume the liker also supports the complementary flag
+                target_link_options(${_target} PRIVATE /guard:cf)
+            endif()
+            check_c_compiler_flag(/Qspectre COMPILER_SUPPORTS_QSPECTRE)
+            if(COMPILER_SUPPORTS_QSPECTRE)
+                target_compile_options(${_target} PRIVATE /Qspectre)
+                # For now we assume the liker also supports the complementary flag
+                target_link_options(${_target} PRIVATE /DYNAMICBASE)
+            endif()
+        else(MSVC)
+            if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+                check_c_compiler_flag(-mretpoline COMPILER_SUPPORTS_RETPOLINE)
+                if(COMPILER_SUPPORTS_RETPOLINE)
+                    target_compile_options(${_target} PRIVATE -mretpoline)
+                endif()
+            else()
+                check_c_compiler_flag(-mindirect-branch=thunk COMPILER_SUPPORTS_INDIRECT_BRANCH_THUNK)
+                if(COMPILER_SUPPORTS_INDIRECT_BRANCH_THUNK)
+                    target_compile_options(${_target} PRIVATE -mindirect-branch=thunk)
+                endif()
+                check_c_compiler_flag(-mfunction-return=thunk COMPILER_SUPPORTS_FUNCTION_RETURN_THUNK)
+                if(COMPILER_SUPPORTS_FUNCTION_RETURN_THUNK)
+                    target_compile_options(${_target} PRIVATE -mfunction-return=thunk)
+                endif()
+                check_c_compiler_flag(-mindirect-branch-register COMPILER_SUPPORTS_INDIRECT_BRANCH_REGISTER)
+                if(COMPILER_SUPPORTS_INDIRECT_BRANCH_REGISTER)
+                    target_compile_options(${_target} PRIVATE -mindirect-branch-register)
+                endif()
+            endif()
+        endif()
+    endif(USE_SPECTRE_MITIGATION)
+endmacro()
+
+macro(target_compile_warnings _target)
+    # Add warning options if we have a .devel file.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.devel OR EXISTS ${CMAKE_BINARY_DIR}/.devel)
+        # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so we
+        # check for clang and treat that differently.
+        if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
+            # Enable all warnings first
+            target_compile_option(${_target} PRIVATE -Wall)
+
+            # Unfortunately, MSVC does not appear to have an equivalent to "__attribute__((unused))" to mark a particular
+            # function parameter as being known to be unused, so that the compiler won't warn about it (for example, the
+            # function might have that parameter because a pointer to it is being used, and the signature of that function
+            # includes that parameter). C++ lets you give a parameter a type but no name, but C doesn't have that.
+            target_compile_option(${_target} PRIVATE -wd4100)
+
+            # In theory, we care whether somebody uses f() rather than f(void) to declare a function with no arguments,
+            # but, in practice, there are places in the Windows header files that appear to do that, so we squelch that
+            # warning.
+            target_compile_option(${_target} PRIVATE -wd4255)
+
+            # Windows FD_SET() generates this, so we suppress it.
+            target_compile_option(${_target} PRIVATE -wd4548)
+
+            # Perhaps testing something #defined to be 0 with #ifdef is an error, and it should be tested with #if, but
+            # perhaps it's not, and Microsoft does that in its headers, so we squelch that warning.
+            target_compile_option(${_target} PRIVATE -wd4574)
+
+            # The Windows headers also test not-defined values in #if, so we don't want warnings about that, either.
+            target_compile_option(${_target} PRIVATE -wd4668)
+
+            # Disable warnings about whether a function is, or isn't, going to be expanded inline.
+            target_compile_option(${_target} PRIVATE -wd4710 -wd4711)
+
+            # Disable warnings about whether we're adding padding bytes after structure members.
+            target_compile_option(${_target} PRIVATE -wd4820)
+
+            # Disable warnings about Spectre mitigation
+            target_compile_option(${_target} PRIVATE -wd5045)
+
+            # Treat all (remaining) warnings as errors.
+            target_compile_option(${_target} PRIVATE -WX)
+        else()
+            # Other compilers, including MSVC with a Clang front end and Microsoft's code generator.  We currently treat
+            # them as if they all support GCC-style -W options.
+            target_compile_option(${_target} PRIVATE -Wall)
+            target_compile_option(${_target} PRIVATE -Wcomma)
+            # The concept of covered switch default is not safe in C because enums are not strongly-typed.
+            target_compile_option(${_target} PRIVATE -Wno-covered-switch-default)
+            target_compile_option(${_target} PRIVATE -Wdocumentation)
+            target_compile_option(${_target} PRIVATE -Wformat-nonliteral)
+            target_compile_option(${_target} PRIVATE -Wmissing-noreturn)
+            target_compile_option(${_target} PRIVATE -Wmissing-prototypes)
+            target_compile_option(${_target} PRIVATE -Wmissing-variable-declarations)
+            target_compile_option(${_target} PRIVATE -Wpointer-arith)
+            target_compile_option(${_target} PRIVATE -Wpointer-sign)
+            target_compile_option(${_target} PRIVATE -Wshadow)
+            target_compile_option(${_target} PRIVATE -Wsign-compare)
+            target_compile_option(${_target} PRIVATE -Wshorten-64-to-32)
+            target_compile_option(${_target} PRIVATE -Wstrict-prototypes)
+            target_compile_option(${_target} PRIVATE -Wunreachable-code)
+            target_compile_option(${_target} PRIVATE -Wunused-parameter)
+            target_compile_option(${_target} PRIVATE -Wused-but-marked-unused)
+        endif()
+    endif()
+endmacro()
+
+########################################################################################################################
+#   Configuration
+########################################################################################################################
+
+include(CheckIncludeFile)
+include(CheckIncludeFiles)
+include(CheckCCompilerFlag)
+include(CheckFunctionExists)
+include(CMakePushCheckState)
+include(CheckSymbolExists)
+include(CheckStructHasMember)
+include(CheckTypeSize)
+include(CheckLibraryExists)
+
 # Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
 check_stdc_headers()
+check_include_file(stddef.h HAVE_STDDEF_H)
 check_include_file(stdint.h HAVE_STDINT_H)
 check_include_file(inttypes.h HAVE_INTTYPES_H)
 if(NOT WIN32)
@@ -562,161 +735,23 @@ else(BUILD_SHARED_LIBS)
     message(STATUS "Target library type is STATIC")
 endif(BUILD_SHARED_LIBS)
 
-# Profiler support.
 message(STATUS "Profiler support is ${USE_PROFILER}")
-if(USE_PROFILER)
-    if(MSVC)
-        target_link_options(${PROJECT_NAME} PRIVATE /PROFILE)
-    else(MSVC)
-        target_compile_options(${PROJECT_NAME} PRIVATE -pg)
-        target_link_options(${PROJECT_NAME} PRIVATE -pg)
-    endif(MSVC)
-endif(USE_PROFILER)
+target_profiler(${PROJECT_NAME})
 
-# Static link to the system runtime library.
 message(STATUS "Static runtime is ${USE_STATIC_RT}")
-if (BUILD_SHARED_LIBS)
-    if(USE_STATIC_RT)
-        if(MSVC)
-            set_property(TARGET ${PROJECT_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        else(MSVC)
-            target_link_options(${PROJECT_NAME} PRIVATE -static-libgcc)
-        endif(MSVC)
-    endif(USE_STATIC_RT)
-else (BUILD_SHARED_LIBS)
-    if(USE_STATIC_RT)
-        message(STATUS "Ignoring option USE_STATIC_RT (irrelevant for static libraries).")
-    endif(USE_STATIC_RT)
-endif (BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS)
+    target_static_runtime(${PROJECT_NAME})
+else()
+    message(STATUS "Ignoring option USE_STATIC_RT for target ${PROJECT_NAME} (irrelevant for static libraries).")
+endif ()
 
-# Runtime stack protection.
 message(STATUS "Stack protection is ${USE_STACK_PROTECTION}")
-if(USE_STACK_PROTECTION)
-    if(MSVC)
-        target_compile_options(${PROJECT_NAME} PRIVATE /GS)
-    else(MSVC)
-        # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
-        # We perform the test regardless but won't accept a positive if WIN32 until this bug is fixed.
-        check_c_compiler_flag(-fstack-protector-strong COMPILER_SUPPORTS_STACK_PROTECTOR_STRONG)
-        if(COMPILER_SUPPORTS_STACK_PROTECTOR_STRONG AND NOT WIN32)
-            target_compile_options(${PROJECT_NAME} PRIVATE -fstack-protector-strong)
-        endif()
-    endif(MSVC)
-else(USE_STACK_PROTECTION)
-    if(MSVC)
-        target_compile_options(${PROJECT_NAME} PRIVATE /GS-)
-    else(MSVC)
-        # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
-        # We perform the test regardless but won't accept a positive if WIN32 until this bug is fixed.
-        check_c_compiler_flag(-fno-stack-protector COMPILER_SUPPORTS_NO_STACK_PROTECTOR)
-        if(COMPILER_SUPPORTS_NO_STACK_PROTECTOR AND NOT WIN32)
-            target_compile_options(${PROJECT_NAME} PRIVATE -fno-stack-protector-strong)
-        endif()
-    endif(MSVC)
-endif(USE_STACK_PROTECTION)
+target_stack_protection(${PROJECT_NAME})
 
-# Runtime spectre mitigation
 message(STATUS "Spectre mitigation is ${USE_SPECTRE_MITIGATION}")
-if(USE_SPECTRE_MITIGATION)
-    if(MSVC)
-        check_c_compiler_flag(/guard:cf COMPILER_SUPPORTS_GUARDCF)
-        if(COMPILER_SUPPORTS_GUARDCF)
-            target_compile_options(${PROJECT_NAME} PRIVATE /guard:cf)
-            # For now we assume the liker also supports the complementary flag
-            target_link_options(${PROJECT_NAME} PRIVATE /guard:cf)
-        endif()
-        check_c_compiler_flag(/Qspectre COMPILER_SUPPORTS_QSPECTRE)
-        if(COMPILER_SUPPORTS_QSPECTRE)
-            target_compile_options(${PROJECT_NAME} PRIVATE /Qspectre)
-            # For now we assume the liker also supports the complementary flag
-            target_link_options(${PROJECT_NAME} PRIVATE /DYNAMICBASE)
-        endif()
-    else(MSVC)
-        if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
-            check_c_compiler_flag(-mretpoline COMPILER_SUPPORTS_RETPOLINE)
-            if(COMPILER_SUPPORTS_RETPOLINE)
-                target_compile_options(${PROJECT_NAME} PRIVATE -mretpoline)
-            endif()
-        else()
-            check_c_compiler_flag(-mindirect-branch=thunk COMPILER_SUPPORTS_INDIRECT_BRANCH_THUNK)
-            if(COMPILER_SUPPORTS_INDIRECT_BRANCH_THUNK)
-                target_compile_options(${PROJECT_NAME} PRIVATE -mindirect-branch=thunk)
-            endif()
-            check_c_compiler_flag(-mfunction-return=thunk COMPILER_SUPPORTS_FUNCTION_RETURN_THUNK)
-            if(COMPILER_SUPPORTS_FUNCTION_RETURN_THUNK)
-                target_compile_options(${PROJECT_NAME} PRIVATE -mfunction-return=thunk)
-            endif()
-            check_c_compiler_flag(-mindirect-branch-register COMPILER_SUPPORTS_INDIRECT_BRANCH_REGISTER)
-            if(COMPILER_SUPPORTS_INDIRECT_BRANCH_REGISTER)
-                target_compile_options(${PROJECT_NAME} PRIVATE -mindirect-branch-register)
-            endif()
-        endif()
-    endif()
-endif(USE_SPECTRE_MITIGATION)
+target_spectre_mitigation(${PROJECT_NAME})
 
-# Add warning options if we have a .devel file.
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.devel OR EXISTS ${CMAKE_BINARY_DIR}/.devel)
-    # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so we
-    # check for clang and treat that differently.
-    if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
-        # Enable all warnings first
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wall)
-
-        # Unfortunately, MSVC does not appear to have an equivalent to "__attribute__((unused))" to mark a particular
-        # function parameter as being known to be unused, so that the compiler won't warn about it (for example, the
-        # function might have that parameter because a pointer to it is being used, and the signature of that function
-        # includes that parameter). C++ lets you give a parameter a type but no name, but C doesn't have that.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4100)
-
-        # In theory, we care whether somebody uses f() rather than f(void) to declare a function with no arguments,
-        # but, in practice, there are places in the Windows header files that appear to do that, so we squelch that
-        # warning.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4255)
-
-        # Windows FD_SET() generates this, so we suppress it.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4548)
-
-        # Perhaps testing something #defined to be 0 with #ifdef is an error, and it should be tested with #if, but
-        # perhaps it's not, and Microsoft does that in its headers, so we squelch that warning.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4574)
-
-        # The Windows headers also test not-defined values in #if, so we don't want warnings about that, either.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4668)
-
-        # Disable warnings about whether a function is, or isn't, going to be expanded inline.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4710 -wd4711)
-
-        # Disable warnings about whether we're adding padding bytes after structure members.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd4820)
-
-        # Disable warnings about Spectre mitigation
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -wd5045)
-
-        # Treat all (remaining) warnings as errors.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -WX)
-    else()
-        # Other compilers, including MSVC with a Clang front end and Microsoft's code generator.  We currently treat
-        # them as if they all support GCC-style -W options.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wall)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wcomma)
-        # The concept of covered switch default is not safe in C because enums are not strongly-typed.
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wno-covered-switch-default)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wdocumentation)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wformat-nonliteral)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wmissing-noreturn)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wmissing-prototypes)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wmissing-variable-declarations)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wpointer-arith)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wpointer-sign)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wshadow)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wsign-compare)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wshorten-64-to-32)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wstrict-prototypes)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wunreachable-code)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wunused-parameter)
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE -Wused-but-marked-unused)
-    endif()
-endif()
+target_compile_warnings(${PROJECT_NAME})
 
 # TODO: Include support for sanitizers on debug builds
 # See: Sanitizer options libpcap/CMakeLists.txtx
@@ -858,7 +893,7 @@ endif()
 # usage: cmake -DEXTRA_CFLAGS='-Wall -Wextra -Werror' ...
 if(NOT "${EXTRA_CFLAGS}" STREQUAL "")
     foreach(_extra_cflag ${EXTRA_CFLAGS})
-        target_check_and_add_compile_option(${PROJECT_NAME} PRIVATE "${_extra_cflag}")
+        target_compile_option(${PROJECT_NAME} PRIVATE "${_extra_cflag}")
     endforeach(_extra_cflag)
     message(STATUS "Extra compile options: (${EXTRA_CFLAGS})")
 endif()
@@ -872,15 +907,15 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in ${CMAKE_CURRENT_BIN
 
 message(STATUS "Configured features")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
-message(STATUS "Log: ${ENABLE_LOG}")
-message(STATUS "IPv6: ${ENABLE_IPV6}")
-message(STATUS "UDP: ${ENABLE_UDP}")
-message(STATUS "DTLC: ${ENABLE_DTLC}")
-message(STATUS "DTLS: ${ENABLE_DTLS}")
-message(STATUS "UDTP: ${ENABLE_UDTP}")
-message(STATUS "ENET: ${ENABLE_ENET}")
-message(STATUS "TCP: ${ENABLE_TCP}")
-message(STATUS "TLS: ${ENABLE_TLS}")
+message(STATUS "Log is ${ENABLE_LOG}")
+message(STATUS "IPv6 is ${ENABLE_IPV6}")
+message(STATUS "UDP is ${ENABLE_UDP}")
+message(STATUS "DTLC is ${ENABLE_DTLC}")
+message(STATUS "DTLS is ${ENABLE_DTLS}")
+message(STATUS "UDTP is ${ENABLE_UDTP}")
+message(STATUS "ENET is ${ENABLE_ENET}")
+message(STATUS "TCP is ${ENABLE_TCP}")
+message(STATUS "TLS is ${ENABLE_TLS}")
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 
 
@@ -1016,3 +1051,10 @@ cmake_policy(SET CMP0090 NEW)
 # Register package in the User Package Registry
 export(PACKAGE ${PROJECT_NAME_CAPITALIZED})
 
+########################################################################################################################
+#   Tests
+########################################################################################################################
+include(CTest)
+if(${PROJECT_NAME_UPPERCASE}_BUILD_TESTING AND BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

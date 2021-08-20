@@ -65,7 +65,7 @@ extern "C" {
 
 
 /**
- * Properties Interface
+ * Details Interface
  */
  
 CLARINET_API    uint32_t clarinet_getlibnver(void);
