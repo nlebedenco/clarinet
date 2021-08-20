@@ -18,27 +18,26 @@ clarinet_getlibsver(void)
 }
 
 const char* 
-clarinet_getname(void)
+clarinet_getlibname(void)
 {
     return CONFIG_NAME;
 }
 
 const char* 
-clarinet_getdesc(void)
+clarinet_getlibdesc(void)
 {
     return CONFIG_DESCRIPTION;
 }
 
- 
 int 
 clarinet_initialize(void)
 {
-    return 0;
+    return CLARINET_ENONE;
 }
 
 int 
 clarinet_finalize(void)
 {
-    return 0;
+    return CLARINET_ENONE;
 }
 
