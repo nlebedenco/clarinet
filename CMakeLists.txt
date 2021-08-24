@@ -71,8 +71,9 @@ project(clarinet
     HOMEPAGE_URL ""
 )
 
-# Require out-of-source builds this will return false if the file exists but is not accessible by the user
-# but in this case there is a good chance the directory is not writable either.
+# Require out-of-source builds. Technically the if(EXISTS ...) will return false if the file exists but is not 
+# accessible by the user but in this case there is a good chance the directory is not writable either so something is 
+# already wrong.
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" CMAKE_LISTS_FILE)
 if(EXISTS "${CMAKE_LISTS_FILE}")
     message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
@@ -83,23 +84,33 @@ if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) AND (CMAKE_INSTALL_PREFIX_INITIAL
     set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE )
 endif()
 
+# Inform what we are configuring in case the output is stored in a log file.
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
 get_directory_property(PROJECT_HAS_PARENT PARENT_DIRECTORY)
 if(NOT PROJECT_HAS_PARENT)
     message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
 endif()
 
-# Define an upper case and capitalized project names
+# Define an upper case and capitalized project names.
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE)
 string(SUBSTRING ${PROJECT_NAME} 0 1 FIRST_LETTER)
 string(TOUPPER ${FIRST_LETTER} FIRST_LETTER)
 string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PROJECT_NAME_CAPITALIZED "${PROJECT_NAME}")
 
+# Define system variables
+include(DefineSystemVariables)
+
+# Define a project system name (lower case CMAKE_SYSTEM_NAME). This must go after including DefineSystemVariables 
+# because CMAKE_SYSTEM_NAME might have been adjusted there (e.g. for cross-compilation).
+string(TOLOWER ${CMAKE_SYSTEM_NAME} PROJECT_SYSTEM_NAME)
+
+# Define original file name for dll details
 if(WIN32)
     if(BUILD_SHARED_LIBS)
         set(PROJECT_FILENAME ${PROJECT_NAME}.dll)
     endif()
 endif(WIN32)
+
 
 ########################################################################################################################
 #   Options
@@ -160,7 +171,7 @@ macro(check_stdc_headers)
     if(NOT CMAKE_REQUIRED_QUIET)
         message (CHECK_START "Checking whether system has ANSI C header files")
     endif()
-    check_include_files("stdio.h;stdlib.h;stdarg.h;string.h;float.h;setjmp.h" STDC_HEADERS)
+    check_include_files("stdio.h;stdlib.h;stdarg.h;string.h" STDC_HEADERS)
     if(STDC_HEADERS)
         message (CHECK_PASS "found")
         set(STDC_HEADERS 1 CACHE INTERNAL "System has ANSI C header files")
@@ -168,8 +179,6 @@ macro(check_stdc_headers)
         set(HAVE_STDLIB_H 1 CACHE INTERNAL "Have include stdlib.h")
         set(HAVE_STDARG_H 1 CACHE INTERNAL "Have include stdarg.h")
         set(HAVE_STRING_H 1 CACHE INTERNAL "Have include string.h")
-        set(HAVE_FLOAT_H 1 CACHE INTERNAL "Have include float.h")
-        set(HAVE_SETJMP_H 1 CACHE INTERNAL "Have include setjmp.h")
     else()
         message(CHECK_FAIL "not found")
         set(STDC_HEADERS 0 CACHE INTERNAL "System has ANSI C header files")
@@ -179,7 +188,7 @@ endmacro()
 # Profiler support.
 macro(target_profiler _target)
     if(${PROJECT_NAME_UPPERCASE}_USE_PROFILER)
-        if(MSVC)
+        if(MSVC) # including MSVC/CL (clang-cl)
             target_link_options(${_target} PRIVATE /PROFILE)
         else()
             target_compile_options(${_target} PRIVATE -pg)
@@ -191,7 +200,7 @@ endmacro()
 # Static link to the system runtime library.
 macro(target_static_runtime _target)
     if(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT)
-        if(MSVC)
+        if(MSVC) # including MSVC/CL (clang-cl)
             set_property(TARGET ${_target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         else()
             target_link_options(${_target} PRIVATE -static-libgcc)
@@ -202,7 +211,7 @@ endmacro()
 # Runtime stack protection.
 macro(target_stack_protection _target)
     if(${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION)
-        if(MSVC)
+        if(MSVC) # including MSVC/CL (clang-cl)
             target_compile_options(${_target} PRIVATE /GS)
         else()
             # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
@@ -213,7 +222,7 @@ macro(target_stack_protection _target)
             endif()
         endif()
     else()
-        if(MSVC)
+        if(MSVC) # including MSVC/CL (clang-cl)
             target_compile_options(${_target} PRIVATE /GS-)
         else()
             # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
@@ -229,7 +238,7 @@ endmacro()
 # Runtime spectre mitigation
 macro(target_spectre_mitigation _target)
     if(${PROJECT_NAME_UPPERCASE}_USE_SPECTRE_MITIGATION)
-        if(MSVC)
+        if(MSVC) # including MSVC/CL (clang-cl)
             check_c_compiler_flag(/guard:cf COMPILER_SUPPORTS_GUARDCF)
             if(COMPILER_SUPPORTS_GUARDCF)
                 target_compile_options(${_target} PRIVATE /guard:cf)
@@ -268,9 +277,9 @@ endmacro()
 
 macro(target_compile_warnings _target)
     if(HAS_DEVEL_FILE)
-        # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so we
-        # check for clang and treat that differently.
-        if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
+        # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so 
+        # we check for clang and treat that differently.
+        if(MSVC AND NOT CLANG)
             # Enable all warnings first
             target_compile_option(${_target} PRIVATE -Wall)
 
@@ -360,11 +369,15 @@ else()
     message(CHECK_FAIL "not found")
 endif()
 
-# Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
 check_stdc_headers()
 check_include_file(stddef.h HAVE_STDDEF_H)
 check_include_file(stdint.h HAVE_STDINT_H)
+check_include_file(stdbool.h HAVE_STDBOOL_H)
+check_include_file(stdbool.h HAVE_FLOAT_H)
+check_include_file(stdbool.h HAVE_SETJMP_H)
 check_include_file(inttypes.h HAVE_INTTYPES_H)
+
+# Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
 if(NOT WIN32)
     check_include_file(unistd.h HAVE_UNISTD_H)
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
@@ -621,17 +634,73 @@ endif(NOT WIN32)
 # Add library without a specific STATIC/SHARED because cmake uses the value of BUILD_SHARED_LIBS to determine whether
 # it should one or the other.
 add_library(${PROJECT_NAME})
+
+# It's useful to declare an alias so super-projects can link to our library by using namespaces regardless of adding the
+# targets by using find_package() or add_subdirectory()
+add_library(${PROJECT_NAME_CAPITALIZED}::${PROJECT_NAME_CAPITALIZED} ALIAS ${PROJECT_NAME})
+
+# Our headers are located in two different places: inside src/ (private prototypes and definitions) and in include/,
+# where our public headers live. For building our library we need all headers in both locations, so INCLUDE_DIRS must
+# contain src/, as well as include/. On the other hand, users of clarinet only need to know about the location of the
+# public headers, so INTERFACE_INCLUDE_DIRS only needs to contain include/, but not src/. There is still a problem,
+# though. While building clarinet, include/ is at /project/dir/include/, but after installing our library, it will be
+# under ${CMAKE_INSTALL_PREFIX}/include/. Therefore, the location of this directory needs to be different depending on
+# whether we are building or installing the library. To solve this problem, we use generator expressions, which set the
+# correct path depending on the situation.
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig
+)
+
 target_sources(${PROJECT_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h>
         $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>
     PRIVATE
+        src/portability.h
         src/${PROJECT_NAME}.c
+        src/protocols/dtlc.c
+        src/protocols/dtls.c
+        src/protocols/udtp.c
+        src/protocols/udtps.c
+        src/protocols/enet.c
+        src/protocols/enets.c
+        src/protocols/tls.c
 )
 
-# It's useful to declare an alias so super-projects can link to our library by using namespaces regardless of adding the
-# targets by using find_package() or add_subdirectory()
-add_library(${PROJECT_NAME_CAPITALIZED}::${PROJECT_NAME_CAPITALIZED} ALIAS ${PROJECT_NAME})
+# Add system family specific sources, mostly fallbacks.
+if(WIN32)
+    # Add common files to all WIN32 platforms (WINDOWS, UWP, XBOXONE...)
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            src/platforms/windows/fallback/asprintf.c
+            src/platforms/windows/fallback/getopt.c
+    )
+elseif(UNIX)
+    # Add common files to all UNIX platforms which includes (LINUX, ANDROID, MACOS, IOS, TVOS, WATCHOS, PS4, ...)
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            src/platforms/unix/fallback/asprintf.c
+            src/platforms/unix/fallback/getopt.c
+            src/platforms/unix/fallback/strlcat.c
+            src/platforms/unix/fallback/strlcpy.c
+            src/platforms/unix/fallback/strtok_r.c
+    )
+else()
+    message(FATAL_ERROR "Cannot determine family for system '${CMAKE_SYSTEM_NAME}'")
+endif()
+
+# Add system specific sources. 
+# Each platform must have specific UDP and TCP implementations which all other protocols will be based on.
+target_sources(${PROJECT_NAME}
+        PRIVATE
+            src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
+            src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
+)
 
 # Set project version for platforms add that information to the binary
 # Hide symbols and inline functions (i.e. -fvisibility=hidden and -fvisibility-inlines-hidden)
@@ -652,6 +721,7 @@ if (WIN32)
     endif()
 endif()
 
+# Set output name
 if(WIN32)
     if(MSVC)
         set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -683,7 +753,7 @@ else() # UN*X
 endif()
 
 # Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that
-# we're supposed to exporting symbols defined in our public header files.
+# we're supposed to export symbols defined in our public header files.
 if (BUILD_SHARED_LIBS)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
@@ -696,30 +766,14 @@ else()
     )
 endif()
 
-# We require C99
+# Main target requires C99
 target_compile_features(${PROJECT_NAME}
     PUBLIC
         c_std_99
         c_function_prototypes
+        c_restrict
     PRIVATE
         c_variadic_macros
-)
-
-# Our headers are located in two different places: inside src/ (private prototypes and definitions) and in include/,
-# where our public headers live. For building our library we need all headers in both locations, so INCLUDE_DIRS must
-# contain src/, as well as include/. On the other hand, users of clarinet only need to know about the location of the
-# public headers, so INTERFACE_INCLUDE_DIRS only needs to contain include/, but not src/. There is still a problem,
-# though. While building clarinet, include/ is at /project/dir/include/, but after installing our library, it will be
-# under ${CMAKE_INSTALL_PREFIX}/include/. Therefore, the location of this directory needs to be different depending on
-# whether we are building or installing the library. To solve this problem, we use generator expressions, which set the
-# correct path depending on the situation.
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig
 )
 
 # Link private libraries
@@ -841,46 +895,32 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
         string(REPLACE "${SYSTEM_VERSION_MAJOR}." "" SYSTEM_MINOR_AND_PATCH_VERSION ${CMAKE_SYSTEM_VERSION})
         string(REGEX MATCH "^([0-9]+)" SYSTEM_VERSION_MINOR "${SYSTEM_MINOR_AND_PATCH_VERSION}")
         if(SYSTEM_VERSION_MINOR LESS 4)
-            # Prior to Intel support.  Build for 32-bit
-            # PowerPC and 64-bit PowerPC, with 32-bit PowerPC
-            # first.  (I'm guessing that's what Apple does.)
+            # Prior to Intel support.  Build for 32-bit PowerPC and 64-bit PowerPC, with 32-bit PowerPC first.  
+            # (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64")
         elseif(SYSTEM_VERSION_MINOR LESS 7)
-            # With Intel support but prior to x86-64 support.
-            # Build for 32-bit PowerPC, 64-bit PowerPC, and 32-bit x86,
-            # with 32-bit PowerPC first.
-            # (I'm guessing that's what Apple does.)
+            # With Intel support but prior to x86-64 support. Build for 32-bit PowerPC, 64-bit PowerPC, and 32-bit x86,
+            # with 32-bit PowerPC first. (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386")
         else()
-            # With Intel support including x86-64 support.
-            # Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86,
-            # and x86-64, with 32-bit PowerPC first.
-            # (I'm guessing that's what Apple does.)
+            # With Intel support including x86-64 support. Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86,
+            # and x86-64, with 32-bit PowerPC first. (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
         endif()
     elseif(SYSTEM_VERSION_MAJOR EQUAL 9)
-        # Leopard.  Build for 32-bit PowerPC, 64-bit
-        # PowerPC, 32-bit x86, and x86-64, with 32-bit PowerPC
-        # first.  (That's what Apple does.)
+        # Leopard.  Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86, and x86-64, with 32-bit PowerPC first. 
+        # (That's what Apple does.)
         set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
     elseif(SYSTEM_VERSION_MAJOR EQUAL 10)
-        # Snow Leopard.  Build for x86-64, 32-bit x86, and
-        # 32-bit PowerPC, with x86-64 first.  (That's
-        # what Apple does, even though Snow Leopard
-        # doesn't run on PPC, so PPC libclarinet runs under
-        # Rosetta, and Rosetta doesn't support BPF
-        # ioctls, so PPC programs can't do live
-        # captures.)
+        # Snow Leopard.  Build for x86-64, 32-bit x86, and 32-bit PowerPC, with x86-64 first.  (That's what Apple does, 
+        # even though Snow Leopard doesn't run on PPC, so PPC libclarinet runs under Rosetta, and Rosetta doesn't 
+        # support BPF ioctls, so PPC programs can't do live captures.)
         set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386;ppc")
     else()
-        # Post-Snow Leopard.  Build for x86-64 and 32-bit x86,
-        # with x86-64 first.  (That's what Apple does)
-        # XXX - update if and when Apple drops support
-        # for 32-bit x86 code and if and when Apple adds
-        # ARM-based Macs.  (You're on your own for iOS etc.)
-        #
-        # First, check whether we're building with MbedTLS.
-        # If so, don't bother trying to build fat.
+        # Post-Snow Leopard.  Build for x86-64 and 32-bit x86, with x86-64 first. (That's what Apple does) 
+        # Update if and when Apple drops support for 32-bit x86 code and if and when Apple adds ARM-based Macs. 
+        # TODO: what about iOS, tvOS, watchOS ?
+        # Check whether we're building with MbedTLS. If so, don't bother trying to build fat.
         if(HAVE_MBEDTLS)
           set(X86_32_BIT_SUPPORTED NO)
           set(OSX_LIBRARY_ARCHITECTURES "x86_64")
@@ -895,11 +935,9 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
               set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386")
           else(X86_32_BIT_SUPPORTED)
               set(OSX_LIBRARY_ARCHITECTURES "x86_64")
-              # We can't build fat; suggest that the user install the
-              # /usr/include headers if they want to build fat.
+              # We can't build fat; suggest that the user install the /usr/include headers if they want to build fat.
               if(SYSTEM_VERSION_MAJOR LESS 18)
-                  # Pre-Mojave; the command-line tools should be sufficient to
-                  # enable 32-bit x86 builds.
+                  # Pre-Mojave; the command-line tools should be sufficient to enable 32-bit x86 builds.
                   message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools")
               else()
                   message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools and, after that, installing the /usr/include headers from the /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg package")

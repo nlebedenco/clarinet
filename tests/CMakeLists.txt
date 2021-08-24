@@ -16,6 +16,7 @@ macro(target_test _target)
         PRIVATE
             c_std_99
             c_function_prototypes
+            c_restrict
             c_variadic_macros
     )
 
@@ -61,11 +62,9 @@ set_target_properties(cmocka-static PROPERTIES
 #   Tests
 ########################################################################################################################
 
-target_test(test_details_interface)
-target_sources(test_details_interface PRIVATE src/test_details_interface.c)
-
-target_test(test_initialize)
-target_sources(test_initialize PRIVATE src/test_initialize.c)
-
-target_test(test_finalize)
-target_sources(test_finalize PRIVATE src/test_finalize.c)
+file(GLOB cmakeTestFiles ${CMAKE_CURRENT_SOURCE_DIR}/*.cmake)
+list(SORT cmakeTestFiles COMPARE NATURAL CASE INSENSITIVE ORDER ASCENDING)
+foreach(cmakeTestFile ${cmakeTestFiles})
+    message("Including ${cmakeTestFile}")
+    include(${cmakeTestFile})
+endforeach()

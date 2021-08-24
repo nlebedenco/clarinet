@@ -1,0 +1,2 @@
+target_test(test_details_interface)
+target_sources(test_details_interface PRIVATE src/test_details_interface.c)

@@ -4,25 +4,22 @@
 
 ### Dependencies
 
-Dependencies are automatically tracked, fetched and built by CMake. 
-
 [Git](https://git-scm.com/docs/git) is required to automatically download submodules and the test framework.
 
-All 3rdparty submodules are configured to produce static libraries only. Not only it simplifies installation, it also 
-contributes to consistent compilation options and functionality regardless of the state of the system into which we 
-deploy.
+All 3rdparty submodules are configured to produce static libraries linked into the main target. Not only it simplifies 
+installation, it also contributes to consistent functionality regardless of the state of the system we deploy into.
 
 #### MbedTLS 
 
 [MbedTLS](https://github.com/ARMmbed/mbedtls) requires Python3 to generate test code and sample programs in the 
-development branch but not having python should be ok since we only build the target libraries (to be confirmed).
+development branch but not having python should be ok since we only build the target libraries.
 
 #### ENet
 
-[ENet](https://github.com/lsalzman/enet) has no special requirements but it relies on gethostbyname(), inet_ntoa() and gethostbyaddr() which are deprecated 
-on Windows so the compiler will issue warning C4996. This is not silenced on purpose because deprecation warnings serve 
-to remind developers that something must be done or the project will break soon. Since this is a 3rdparty project, we 
-need to track updates and eventually submit a PR to address the issue.
+[ENet](https://github.com/lsalzman/enet) has no special requirements but it relies on gethostbyname(), inet_ntoa() and 
+gethostbyaddr() which are deprecated on Windows so the compiler will issue warning C4996. This is not silenced on 
+purpose because deprecation warnings serve to remind developers that something must be done or the project will break 
+soon. Since this is a 3rdparty project, we need to track updates or eventually submit a PR to address the issue.
 
 ### CMake
 
@@ -162,10 +159,25 @@ cmake --build \path\to\build_dir --target install
 Additional compilation warnings are enabled if a file named `.devel` exists in either the project directory or the build 
 directory.
 
-#### Testing
+## Tests
 
-The `tests` folder contains unit tests defined using [cmocka](https://cmocka.org/). After building, all tests can be 
-launched as follows:
+The `tests` folder contains unit tests defined using [cmocka](https://cmocka.org/). Each test target represents a set of
+unit tests grouped under a single executable which can be declared by a cmake file fragment named `<TESTSETNAME>.cmake`. 
+The minimum content of such a fragment should be:
+
+```
+target_test(<TESTSETNAME>)
+target_sources(<TESTSETNAME> PRIVATE src/<TESTSETNAME>.c)
+```
+
+where `<TESTSETNAME>` must be replaced by the name of the actual test set. This way test sets can be added or removed 
+without affecting the CMakeLists.txt and will not interfere with other tests. Note test sets should normally be agnostic 
+to execution order but they are guaranteed to be included in `NATURAL` order so contiguous digits are compared as whole 
+numbers. For example: the following list 10.0 1.1 2.1 8.0 2.0 3.1 will be sorted to 1.1 2.0 2.1 3.1 8.0 10.0 as opposed 
+to the lexicographical order of 1.1 10.0 2.0 2.1 3.1 8.0. For more details see 
+[list(SORT ...)](https://cmake.org/cmake/help/latest/command/list.html#sort).
+
+After building, all tests can be launched as follows:
 
 ```
 cd \path\to\build_dir
@@ -184,7 +196,7 @@ projects may configure their own unit tests using the variable `BUILD_TESTING` b
 in building unit tests of sub-projects (dependencies). If for any reason a top project do want to build and run our unit 
 tests (e.g. top project is only an agregator) then it can force `CLARINET_BUILD_TESTING=ON`.
 
-##### Saving test reports
+### Saving test reports
 
 Test reports can be saved in xml following a jUnit style. This can be accomplished by using the `CMOCKA_MESSAGE_OUTPUT` 
 and `CMOCKA_XML_FILE` variables as follows:
@@ -216,9 +228,12 @@ This way xml reports will be created beside the test executables. See [cmocka](h
 
 ## TODO
 
+- Test cmake generator using "-T ClangCL" on windows to ensure all conditions on MSVC are supported by the clang-cl too
+- Add C# wrapper
+- Add python wrapper
 - Support code sanitizers
-- Use travis for automatic build check
-- Optionally run tests under Valgrind to detect memory leaks
+- Use travis for automatic build check?
+- Run tests with Valgrind to detect memory leaks?
 - Code coverage (https://gitlab.kitware.com/cmake/community/-/wikis/doc/ctest/Coverage)
   - For gcc (https://discourse.cmake.org/t/guideline-for-code-coverage/167) 
     - Build with flags `-fprofile-arcs` `-ftest-coverage`. 
