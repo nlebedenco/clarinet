@@ -170,12 +170,12 @@ CLARINET_API uint32_t    clarinet_get_features(void);
 
 struct clarinet_ipv4_addr
 {
-    uint32_t padding[4]; /* padding to overlay on IPv4-mapped IPv6 addresses */
+    uint32_t padding[4]; /* padding to overlay on IPv4MappedToIPv6 addresses */
     union 
     {
         uint8_t  byte[4];
         uint16_t word[2];
-        uint32_t dword;
+        uint32_t dword;        
     };
 };
 
@@ -186,36 +186,31 @@ struct clarinet_ipv6_addr
     uint32_t flowinfo; 
     union 
     {
-        uint8_t  byte[16];
-        uint16_t word[8];
+        uint8_t  byte[16];       
+        uint16_t word[8];       
+        uint16_t dword[4];
     };
     uint32_t scope_id;
 };
 
 typedef struct clarinet_ipv6_addr clarinet_ipv6_addr; 
 
-#define CLARINET_ADDR_IS_IPV4(addr)                 TODO
-#define CLARINET_ADDR_IS_IPV6(addr)                 TODO
-#define CLARINET_ADDR_IS_IPV4_MAPPED_TO_IPV6(addr)  TODO
+enum clarinet_addr_family 
+{
+    CLARINET_AF_NONE = 0,
+    CLARINET_AF_INET = 2,
+    CLARINET_AF_INET6 = 10 
+};
 
-#define CLARINET_ADDR_MAP_TO_IPV4(addr)             TODO
-#define CLARINET_ADDR_MAP_TO_IPV6(addr)             TODO
-        
-#define CLARINET_ADD_IS_LOOPBACK(addr)              TODO
-        
-#define CLARINET_ADDR_IPV6_LOOPBACK                 TODO
-#define CLARINET_ADDR_IPV4_LOOPBACK                 TODO
-        
-#define CLARINET_ADDR_IPV6_ANY                      TODO
-#define CLARINET_ADDR_IPV4_ANY                      TODO
+typedef enum clarinet_addr_family clarinet_addr_family;
 
 struct clarinet_addr
 {
     uint16_t family;
     union
     {
-        clarinet_ipv4_addr ipv4;
         clarinet_ipv6_addr ipv6;
+        clarinet_ipv4_addr ipv4;       
     };   
 };
 
@@ -229,6 +224,117 @@ struct clarinet_endpoint
 
 typedef struct clarinet_endpoint clarinet_endpoint;
 
+
+#define CLARINET_ADDR_IPV4_ANY                          { CLARINET_AF_INET,  { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0, 0, 0, 0 } }, 0 } } }
+#define CLARINET_ADDR_IPV6_ANY                          { CLARINET_AF_INET6, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0, 0, 0, 0 } }, 0 } } }
+#define CLARINET_ADDR_IPV4_LOOPBACK                     { CLARINET_AF_INET,  { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127, 0, 0, 1 } }, 0 } } }
+#define CLARINET_ADDR_IPV6_LOOPBACK                     { CLARINET_AF_INET6, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0, 0, 0, 1 } }, 0 } } }
+#define CLARINET_ADDR_IPV4MAPPED_LOOPBACK               { CLARINET_AF_INET6, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127, 0, 0, 1 } }, 0 } } }
+
+#define CLARINET_ADDR_IS_IPV4(addr)                     ((addr)->family == CLARINET_AF_INET)
+#define CLARINET_ADDR_IS_IPV6(addr)                     ((addr)->family == CLARINET_AF_INET6)
+
+/* Note that structs are compared element by element. It's not safe to compare structs using memcmp() because content of 
+padding spaces is undefined and memcmp() will blindly compare every byte of allocated memory. */ 
+        
+/** Returns true if the address pointed by addr represents an IPv4 address mapped into an IPv6 address. */
+#define CLARINET_ADDR_IS_IPV4_MAPPED_TO_IPV6(addr)      (((addr)->family == CLARINET_AF_INET6) \
+                                                      && (((addr)->ipv6.word[0] | (addr)->ipv6.word[1] | (addr)->ipv6.word[2] | (addr)->ipv6.word[3] | (addr)->ipv6.word[4]) == 0) \
+                                                      && ((addr)->ipv6.word[5] == 0xFFFF))
+
+
+#define CALRINET_ADDR_IS_IPV6_MULTICAST(addr)           (((addr)->family == CLARINET_AF_INET6) \
+                                                      && ((addr)->byte[0] == 0xFF && (addr)->byte[1] == 0x00))
+                                                      
+#define CALRINET_ADDR_IS_IPV6_LINKLOCAL(addr)           (((addr)->family == CLARINET_AF_INET6) \
+                                                      && ((addr)->byte[0] == 0xFE && ((addr)->byte[1] & 0xC0) == 0x80))
+                                                      
+#define CALRINET_ADDR_IS_IPV6_SITELOCAL(addr)           (((addr)->family == CLARINET_AF_INET6) \
+                                                      && ((addr)->byte[0] == 0xFE && ((addr)->byte[1] & 0xC0) == 0xC0))
+
+#define CALRINET_ADDR_IS_IPV6_TEREDO(addr)              (((addr)->family == CLARINET_AF_INET6) \
+                                                      && ((addr)->byte[0] == 0x20 && (addr)->byte[1] == 0x01 && (addr)->byte[2] == 0x00 && (addr)->byte[3] == 0x00))
+
+
+/** 
+ * Returns true if the address pointed by addr represents the wildcard address in either IPv4 or IPv6. Note that there 
+ * is no such thing as a wildcard address in IPv4MappedToIPv6 format because by definition the wildcard address is the 
+ * zero address.
+ */
+#define CLARINET_ADDR_IS_ANY(addr)                      (((addr)->flowinfo == 0) \
+                                                      && (((addr)->ipv6.dword[0] | (addr)->ipv6.dword[1] | (addr)->ipv6.dword[2] | (addr)->ipv6.dword[3]) == 0) \
+                                                      && ((addr)->ipv6.scope_id == 0))
+
+/** 
+ * Returns true if the address pointed by addr represents a loopback address. It can be either an IPv4, IPv6 or an 
+ * IPv4MappedToIPv6 address. RFC122 reserves the entire 127.0.0.0/8 address block for loopback purposes so anything 
+ * from 127.0.0.1 to 127.255.255.254 is looped back. RFC4291 just reserves a single IPv6 address, ::1.
+ */
+#define CLARINET_ADDR_IS_LOOPBACK(addr)                 ((((addr)->family == CLARINET_AF_INET4) \
+                                                       && ((addr)->flowinfo == 0) \
+                                                       && (((addr)->ipv6.word[0] | (addr)->ipv6.word[1] | (addr)->ipv6.word[2] | (addr)->ipv6.word[3] | (addr)->ipv6.word[4] | (addr)->ipv6.word[5]) == 0) \
+                                                       && ((addr)->ipv6.byte[12] == 127) \
+                                                       && ((addr)->ipv6.byte[15] > 0 && (addr)->ipv6.byte[15] < 255) \
+                                                       && ((addr)->ipv6.scope_id == 0)) \
+                                                       || \
+                                                         (((addr)->family == CLARINET_AF_INET6) \
+                                                       && ((addr)->flowinfo == 0) \
+                                                       && (((addr)->ipv6.word[0] | (addr)->ipv6.word[1] | (addr)->ipv6.word[2] | (addr)->ipv6.word[3] | (addr)->ipv6.word[4] | (addr)->ipv6.word[5] | (addr)->ipv6.word[5]) == 0) \
+                                                       && ((addr)->ipv6.byte[14] == 0) \
+                                                       && ((addr)->ipv6.byte[15] == 1) \
+                                                       && ((addr)->ipv6.scope_id == 0)) \
+                                                       || \
+                                                         (((addr)->family == CLARINET_AF_INET6) \
+                                                       && ((addr)->flowinfo == 0) \
+                                                       && (((addr)->ipv6.word[0] | (addr)->ipv6.word[1] | (addr)->ipv6.word[2] | (addr)->ipv6.word[3] | (addr)->ipv6.word[4]) == 0) \
+                                                       && ((addr)->ipv6.word[5] == 0xFFFF) \
+                                                       && ((addr)->ipv6.byte[12] == 127) \
+                                                       && ((addr)->ipv6.byte[15] > 0 && (addr)->ipv6.byte[15] < 255) \
+                                                       && ((addr)->ipv6.scope_id == 0)))
+                                                      
+/** Returns true if addresses pointed by a and b are equal. */
+#define CLARINET_ADDR_ARE_EQUAL(a, b)                   (((a)->family == (b)->family) \
+                                                      && ((a)->ipv6.flowinfo == (b)->ipv6.flowinfo) \
+                                                      && ((a)->ipv6.dword[0] == (b)->ipv6.dword[0]) \
+                                                      && ((a)->ipv6.dword[1] == (b)->ipv6.dword[1]) \
+                                                      && ((a)->ipv6.dword[2] == (b)->ipv6.dword[2]) \
+                                                      && ((a)->ipv6.dword[3] == (b)->ipv6.dword[3]) \
+                                                      && ((a)->ipv6.scope_id == (b)->ipv6.scope_id))
+
+/** 
+ * Returns true if addresses pointed by a and b are equivalent but not necessarily equal. This could be the case when 
+ * comparing an IPv4 address with an IPv4mappedToIPv6 address. They are never equal because the families involved are 
+ * different (one is INET the other INET6) but could be equivalent if both represent the same (ipv4) network address.
+ */
+#define CLARINET_ADDR_ARE_EQUIVALENT(a, b)          (CLARINET_ADDR_ARE_EQUAL(a, b) \
+                                                  || (((a)->ipv6.dword[3] == (b)->ipv6.dword[3]) \
+                                                   && (((a)->family == CLARINET_AF_INET && CLARINET_ADDR_IS_IPV4_MAPPED_TO_IPV6(b)) \
+                                                    || ((b)->family == CLARINET_AF_INET && CLARINET_ADDR_IS_IPV4_MAPPED_TO_IPV6(a)))))
+
+/** 
+ * Converts the IPv4MappedToIPv6 address pointed by src into an IPv4 address, copies it into the memory pointed by 
+ * dst and returns dst. If src points to an IPv4 address then the operation turns into a simple copy. If the address 
+ * pointed by src is neither an IPv4MappedToIPv6 nor an IPv4 address then CLARINET_ADDR_IPV4_ANY is produced instead.
+ */
+CLARINET_API clarinet_addr* clarinet_addr_map_to_ipv4(clarinet_addr* dst, 
+                                                      const clarinet_addr* src);
+
+/** 
+ * Converts the IPv4 address pointed by src into an IPv4MappedToIPv6 address, copies it into the memory pointed by 
+ * dst and returns dst. If src does not point to an IPv4 address then CLARINET_ADDR_IPV6_ANY is produced instead.
+ */                                      
+CLARINET_API clarinet_addr* clarinet_addr_map_to_ipv6(clarinet_addr* dst, 
+                                                      const clarinet_addr* src);
+                                       
+
+/* TODO: 
+ *  - addr to string
+ *  - string to addr
+ *  - endpoint to string 
+ *  - string to endpoint
+ *  - support ipv4 broadcast
+ *  - support ipv4 and ipv6 multicast
+ */
 
 /***********************************************************************************************************************
  * UDP
@@ -252,13 +358,13 @@ typedef struct clarinet_endpoint clarinet_endpoint;
  *
  * Note that besides platform support, dual-stack also requires a local IPv6 address (either an explicit one or the 
  * wildcard [::] which is equivalent to CLARINET_IPV6_ANY). The ability to interact with IPv4 addresses requires the use 
- * of the IPv4-mapped IPv6 address format. Any IPv4 addresses must be represented in the IPv4-mapped IPv6 address format 
- * which enables an IPv6-only application to communicate with an IPv4 node. The IPv4-mapped IPv6 address format allows 
+ * of the IPv4MappedToIPv6 address format. Any IPv4 addresses must be represented in the IPv4MappedToIPv6 address format 
+ * which enables an IPv6-only application to communicate with an IPv4 node. The IPv4MappedToIPv6 address format allows 
  * the IPv4 address of an IPv4 node to be represented as an IPv6 address. The IPv4 address is encoded into the low-order
- * 32 bits of the IPv6 address, and the high-order 96 bits hold the fixed prefix 0:0:0:0:0:FFFF. The IPv4-mapped IPv6 
- * address format is specified in RFC4291. Applications must take care to handle these IPv4-mapped IPv6 addresses 
+ * 32 bits of the IPv6 address, and the high-order 96 bits hold the fixed prefix 0:0:0:0:0:FFFF. The IPv4MappedToIPv6 
+ * address format is specified in RFC4291. Applications must take care to handle these IPv4MappedToIPv6 addresses 
  * appropriately and only use them with dual stack sockets. If an IP address is to be passed to a regular IPv4 socket, 
- * the address must be a regular IPv4 address not a IPv4-mapped IPv6 address. 
+ * the address must be a regular IPv4 address not a IPv4MappedToIPv6 address. 
  *
  * An application with a UDP socket bound to [::] (IPv6) and dual-stack enabled occupies the port on both IPv6 and IPv4. 
  * Therefore a second UDP socket cannot be bound to 0.0.0.0 (IPv4 only) on the same port unless 
@@ -309,18 +415,30 @@ typedef enum clarinet_udp_option clarinet_udp_option;
  * operand to shift left no more than 31 bits. Note that if 'opt' is a compile time constant then all this is calculated 
  * at compile time so no runtime penalty.
  */
-#define CLARINET_OPTION_TO_FLAG(opt) (((~((clarinet_udp_option)(opt) -1)) >> ((sizeof(clarinet_udp_option) << 3)-1)) << (((clarinet_udp_option)(opt) -1) & 0x1F))
+#define CLARINET_UDP_OPTION_TO_FLAG(opt)                (((~((clarinet_udp_option)(opt) -1)) >> ((sizeof(clarinet_udp_option) << 3)-1)) << (((clarinet_udp_option)(opt) -1) & 0x1F))
 
+/**
+ * These are options the user can only set when the udp socket is open. This is due to most platforms providing distinct 
+ * operations for creating and binding a socket and not allowing certain options to be modified after bind. Since we 
+ * combine creation and binding in a single operation (clarinet_udp_open(2)) this is the only opportunity to setup 
+ * these options. Note that platforms may impose different limits on each option which might also depend on system 
+ * configuration. For example, Linux imposes a limit on the sizes of RCVBUF and SNDBUF which is adjustable via sysctl. 
+ * For send_timeout and recv_timeout a value of 0 effectively disables the timeout in all platforms, that is,  
+ * the respective operation will never timeout but some platforms may impose a minimum latency for the timeout. 
+ * Anecdotal evidence suggests some Windows versions impose a minimum of 500ms.
+ */
 struct clarinet_udp_settings
 {
-    uint32_t send_buffer_size; 
-    uint32_t recv_buffer_size;
-    uint32_t send_timeout; 
-    uint32_t recv_timeout;
-    uint8_t ttl;
+    uint32_t send_buffer_size;      /* send buffer size in bytes */
+    uint32_t recv_buffer_size;      /* receive buffer size in bytes */
+    uint32_t send_timeout;          /* send timeout in milliseconds */
+    uint32_t recv_timeout;          /* receive timeout in milliseconds */
+    uint8_t ttl;                    /* packet time-to-live (hop limit on ipv6) */
 };
 
 typedef struct clarinet_udp_settings clarinet_udp_settings;
+
+#define CLARINET_UDP_SETTINGS_DEFAULT                   {8192, 8192, 0, 0, 64} 
 
 CLARINET_API int clarinet_udp_open(const clarinet_endpoint* CLARINET_RESTRICT endpoint, 
                                    const clarinet_udp_settings* CLARINET_RESTRICT settings,
