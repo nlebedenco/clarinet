@@ -111,26 +111,28 @@ if(WIN32)
     endif()
 endif(WIN32)
 
-
 ########################################################################################################################
 #   Options
 ########################################################################################################################
 
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_LOG "Enable Log" ON)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 "Enable IPv6" ON)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_UDP "Enable UDP" ON)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_TCP "Enable TCP" ON)
+option(${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILER    "Enable profiler"   OFF)
+option(${PROJECT_NAME_UPPERCASE}_ENABLE_LOG         "Enable Log"        ON)
+option(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6        "Enable IPv6"       ON)
+option(${PROJECT_NAME_UPPERCASE}_ENABLE_UDP         "Enable UDP"        ON)
+option(${PROJECT_NAME_UPPERCASE}_ENABLE_TCP         "Enable TCP"        ON)
 
 include(CMakeDependentOption)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET "Enable ENet" ON "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP" OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS "Enable DTLS" ON "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP" OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC "Enable DTLC" ON "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP" OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTP "Enable UDTP" ON "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS OR ENABLE_DTLC" OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_TLS  "Enable TLS"  ON "${PROJECT_NAME_UPPERCASE}_ENABLE_TCP" OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6_DUALSTACK  "Enable IPv6 Dual Stack"  ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6"  OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS            "Enable DTLS"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC            "Enable DTLC"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTP            "Enable UDTP"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC"  OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTPS           "Enable UDTPS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET            "Enable ENET"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET            "Enable ENETS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_TLS             "Enable TLS"              ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_TCP"   OFF)
 
-option(${PROJECT_NAME_UPPERCASE}_USE_PROFILER "Use profiler" OFF)
-option(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT "Use static runtime" OFF)
-option(${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION "Use stack protection if supported by the compiler" ON)
+option(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT          "Use static runtime"                                OFF)
+option(${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION   "Use stack protection if supported by the compiler" ON)
 option(${PROJECT_NAME_UPPERCASE}_USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" OFF)
 
 # Defaults to build testing only if this is the top cmake project. 
@@ -187,7 +189,7 @@ endmacro()
 
 # Profiler support.
 macro(target_profiler _target)
-    if(${PROJECT_NAME_UPPERCASE}_USE_PROFILER)
+    if(${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILER)
         if(MSVC) # including MSVC/CL (clang-cl)
             target_link_options(${_target} PRIVATE /PROFILE)
         else()
@@ -402,6 +404,9 @@ check_function_exists(strerror HAVE_STRERROR)
 check_function_exists(strerror_r HAVE_STRERROR_R)
 if(HAVE_STRERROR_R)
     # We have strerror_r; if we define _GNU_SOURCE, is it a POSIX-compliant strerror_r() or a GNU strerror_r()?
+    # On Linux an XSI-compliant version of strerror_r() is provided only if 
+    # (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    # On macOS 12 (El Capitan) and up strerror_r si POSIX-compliant.
     check_c_source_compiles(${CMAKE_HELPER_PATH}/check_strerror_r.c HAVE_GNU_STRERROR_R)
     if(NOT HAVE_GNU_STRERROR_R)
         set(HAVE_POSIX_STRERROR_R YES)
@@ -423,18 +428,16 @@ if(NOT HAVE_SNPRINTF)
     message(FATAL_ERROR "snprintf() is required but was not found")
 endif()
 
-# Check string functions to which we might have fallbacks
+# Check GNU string functions to which we have fallbacks
+check_c_source_compiles(${CMAKE_HELPER_PATH}/check_asprintf.c HAVE_GNU_ASPRINTF)
+check_c_source_compiles(${CMAKE_HELPER_PATH}/check_vasprintf.c HAVE_GNU_VASPRINTF)
+# Check string functions to which we have fallbacks
 check_function_exists(strlcpy HAVE_STRLCPY)
 check_function_exists(strlcat HAVE_STRLCAT)
-check_function_exists(asprintf HAVE_ASPRINTF)
-check_function_exists(vasprintf HAVE_VASPRINTF)
 check_function_exists(strtok_r HAVE_STRTOK_R)
+# Check Un*x only functions
 if(NOT WIN32)
     check_function_exists(vsyslog HAVE_VSYSLOG)
-endif()
-
-# Check Un*x only Fcntl and Poll
-if(NOT WIN32)
     check_function_exists("fcntl" HAVE_FCNTL)
     check_function_exists("poll" HAVE_POLL)
 endif()
@@ -602,7 +605,18 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6)
     endif()
     if(NOT HAVE_SOCKADDR_IN6_SIN6_ADDR)
         message(STATUS "struct sockaddr_in6 not available, disabling IPv6 support")
-        set(${PROJECT_NAME_UPPERCASE}_ OFF CACHE BOOL "Enable IPv6" FORCE)
+        set(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 OFF CACHE BOOL "Enable IPv6" FORCE)
+        set(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6_DUALSTACK OFF CACHE BOOL "Enable IPv6 Dual Stack" FORCE)
+    endif()
+endif()
+
+if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6_DUALSTACK))
+    if(NOT WIN32)
+        check_c_source_compiles(${CMAKE_HELPER_PATH}/check_ipv6_dualstack.c HAVE_IPV6_DUALSTACK)
+    endif()
+    if (NOT HAVE_IPV6_DUALSTACK)
+        message(STATUS "IPv6 Dual Stack is not available, disabling IPv6 Dual Stack support")
+        set(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6_DUALSTACK OFF CACHE BOOL "Enable IPv6 Dual Stack" FORCE)
     endif()
 endif()
 
@@ -698,6 +712,7 @@ endif()
 # Each platform must have specific UDP and TCP implementations which all other protocols will be based on.
 target_sources(${PROJECT_NAME}
         PRIVATE
+            src/platforms/${PROJECT_SYSTEM_NAME}/addr.c
             src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
             src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
 )
@@ -807,9 +822,11 @@ else()
     message(STATUS "Target library type is STATIC")
 endif()
 
-message(STATUS "Profiler support is ${${PROJECT_NAME_UPPERCASE}_USE_PROFILER}")
+# Setup profiler instrumentation
+message(STATUS "Profiler instrumentation is ${${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILER}")
 target_profiler(${PROJECT_NAME})
 
+# Setup system runtime linkage
 message(STATUS "Static runtime is ${${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT}")
 if(BUILD_SHARED_LIBS)
     target_static_runtime(${PROJECT_NAME})
@@ -859,22 +876,6 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_TLS OR ${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS
             mbedtls
             mbedx509
             mbedcrypto
-    )
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-    message(CHECK_PASS "done")
-endif()
-
-# ENet
-if(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET)
-    message(CHECK_START "Adding ENet")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    set(CMAKE_PROJECT_enet_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/ENetIncludeBefore.cmake)
-    # Add submodule
-    add_git_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/enet)
-    set(HAVE_ENET YES)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-            enet
     )
     list(POP_BACK CMAKE_MESSAGE_INDENT)
     message(CHECK_PASS "done")
@@ -967,13 +968,18 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/config.h.in ${CMAKE_C
 
 message(STATUS "Configured features")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+message(STATUS "Profiler is ${${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILER}")
 message(STATUS "Log is ${${PROJECT_NAME_UPPERCASE}_ENABLE_LOG}")
 message(STATUS "IPv6 is ${${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6}")
+message(STATUS "IPv6 Dual Stack is ${${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6_DUALSTACK}")
 message(STATUS "UDP is ${${PROJECT_NAME_UPPERCASE}_ENABLE_UDP}")
 message(STATUS "DTLC is ${${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC}")
 message(STATUS "DTLS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS}")
 message(STATUS "UDTP is ${${PROJECT_NAME_UPPERCASE}_ENABLE_UDTP}")
+message(STATUS "UDTPS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_UDTPS}")
 message(STATUS "ENET is ${${PROJECT_NAME_UPPERCASE}_ENABLE_ENET}")
+message(STATUS "ENETS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_ENETS}")
 message(STATUS "TCP is ${${PROJECT_NAME_UPPERCASE}_ENABLE_TCP}")
 message(STATUS "TLS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_TLS}")
 list(POP_BACK CMAKE_MESSAGE_INDENT)
@@ -987,31 +993,6 @@ list(POP_BACK CMAKE_MESSAGE_INDENT)
 # least some of which are general UN*X conventions.
 include(GNUInstallDirs)
 set(INSTALL_CONFIGDIR cmake)
-
-# The private dependencies of a static library still need to be exported because they are needed to properly link the
-# consumers of the static library. This applies even to interface libraries because their INTERFACE_LINK_LIBRARIES might
-# specify something that provides symbols needed by the static library. Note that only the linking of private libraries
-# is promoted to public, not the whole set of transitive requirements (meaning that consumers of the target static lib
-# do not also get compiler options, etc, from private libs, only the linking of it). MbedTLS exports its targets
-# properly but ENet does not so we need to do it here.
-if (HAVE_ENET)
-    install(TARGETS enet
-        EXPORT enet-targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        EXCLUDE_FROM_ALL
-    )
-    install(EXPORT enet-targets
-        FILE ENetTargets.cmake
-        NAMESPACE ENet::
-        DESTINATION ${INSTALL_CONFIGDIR}
-        EXCLUDE_FROM_ALL
-    )
-    export(EXPORT enet-targets
-        FILE ${CMAKE_CURRENT_BINARY_DIR}/ENetTargets.cmake
-        NAMESPACE ENet::
-    )
-endif()
 
 # This is required so that the exported target has the name PROJECT_NAME_CAPITALIZED and not PROJECT_NAME
 set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME ${PROJECT_NAME_CAPITALIZED})
@@ -1034,13 +1015,6 @@ install(TARGETS ${PROJECT_NAME}
 # cross-directory install rules, running make install (or similar) from a subdirectory will not guarantee that targets
 # from other directories are up-to-date.
 if (NOT BUILD_SHARED_LIBS)
-    # Install ENet static lib
-    if(HAVE_ENET)
-        install(TARGETS enet
-            EXPORT ${PROJECT_NAME}-targets
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        )
-    endif()
     # Install MbedTLS static libs
     if(HAVE_MBEDTLS)
         install(TARGETS mbedtls mbedx509 mbedcrypto

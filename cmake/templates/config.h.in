@@ -95,10 +95,10 @@
 #cmakedefine HAVE_SNPRINTF 1
 
 /* Define to 1 if you have the `asprintf' function. */
-#cmakedefine HAVE_ASPRINTF 1
+#cmakedefine HAVE_GNU_ASPRINTF 1
 
 /* Define to 1 if you have the `vasprintf' function. */
-#cmakedefine HAVE_VASPRINTF 1
+#cmakedefine HAVE_GNU_VASPRINTF 1
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #cmakedefine HAVE_VSNPRINTF 1
@@ -172,16 +172,8 @@
  * MbedTLS
  ***************************/
 
-/* Use MbedTLS */
+/* MbedTLS */
 #cmakedefine HAVE_MBEDTLS 1
-
-
-/***************************
- * ENet (Lee Salzman's)
- ***************************/
-
-/* Use ENet */
-#cmakedefine HAVE_ENET 1
 
 
 /***************************
@@ -189,28 +181,44 @@
  ***************************/
 
 /* Profiler */
-#cmakedefine ENABLE_PROFILER 1 
+#cmakedefine CLARINET_ENABLE_PROFILER 1 
 
 /* Log */
-#cmakedefine ENABLE_LOG 1 
+#cmakedefine CLARINET_ENABLE_LOG 1 
 
 /* IPv6 */
-#cmakedefine ENABLE_IPV6 1
+#cmakedefine CLARINET_ENABLE_IPV6 1
 
-/* TCP */
-#cmakedefine ENABLE_TCP 1
-
-/* TLS */
-#cmakedefine ENABLE_TLS 1
+/* IPv6 Dual Stack */
+#cmakedefine CLARINET_ENABLE_IPV6_DUALSTACK 1
 
 /* UDP */
-#cmakedefine ENABLE_UDP 1
-
-/* DTLS */
-#cmakedefine ENABLE_DTLS 1
+#cmakedefine CLARINET_ENABLE_UDP 1
 
 /* DTLC */
-#cmakedefine ENABLE_DTLC 1
+#cmakedefine CLARINET_ENABLE_DTLC 1
+
+/* DTLS */
+#cmakedefine CLARINET_ENABLE_DTLS 1
 
 /* UDTP */
-#cmakedefine ENABLE_UDTP 1
+#cmakedefine CLARINET_ENABLE_UDTP 1
+
+/* UDTPS */
+#cmakedefine CLARINET_ENABLE_UDTPS 1
+
+/* Use ENet */
+#cmakedefine CLARINET_ENABLE_ENET 1
+
+/* Use ENet over DTLS */
+#cmakedefine CLARINET_ENABLE_ENETS 1
+
+/* TCP */
+#cmakedefine CLARINET_ENABLE_TCP 1
+
+/* TLS */
+#cmakedefine CLARINET_ENABLE_TLS 1
+
+
+
+
