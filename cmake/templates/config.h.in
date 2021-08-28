@@ -88,8 +88,8 @@
 /* Define to 1 if you have a POSIX-style `strerror_r' function. */
 #cmakedefine HAVE_POSIX_STRERROR_R 1
 
-/* Define to 1 if you have the `_wcserror_s' function. */
-#cmakedefine HAVE__WCSERROR_S 1
+/* Define to 1 if you have the `strerror_s' function. */
+#cmakedefine HAVE_STRERROR_S 1
 
 /* Define to 1 if you have the `snprintf' function. */
 #cmakedefine HAVE_SNPRINTF 1
@@ -190,7 +190,7 @@
 #cmakedefine CLARINET_ENABLE_IPV6 1
 
 /* IPv6 Dual Stack */
-#cmakedefine CLARINET_ENABLE_IPV6_DUALSTACK 1
+#cmakedefine CLARINET_ENABLE_IPV6DUAL 1
 
 /* UDP */
 #cmakedefine CLARINET_ENABLE_UDP 1

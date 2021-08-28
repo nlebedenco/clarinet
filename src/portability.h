@@ -32,6 +32,8 @@
     #define CLARINET_INLINE inline
 #endif
 
+#define CLARINET_STATIC_INLINE static CLARINET_INLINE
+
 #include <stdarg.h>
 
 #if !defined(HAVE_STRLCAT)
@@ -43,7 +45,7 @@
                        const char* CLARINET_RESTRICT src, 
                        size_t dstsize);
     #endif
-#endif
+#endif /* HAVE_STRLCAT */
 
 #if !defined(HAVE_STRLCPY)
     #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -54,13 +56,22 @@
                        const char* CLARINET_RESTRICT src, 
                        size_t dstsize);
     #endif
-#endif
+#endif /* HAVE_STRLCPY */
+
+#if !defined(HAVE_STRTOK_R)
+    #if defined(_WIN32)
+        /* Microsoft gives it a different name. */
+        #define strtok_r(str, delim, saveptr)	        strtok_s(str, delim, saveptr)
+    #else
+        char* strtok_r(char *str, const char *delim, char **saveptr);
+    #endif
+#endif /* HAVE_STRTOK_R */
 
 #if defined(_MSC_VER)
     /* If <crtdbg.h> has been included, and _DEBUG is defined, and __STDC__ is zero, <crtdbg.h> will define strdup() to
      * call _strdup_dbg().  So if it's already defined, don't redefine it. */
     #if !defined(strdup)
-        #define strdup	                                _strdup
+        #define strdup(s)                               _strdup(s)
     #endif
 #endif
 
@@ -105,15 +116,17 @@
     #endif /* timersub */
 #endif /* __WIN32 */
 
-#if !defined(HAVE_STRTOK_R)
-    #if defined(_WIN32)
-        /* Microsoft gives it a different name. */
-        #define strtok_r	                            strtok_s
-    #else
-        char* strtok_r(char *str, const char *delim, char **saveptr);
-    #endif
-#endif /* HAVE_STRTOK_R */
 
-/* TODO: define a portable strerror_r (GNU vs POSIX). Use strerror_s on windows ? */
+/* Define a portable thread-safe strerror */
+#if defined(HAVE_STRERROR_S)
+    #define strerror_c(buf, buflen, errnum)             strerror_s(buf, buflen, errnum)
+#elif defined(HAVE_STRERROR_R) && defined(HAVE_POSIX_STRERROR_R)        
+    #define strerror_c(buf, buflen, errnum)             strerror_r(errnum, buf, buflen)
+#elif defined(HAVE_STRERROR_R) && defined(HAVE_GNU_STRERROR_R)
+    int strerror_c(char* buf, size_t buflen, int errnum);       
+#else
+    #define strerror_c(buf, buflen, errnum)             (ENOSYS)
+#endif
+
 
 #endif // PORTABILITY_H

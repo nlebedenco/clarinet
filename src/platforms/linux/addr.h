@@ -1,11 +1,12 @@
 #pragma once
-#ifndef PLATFORMS_WINDOWS_ADDR_H
-#define PLATFORMS_WINDOWS_ADDR_H
+#ifndef PLATFORMS_LINUX_ADDR_H
+#define PLATFORMS_LINUX_ADDR_H
 
 #include "portability.h"
 #include "clarinet/clarinet.h"
 
-#include <winsock2.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 int 
 clarinet_endpoint_to_sockaddr(struct sockaddr* CLARINET_RESTRICT dst,
@@ -18,4 +19,4 @@ clarinet_endpoint_from_sockaddr(clarinet_endpoint* CLARINET_RESTRICT dst,
                                 size_t srclen);
 
 
-#endif /* PLATFORMS_WINDOWS_ADDR_H */
+#endif /* PLATFORMS_LINUX_ADDR_H */
