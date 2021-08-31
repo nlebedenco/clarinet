@@ -13,7 +13,7 @@ asprintf(char **strp, const char *format, ...)
 	int ret;
 
 	va_start(args, format);
-	ret = pcap_vasprintf(strp, format, args);
+	ret = vasprintf(strp, format, args);
 	va_end(args);
 	return (ret);
 }

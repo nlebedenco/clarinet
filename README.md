@@ -228,6 +228,7 @@ This way xml reports will be created beside the test executables. See [cmocka](h
 
 ## TODO
 
+- Support IPv4 broadcast and IPv4/IPv6 multicast in the udp interface
 - Test cmake generator using "-T ClangCL" on windows to ensure all conditions on MSVC are supported by the clang-cl too
 - Add C# wrapper
 - Add python wrapper

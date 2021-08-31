@@ -1,7 +1,6 @@
-#include "portability"
-#include "clarinet/clarinet.h"
+#include "portability.h"
 
-#include <stdio.h>
+#include <string.h>
 
 uint32_t 
 clarinet_get_semver(void)
@@ -108,14 +107,15 @@ clarinet_addr_map_to_ipv4(clarinet_addr* CLARINET_RESTRICT dst,
     if (!dst || !src)
         return CLARINET_EINVAL;
     
-    if (src->family == CLARINET_AF_INET
+    if (src->family == CLARINET_AF_INET)
     {
         memcpy(dst, src, sizeof(clarinet_addr));
     }
     else if (clarinet_addr_is_ipv4_mapped_to_ipv6(src))
     {
+        memset(dst, 0, sizeof(clarinet_addr));
         dst->family = CLARINET_AF_INET;
-        dst->ipv4.dword = src->ipv4.dword;
+        dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
     }
     else
     {
@@ -140,9 +140,10 @@ clarinet_addr_map_to_ipv6(clarinet_addr* CLARINET_RESTRICT dst,
     {
         if (src->family == CLARINET_AF_INET)
         {
+            memset(dst, 0, sizeof(clarinet_addr));
             dst->family = CLARINET_AF_INET6;
-            dst->ipv6.word[5] = 0xFFFF;
-            dst->ipv4.dword = src->ipv4.dword;
+            dst->as.ipv6.u.word[5] = 0xFFFF;
+            dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
         }
         else
         {

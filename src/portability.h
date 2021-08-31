@@ -9,13 +9,24 @@
  * Defines __GNU_SOURCE if any GNU function is known to be available.
  ***********************************************************************************************************************/
 
-#if defined(HAVE_CONFIG_H)
+#if defined(HAVE_CONFIG)
 #include "config.h"
 #endif
 
 #if defined(HAVE_GNU_ASPRINTF) || defined(HAVE_GNU_VASPRINTF) 
 #define __GNU_SOURCE
 #endif
+
+
+/* Must include clarinet.h AFTER checking if __GNU_SOURCE is needed because of the potential for cascading inclusion of 
+ * standard headers. Nonetheless, we require clarinet.h because it's where CLARINET_RESTICT is defined.
+ */
+ #ifdef CLARINET_H
+#error "Private source files should not include 'clarinet/clarinet.h' directly. Include 'portability.h' before \
+any other header instead (in particular before standard headers!)."
+#endif
+
+#include "clarinet/clarinet.h"
 
 /* Define a macro to force inline for internal use. */
 #if defined(_MSC_VER)
@@ -83,8 +94,8 @@
 #endif
 
 #if !defined(HAVE_GNU_VASPRINTF)
-    int vasprintf(char** strp CLARINET_RESTRICT, 
-                  const char* fmt CLARINET_RESTRICT, 
+    int vasprintf(char** CLARINET_RESTRICT strp, 
+                  const char* CLARINET_RESTRICT fmt, 
                   va_list ap);
 #endif
 
@@ -128,5 +139,17 @@
     #define strerror_c(buf, buflen, errnum)             (ENOSYS)
 #endif
 
+/* Include stdlib.h to check for min/max as this is normally where they are defined. */
+#include <stdlib.h>
+
+/* Define max if not defined. */
+#ifndef max
+#define max(a,b)                                        (((a) (b)) ? (a) : (b))
+#endif
+
+/* Define min if not defined. */
+#ifndef min
+#define min(a,b)                                        (((a) < (b)) ? (a) : (b))
+#endif
 
 #endif // PORTABILITY_H

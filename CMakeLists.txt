@@ -607,7 +607,7 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6)
     endif()
 endif()
 
-if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL))
+if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND ${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL)
     if(NOT WIN32)
         check_c_source_compiles(${CMAKE_HELPER_PATH}/check_ipv6_dualstack.c HAVE_IPV6DUAL)
     endif()
@@ -689,14 +689,12 @@ if(WIN32)
     target_sources(${PROJECT_NAME}
         PRIVATE
             src/platforms/windows/fallback/asprintf.c
-            src/platforms/windows/fallback/getopt.c
     )
 elseif(UNIX)
     # Add common files to all UNIX platforms which includes (LINUX, ANDROID, MACOS, IOS, TVOS, WATCHOS, PS4, ...)
     target_sources(${PROJECT_NAME}
         PRIVATE
             src/platforms/unix/fallback/asprintf.c
-            src/platforms/unix/fallback/getopt.c
             src/platforms/unix/fallback/strlcat.c
             src/platforms/unix/fallback/strlcpy.c
             src/platforms/unix/fallback/strtok_r.c
@@ -709,6 +707,7 @@ endif()
 # Each platform must have specific UDP and TCP implementations which all other protocols will be based on.
 target_sources(${PROJECT_NAME}
         PRIVATE
+            src/platforms/${PROJECT_SYSTEM_NAME}/addr.h
             src/platforms/${PROJECT_SYSTEM_NAME}/addr.c
             src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
             src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
@@ -764,6 +763,12 @@ else() # UN*X
     endif(BUILD_SHARED_LIBS)
 endif()
 
+# Compile definitions
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE
+        HAVE_CONFIG
+)
+
 # Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that
 # we're supposed to export symbols defined in our public header files.
 if (BUILD_SHARED_LIBS)
@@ -774,7 +779,7 @@ if (BUILD_SHARED_LIBS)
 else()
     target_compile_definitions(${PROJECT_NAME}
         PUBLIC
-            ${PROJECT_NAME_UPPERCASE}_STATIC
+            ${PROJECT_NAME_UPPERCASE}_STATIC_LIB
     )
 endif()
 

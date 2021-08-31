@@ -20,6 +20,11 @@ macro(target_test _target)
             c_variadic_macros
     )
 
+    target_compile_definitions(${_target}
+        PRIVATE
+            HAVE_CONFIG
+    )
+        
     target_profiler(${_target})
     target_static_runtime(${_target})
     target_stack_protection(${_target})
