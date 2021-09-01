@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 #ifndef CLARINET_H
 #define CLARINET_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -39,6 +40,14 @@ extern "C" {
 	 (__clang_major__ == (major) && __clang_minor__ >= (minor)))
 #endif
 
+/** 
+ * Define a macro to explicitly declare unused parameters inside functions.
+ * Unfortunately, MSVC does not appear to have an equivalent to GCC's "__attribute__((unused))" to mark a particular
+ * function parameter as being known to be unused, so that the compiler won't warn about it (for example, the
+ * function might have that parameter because a pointer to it is being used, and the signature of that function
+ * includes that parameter). C++ lets you give a parameter a type but no name, but C doesn't have that.
+ */
+#define CLARINET_IGNORE(x) (void)(x)
 
 /***********************************************************************************************************************
  * API symbols
@@ -92,7 +101,7 @@ extern "C" {
         #define CLARINET_RESTRICT 
     #endif
 #else 
-    /* This should be a c99 compiler with proper support to the restrict keyword */
+    /* This should be a c99 compiler with proper support for the restrict keyword */
     #define CLARINET_RESTRICT restrict
 #endif
 

@@ -1,11 +1,8 @@
-/* cmakeconfig.h.in */
+﻿/* cmakeconfig.h.in */
 
 /***************************
  * Standard headers
  ***************************/
-
-/* Define to 1 if you have the ANSI C header files. */
-#cmakedefine STDC_HEADERS 1
 
 /* Define to 1 if you have the <stdio.h> header file. */
 #cmakedefine HAVE_STDIO_H 1
@@ -181,7 +178,7 @@
  ***************************/
 
 /* Profiler */
-#cmakedefine CLARINET_ENABLE_PROFILER 1 
+#cmakedefine CLARINET_ENABLE_PROFILE 1 
 
 /* Log */
 #cmakedefine CLARINET_ENABLE_LOG 1 

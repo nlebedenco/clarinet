@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef PLATFORMS_WINDOWS_ADDR_H
 #define PLATFORMS_WINDOWS_ADDR_H
 

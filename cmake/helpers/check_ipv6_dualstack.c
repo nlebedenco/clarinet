@@ -1,4 +1,5 @@
-#include <stdlib.h>
+﻿#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -15,14 +16,15 @@ int main(void)
     do
     {  
         int flag = 0;
-        if (setsockopt(sock_fd, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0)
+        if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0)
         {
             exitcode = EXIT_FAILURE;
             break;
         }
         
         flag = -1;
-        if (getsockopt(sock_fd, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag)) < 0)
+        socklen_t len = sizeof(flag);
+        if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &flag, &len) < 0)
         {
             exitcode = EXIT_FAILURE;
             break;
@@ -42,7 +44,7 @@ int main(void)
             break;
         }
     }
-    while(false);
+    while(0);
     
     close(sockfd);
     

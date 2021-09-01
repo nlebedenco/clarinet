@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+﻿cmake_minimum_required(VERSION 3.14)
 
 function(add_git_submodule dir)
     # add a Git submodule directory to CMake, assuming the

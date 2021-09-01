@@ -1,4 +1,4 @@
-#include "portability.h"
+﻿#include "portability.h"
 
 /**
  * vasprintf() and asprintf() for platforms with a C99-compliant snprintf() - so that, if you format into a 1-byte 

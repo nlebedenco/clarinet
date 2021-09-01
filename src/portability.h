@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef PORTABILITY_H
 #define	PORTABILITY_H
 
@@ -6,19 +6,19 @@
  * Configuration and portability definitions.
  *
  * This must be the very first header included in a src file (direct or indirectly).
- * Defines __GNU_SOURCE if any GNU function is known to be available.
+ * Defines _GNU_SOURCE if any GNU function is known to be available.
  ***********************************************************************************************************************/
 
-#if defined(HAVE_CONFIG)
+#if defined(HAVE_CONFIG_H)
 #include "config.h"
 #endif
 
 #if defined(HAVE_GNU_ASPRINTF) || defined(HAVE_GNU_VASPRINTF) 
-#define __GNU_SOURCE
+#define _GNU_SOURCE
 #endif
 
 
-/* Must include clarinet.h AFTER checking if __GNU_SOURCE is needed because of the potential for cascading inclusion of 
+/* Must include clarinet.h AFTER checking if _GNU_SOURCE is needed because of the potential for cascading inclusion of 
  * standard headers. Nonetheless, we require clarinet.h because it's where CLARINET_RESTICT is defined.
  */
  #ifdef CLARINET_H
@@ -47,7 +47,11 @@ any other header instead (in particular before standard headers!)."
 
 #include <stdarg.h>
 
-#if !defined(HAVE_STRLCAT)
+#if defined(HAVE_STRLCAT)
+    #if defined(HAVE_BSD_STRING_H)
+        #include <bsd/string.h>
+    #endif
+#else
     #if defined(_MSC_VER) || defined(__MINGW32__)
         /* strncat_s() is supported at least since Visual Studio 2005 and we require Visual Studio 2015 or later. */
         #define strlcat(x, y, z) 	                    strncat_s((x), (z), (y), _TRUNCATE)
@@ -58,7 +62,11 @@ any other header instead (in particular before standard headers!)."
     #endif
 #endif /* HAVE_STRLCAT */
 
-#if !defined(HAVE_STRLCPY)
+#if defined(HAVE_STRLCPY)
+    #if defined(HAVE_BSD_STRING_H)
+        #include <bsd/string.h>
+    #endif
+#else
     #if defined(_MSC_VER) || defined(__MINGW32__)
         /* strncpy_s() is supported at least since Visual Studio 2005 and we require Visual Studio 2015 or later. */
         #define strlcpy(x, y, z)                        strncpy_s((x), (z), (y), _TRUNCATE)

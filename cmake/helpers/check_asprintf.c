@@ -1,4 +1,4 @@
-#define _GNU_SOURCE
+﻿#define _GNU_SOURCE
 #include <stdio.h>
 
 /* Declare it GNU-style; that will cause an error if it's not defined or not GNU-style */

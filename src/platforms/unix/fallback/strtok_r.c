@@ -1,4 +1,4 @@
-/* Copyright (c) 1998 Softweyr LLC.  All rights reserved.
+﻿/* Copyright (c) 1998 Softweyr LLC.  All rights reserved.
  *
  * strtok_r, from Berkeley strtok
  * Oct 13, 1998 by Wes Peters <wes@softweyr.com>

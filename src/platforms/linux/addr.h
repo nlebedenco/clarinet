@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef PLATFORMS_LINUX_ADDR_H
 #define PLATFORMS_LINUX_ADDR_H
 
@@ -15,7 +15,7 @@ clarinet_endpoint_to_sockaddr(struct sockaddr* CLARINET_RESTRICT dst,
 
 int 
 clarinet_endpoint_from_sockaddr(clarinet_endpoint* CLARINET_RESTRICT dst,
-                                const struct sockaddr* CLARINET_RESTRICT src
+                                const struct sockaddr* CLARINET_RESTRICT src,
                                 size_t srclen);
 
 
