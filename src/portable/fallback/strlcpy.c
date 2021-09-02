@@ -22,32 +22,34 @@
  *
  * Returns strlen(src); if retval >= dsize, truncation occurred.
  */
- #if !defined(HAVE_STRLCPY)
-size_t
-strlcpy(char * restrict dst, const char * restrict src, size_t dsize)
-{
-	const char *osrc = src;
-	size_t nleft = dsize;
-
-	/* Copy as many bytes as will fit. */
-	if (nleft != 0) 
-    {
-		while (--nleft != 0) 
+#if !defined(HAVE_STRLCPY)
+    #if !defined(_MSC_VER) && !defined(__MINGW32__)
+        size_t
+        strlcpy(char * restrict dst, const char * restrict src, size_t dsize)
         {
-			if ((*dst++ = *src++) == '\0')
-				break;
-		}
-	}
+            const char *osrc = src;
+            size_t nleft = dsize;
 
-	/* Not enough room in dst, add NUL and traverse rest of src. */
-	if (nleft == 0) 
-    {
-		if (dsize != 0)
-			*dst = '\0';		/* NUL-terminate dst */
-        
-		while (*src++);
-	}
+            /* Copy as many bytes as will fit. */
+            if (nleft != 0) 
+            {
+                while (--nleft != 0) 
+                {
+                    if ((*dst++ = *src++) == '\0')
+                        break;
+                }
+            }
 
-	return(src - osrc - 1);	/* count does not include NUL */
-}
+            /* Not enough room in dst, add NUL and traverse rest of src. */
+            if (nleft == 0) 
+            {
+                if (dsize != 0)
+                    *dst = '\0';		/* NUL-terminate dst */
+                
+                while (*src++);
+            }
+
+            return(src - osrc - 1);	/* count does not include NUL */
+        }
+    #endif
 #endif

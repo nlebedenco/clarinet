@@ -133,7 +133,7 @@ CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC      "Enable DTLC" 
 CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTP      "Enable UDTP"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC"  OFF)
 CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTPS     "Enable UDTPS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
 CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET      "Enable ENET"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET      "Enable ENETS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
+CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENETS     "Enable ENETS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
 CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_TLS       "Enable TLS"              ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_TCP"   OFF)
 
 option(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT          "Use static runtime"                                OFF)
@@ -429,14 +429,13 @@ if(NOT HAVE_SNPRINTF)
     message(FATAL_ERROR "snprintf() is required but was not found")
 endif()
 
-# Check GNU string functions to which we have fallbacks
-file(READ ${CMAKE_HELPER_PATH}/check_asprintf.c C_SOURCE_ASPRINTF)
-check_c_source_compiles("${C_SOURCE_ASPRINTF}" HAVE_GNU_ASPRINTF)
-file(READ ${CMAKE_HELPER_PATH}/check_vasprintf.c C_SOURCE_VASPRINTF)
-check_c_source_compiles("${C_SOURCE_VASPRINTF}" HAVE_GNU_VASPRINTF)
-
 # Check Un*x only functions
 if(NOT WIN32)
+    file(READ ${CMAKE_HELPER_PATH}/check_asprintf.c C_SOURCE_ASPRINTF)
+    check_c_source_compiles("${C_SOURCE_ASPRINTF}" HAVE_GNU_ASPRINTF)
+    file(READ ${CMAKE_HELPER_PATH}/check_vasprintf.c C_SOURCE_VASPRINTF)
+    check_c_source_compiles("${C_SOURCE_VASPRINTF}" HAVE_GNU_VASPRINTF)
+
     check_function_exists(strlcat HAVE_STRLCAT)
     if (NOT HAVE_STRLCAT)
         cmake_push_check_state()
@@ -451,7 +450,8 @@ if(NOT WIN32)
                 set(HAVE_STRLCAT TRUE)
             endif()    
         cmake_pop_check_state()
-    endif()   
+    endif()
+    
     check_function_exists(strlcpy HAVE_STRLCPY)
     if (NOT HAVE_STRLCPY)
         cmake_push_check_state()
@@ -506,7 +506,8 @@ if(WIN32)
     elseif(NOT LIBWS2_32_HAS_INET_NTOP)
         message(FATAL_ERROR "inet_ntop is required, but was not found")
     endif()
-else(WIN32)
+    list(APPEND PRIVATE_LINK_LIBRARIES ws2_32)
+else()
     # On UN*X first try the system libraries, then try the libraries for Solaris and possibly other systems that picked
     # up the System V library split.
     check_function_exists(getaddrinfo STDLIBS_HAVE_GETADDRINFO)
@@ -555,7 +556,7 @@ else(WIN32)
     if (NOT HAS_INET_NTOP)
         message(FATAL_ERROR "inet_ntop is required, but was not found")
     endif()
-endif(WIN32)
+endif()
 
 # Check for reentrant versions of getnetbyname_r() as provided by Linux (glibc).
 # Only do the check if we have a declaration of getnetbyname_r(); without it, we can't check which API it has.
@@ -569,7 +570,7 @@ if(NOT WIN32)
             check_c_source_compiles("${C_SOURCE_GETNETBYNAME_R}" HAVE_GETNETBYNAME_R)
         endif()
     cmake_pop_check_state()
-endif(NOT WIN32)
+endif()
 
 # Check for time functions.
 if(WIN32)
@@ -730,34 +731,22 @@ target_sources(${PROJECT_NAME}
         src/protocols/tls.c
 )
 
-# Add system family specific sources, mostly fallbacks.
-if(WIN32)
-    # Add common files to all WIN32 platforms (WINDOWS, UWP, XBOXONE...)
-    target_sources(${PROJECT_NAME}
-        PRIVATE
-            src/platforms/windows/fallback/asprintf.c
-    )
-elseif(UNIX)
-    # Add common files to all UNIX platforms which includes (LINUX, ANDROID, MACOS, IOS, TVOS, WATCHOS, PS4, ...)
-    target_sources(${PROJECT_NAME}
-        PRIVATE
-            src/platforms/unix/fallback/asprintf.c
-            src/platforms/unix/fallback/strlcat.c
-            src/platforms/unix/fallback/strlcpy.c
-            src/platforms/unix/fallback/strtok_r.c
-    )
-else()
-    message(FATAL_ERROR "Cannot determine family for system '${CMAKE_SYSTEM_NAME}'")
-endif()
-
-# Add system specific sources. 
-# Each platform must have specific UDP and TCP implementations which all other protocols will be based on.
+# Add portable sources. 
 target_sources(${PROJECT_NAME}
-        PRIVATE
-            src/platforms/${PROJECT_SYSTEM_NAME}/addr.h
-            src/platforms/${PROJECT_SYSTEM_NAME}/addr.c
-            src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
-            src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
+    PRIVATE
+        src/portable/addr.h
+        src/portable/addr.c
+        src/portable/fallback/asprintf.c
+        src/portable/fallback/strlcat.c
+        src/portable/fallback/strlcpy.c
+        src/portable/fallback/strtok_r.c
+)
+
+# Add platform specific sources. 
+target_sources(${PROJECT_NAME}
+    PRIVATE
+        src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
+        src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
 )
 
 # Set project version for platforms add that information to the binary

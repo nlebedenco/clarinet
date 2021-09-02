@@ -1,4 +1,5 @@
 ﻿#include "portability.h"
+#include "clarinet/clarinet.h"
 
 #include <string.h>
 
@@ -101,55 +102,50 @@ clarinet_get_features(void)
 }
 
 int
-clarinet_addr_map_to_ipv4(clarinet_addr* CLARINET_RESTRICT dst, 
-                          const clarinet_addr* CLARINET_RESTRICT src)
+clarinet_addr_map_to_ipv4(clarinet_addr* restrict dst, 
+                          const clarinet_addr* restrict src)
 {
-    if (!dst || !src)
-        return CLARINET_EINVAL;
+    if (dst && src)
+    {
+        if (clarinet_addr_is_ipv4(src))
+        {
+            memcpy(dst, src, sizeof(clarinet_addr));
+            return CLARINET_ENONE;
+        }
+
+        if (clarinet_addr_is_ipv4mapped(src))
+        {
+            memset(dst, 0, sizeof(clarinet_addr));
+            dst->family = CLARINET_AF_INET;
+            dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
+            return CLARINET_ENONE;
+        }
+    }
     
-    if (src->family == CLARINET_AF_INET)
-    {
-        memcpy(dst, src, sizeof(clarinet_addr));
-    }
-    else if (clarinet_addr_is_ipv4_mapped_to_ipv6(src))
-    {
-        memset(dst, 0, sizeof(clarinet_addr));
-        dst->family = CLARINET_AF_INET;
-        dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
-    }
-    else
-    {
-        return CLARINET_EINVAL;
-    }
-    
-    return CLARINET_ENONE;
+    return CLARINET_EINVAL;
 }
 
 int
-clarinet_addr_map_to_ipv6(clarinet_addr* CLARINET_RESTRICT dst, 
-                          const clarinet_addr* CLARINET_RESTRICT src)
+clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst, 
+                          const clarinet_addr* restrict src)
 {
-    if (!dst || !src)
-        return CLARINET_EINVAL;
-    
-    if (clarinet_addr_is_ipv4_mapped_to_ipv6(src))
+    if (dst && src)
     {
-        memcpy(dst, src, sizeof(clarinet_addr));
-    }   
-    else
-    {
-        if (src->family == CLARINET_AF_INET)
+        if (clarinet_addr_is_ipv6(src))
+        {
+            memcpy(dst, src, sizeof(clarinet_addr));
+            return CLARINET_ENONE;
+        }
+
+        if (clarinet_addr_is_ipv4(src))
         {
             memset(dst, 0, sizeof(clarinet_addr));
             dst->family = CLARINET_AF_INET6;
             dst->as.ipv6.u.word[5] = 0xFFFF;
             dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
+            return CLARINET_ENONE;
         }
-        else
-        {
-            return CLARINET_EINVAL;
-        }
-    }    
-    
-    return CLARINET_ENONE;
+    }
+
+    return CLARINET_EINVAL;
 }

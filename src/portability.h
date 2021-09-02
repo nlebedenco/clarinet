@@ -5,8 +5,15 @@
 /***********************************************************************************************************************
  * Configuration and portability definitions.
  *
- * This must be the very first header included in a src file (direct or indirectly).
- * Defines _GNU_SOURCE if any GNU function is known to be available.
+ * This must be the very first header included in any private src file (direct or indirectly).
+ * Defines _GNU_SOURCE if any GNU function is known to be available. 
+ *
+ * Note that _WIN32 is known to be defined by Clang/LLVM(Windows target) 32/64-bit, Clang/LLVM(MinGW target) 32/64-bit, 
+ * GNU GCC/G++(Windows target) 32-bit, GNU GCC/G++(MinGW target) 32-bit, Intel ICC/ICPC 32/64-bit, Portland PGCC/PGCPP 
+ * 32/64-bit and Microsoft Visual Studio 32/64-bit. Oddly enough, GCC under Cygwin predefines UNIX macros even when 
+ * building Windows applications. Some on-line advice recommends checking for _MSC_VER. The macro is defined with the 
+ * compiler version number for Clang/LLVM, ICC, and Visual Studio, but it isn't defined by GCC or Portland Group 
+ * compilers.
  ***********************************************************************************************************************/
 
 #if defined(HAVE_CONFIG_H)
@@ -16,17 +23,6 @@
 #if defined(HAVE_GNU_ASPRINTF) || defined(HAVE_GNU_VASPRINTF) 
 #define _GNU_SOURCE
 #endif
-
-
-/* Must include clarinet.h AFTER checking if _GNU_SOURCE is needed because of the potential for cascading inclusion of 
- * standard headers. Nonetheless, we require clarinet.h because it's where CLARINET_RESTICT is defined.
- */
- #ifdef CLARINET_H
-#error "Private source files should not include 'clarinet/clarinet.h' directly. Include 'portability.h' before \
-any other header instead (in particular before standard headers!)."
-#endif
-
-#include "clarinet/clarinet.h"
 
 /* Define a macro to force inline for internal use. */
 #if defined(_MSC_VER)
@@ -56,8 +52,8 @@ any other header instead (in particular before standard headers!)."
         /* strncat_s() is supported at least since Visual Studio 2005 and we require Visual Studio 2015 or later. */
         #define strlcat(x, y, z) 	                    strncat_s((x), (z), (y), _TRUNCATE)
     #else
-        size_t strlcat(char* CLARINET_RESTRICT dst, 
-                       const char* CLARINET_RESTRICT src, 
+        size_t strlcat(char* restrict dst, 
+                       const char* restrict src, 
                        size_t dstsize);
     #endif
 #endif /* HAVE_STRLCAT */
@@ -71,8 +67,8 @@ any other header instead (in particular before standard headers!)."
         /* strncpy_s() is supported at least since Visual Studio 2005 and we require Visual Studio 2015 or later. */
         #define strlcpy(x, y, z)                        strncpy_s((x), (z), (y), _TRUNCATE)
     #else
-        size_t strlcpy(char* CLARINET_RESTRICT dst, 
-                       const char* CLARINET_RESTRICT src, 
+        size_t strlcpy(char* restrict dst, 
+                       const char* restrict src, 
                        size_t dstsize);
     #endif
 #endif /* HAVE_STRLCPY */
@@ -97,13 +93,13 @@ any other header instead (in particular before standard headers!)."
 /* We want asprintf(), for some cases where we use it to construct dynamically-allocated variable-length strings. It's 
  * present on some, but not all, platforms. */
 #if !defined(HAVE_GNU_ASPRINTF)
-    int asprintf(char** CLARINET_RESTRICT strp, 
-                 const char* CLARINET_RESTRICT fmt, ...);
+    int asprintf(char** restrict strp, 
+                 const char* restrict fmt, ...);
 #endif
 
 #if !defined(HAVE_GNU_VASPRINTF)
-    int vasprintf(char** CLARINET_RESTRICT strp, 
-                  const char* CLARINET_RESTRICT fmt, 
+    int vasprintf(char** restrict strp, 
+                  const char* restrict fmt, 
                   va_list ap);
 #endif
 
@@ -158,6 +154,11 @@ any other header instead (in particular before standard headers!)."
 /* Define min if not defined. */
 #ifndef min
 #define min(a,b)                                        (((a) < (b)) ? (a) : (b))
+#endif
+
+/* Intellisense doesn't like the restrict keyword. */
+#ifdef __INTELLISENSE__
+    #define restrict 
 #endif
 
 #endif // PORTABILITY_H
