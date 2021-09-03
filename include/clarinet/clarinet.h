@@ -122,13 +122,10 @@ extern "C" {
  * Macros that receive arguments should normally be defined in lower case following the same name convention of 
  * functions so no builds will break if we eventually replace those macros with real functions.
  *
- * Struct and Union initialization is a mess in C/C++. C99 supports member designators but C++ does not. C99 supports
- * compound literals but C++ does not unless using compiler extensions. Currently GCC, clang and MSVC are known to 
- * support compound literals so we'll assume it to be a non-official standard. In C, a compound literal designates an 
- * unnamed object with static or automatic storage duration. In C++, a compound literal designates a temporary object 
- * that only lives until the end of its full-expression. As a result, well-defined C code that takes the address of a 
- * subobject of a compound literal can be undefined in C++. This is not an issue for the private source files which are
- * C-only but must be taken into account by library user's when referring to macros that define compound literals.
+ * Unfortunately, struct and union initialization in C/C++ is a mess. C99 supports member designators but C++ does not. 
+ * C99 supports compound literals but C++ does not save for certain compiler extensions. Currently GCC and clang are 
+ * known to support compound literals in C++. MSVC supports it in C but not in C++. The solution for now is to export
+ * global consts which can be used for initialization.
  **********************************************************************************************************************/
 
 enum clarinet_errcode
@@ -297,6 +294,18 @@ struct clarinet_endpoint
 typedef struct clarinet_endpoint clarinet_endpoint;
 
 /** 
+ * Global constants that can be used for initialization in C++ 
+ * (instead of compound literals which some compilers don't support e.g. MSVC) 
+ */
+CLARINET_API const clarinet_addr clarinet_addr_ipv4_any;
+CLARINET_API const clarinet_addr clarinet_addr_ipv4_loopback;
+CLARINET_API const clarinet_addr clarinet_addr_ipv4_broadcast;
+
+CLARINET_API const clarinet_addr clarinet_addr_ipv6_any;
+CLARINET_API const clarinet_addr clarinet_addr_ipv6_loopback;
+CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
+
+/** 
  * Maximum string length required to format an address. The longest possible string representation is that of an 
  * IPv4MappedToIPv6 address with the largest scope id that can be supported (56+1 for the nul-termination). 
  * e.g: 0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295 
@@ -311,13 +320,13 @@ typedef struct clarinet_endpoint clarinet_endpoint;
  */
 #define CLARINET_ENDPOINT_STRLEN                        (CLARINET_ADDR_STRLEN + 8) 
 
-#define CLARINET_ADDR_IPV4_ANY                          ((clarinet_addr){ CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } })
-#define CLARINET_ADDR_IPV4_LOOPBACK                     ((clarinet_addr){ CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } })
-#define CLARINET_ADDR_IPV4_BROADCAST                    ((clarinet_addr){ CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } })    
+#define CLARINET_ADDR_IPV4_ANY                          clarinet_addr_ipv4_any
+#define CLARINET_ADDR_IPV4_LOOPBACK                     clarinet_addr_ipv4_loopback
+#define CLARINET_ADDR_IPV4_BROADCAST                    clarinet_addr_ipv4_broadcast
 
-#define CLARINET_ADDR_IPV6_ANY                          ((clarinet_addr){ CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } })
-#define CLARINET_ADDR_IPV6_LOOPBACK                     ((clarinet_addr){ CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   1 } }, 0 } } })
-#define CLARINET_ADDR_IPV4MAPPED_LOOPBACK               ((clarinet_addr){ CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127,   0,   0,   1 } }, 0 } } })
+#define CLARINET_ADDR_IPV6_ANY                          clarinet_addr_ipv6_any
+#define CLARINET_ADDR_IPV6_LOOPBACK                     clarinet_addr_ipv6_loopback
+#define CLARINET_ADDR_IPV4MAPPED_LOOPBACK               clarinet_addr_ipv4mapped_loopback
 
 #define clarinet_addr_is_ipv4(addr)                     ((addr)->family == CLARINET_AF_INET)
 #define clarinet_addr_is_ipv6(addr)                     ((addr)->family == CLARINET_AF_INET6)
