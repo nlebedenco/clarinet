@@ -1,28 +1,27 @@
 ﻿#include "portable/addr.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 
-/* Using inet_ntop/inet_pton for conversion betwwen address and string.
- * 
- * Not using RtlIpv4AddressToStringEx and such on Windows because those functions require ntdll.lib.
- * Not using WSAStringToAddress/WSAAddressToString on Windows either because they require WSAStartup to be called first 
- * and we only do that when a socket is created. 
+/* Using inet_ntop/inet_pton as a portable solution for conversion between address and string.
+ * Not relying RtlIpv4AddressToStringEx and such on Windows to avoid a dependency on ntdll.lib and not using 
+ * using WSAStringToAddress/WSAAddressToString on Windows either because all WSA functions require WSAStartup to be 
+ * called first and dynamically load the winsock dll but we want to do that only if/when a socket is actually created
+ * as opposed to a simple address-string conversion. 
  */
-
+ 
 int
 clarinet_addr_to_string(char* restrict dst,
                         size_t dstlen,
                         const clarinet_addr* restrict src)
 {   
-    if (src && dst && dstlen && dstlen < INT_MAX) 
+    if (src && dst && dstlen > 0 && dstlen < INT_MAX) 
     {        
         if (clarinet_addr_is_ipv4(src))
         {
             struct in_addr addr;
             clarinet_addr_ipv4_to_inet(&addr, &src->as.ipv4.u);
             if (inet_ntop(AF_INET, &addr, dst, dstlen))
-                return (int)min(strnlen(dst, dstlen), INT_MAX);
+                return (int)min(strnlen(dst, dstlen), INT_MAX-1);
         }
         #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         else if (clarinet_addr_is_ipv6(src))
@@ -35,7 +34,7 @@ clarinet_addr_to_string(char* restrict dst,
                 {
                     const uint32_t scope_id = src->as.ipv6.scope_id;
                     if (scope_id == 0)
-                        return (int)min(strnlen(dst, dstlen), INT_MAX);
+                        return (int)min(strnlen(dst, dstlen), INT_MAX-1);
                     
                     size_t n = 0;
                     while(n < dstlen && dst[n] != '\0')
@@ -44,7 +43,7 @@ clarinet_addr_to_string(char* restrict dst,
                     const size_t size = dstlen - n;
                     const int m = snprintf(&dst[n], size, "%%%u", scope_id);
                     if (m > 0 && (size_t)m < size)
-                        return (int)min(n + (size_t)m + 1, INT_MAX);
+                        return (int)min(n + (size_t)m, INT_MAX-1);
                 }
             }
         }
@@ -60,12 +59,18 @@ clarinet_addr_from_string(clarinet_addr* restrict dst,
                           const char* restrict src,
                           size_t srclen)
 {
-    clarinet_endpoint endpoint;
-    int errcode = clarinet_endpoint_from_string(&endpoint, src, srclen);
-    if (errcode == CLARINET_ENONE)
-        memcpy(dst, &endpoint.addr, sizeof(clarinet_addr));
-    
-    return errcode;   
+    if (dst && src && srclen > 0)
+    {
+        /* There is no way of knowing if src is an ipv4 or ipv6 we so must try one conversion then the other. */
+        int errcode = clarinet_addr_ipv4_from_string(dst, src, srclen);
+        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        if (errcode != CLARINET_ENONE)
+            errcode = clarinet_addr_ipv6_from_string(dst, src, srclen);
+        #endif
+        return errcode;
+    }
+
+    return CLARINET_EINVAL;
 }
 
 int
@@ -73,7 +78,7 @@ clarinet_endpoint_to_string(char* restrict dst,
                             size_t dstlen,
                             const clarinet_endpoint* restrict src)
 {
-     if (src && dst && dstlen && dstlen < INT_MAX) 
+     if (src && dst && dstlen > 0 && dstlen < INT_MAX) 
     {           
         const uint16_t port = src->port;
         
@@ -99,17 +104,17 @@ clarinet_endpoint_to_string(char* restrict dst,
                 if (clarinet_addr_is_ipv6(&src->addr))
                 {
                     dst[0] = '[';
-                    dst[n] = ']';
-                    n++;
+                    dst[offset + n] = ']';
+                    n += offset + 1;
                 }
                 #endif    
                 
-                if (dstlen > (size_t)n)
+                if ((size_t)n < dstlen)
                 {
                     const size_t size = dstlen - n;
-                    const int m = snprintf(&dst[n-1], size, ":%u", port);
+                    const int m = snprintf(&dst[n], size, ":%u", port);
                     if (m > 0 && (size_t)m < size)
-                        return (int)min(n + (size_t)m + 1, INT_MAX);
+                        return (int)min(n + (size_t)m, INT_MAX-1);
                 }
             }
         }
@@ -118,16 +123,119 @@ clarinet_endpoint_to_string(char* restrict dst,
     return CLARINET_EINVAL;
 }
 
+CLARINET_STATIC_INLINE 
+int
+clarinet_decode_port(uint16_t* restrict port, 
+                     const char* restrict src, 
+                     size_t n)
+{
+    uint16_t k = 1;
+    while (n > 0 && n < 6)
+    {
+        const char c = src[n-1];
+        if (!isdigit(c))
+            return CLARINET_EINVAL;
+        
+        const uint16_t inc = k * (uint16_t)(c - '0');
+        if (inc > (UINT16_MAX - *port)) /* not a valid port number */
+            return CLARINET_EINVAL;
+
+        *port += inc;
+        k *= 10;
+    }
+    
+    return CLARINET_ENONE;    
+}
+
 int 
 clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
                               const char* restrict src,
                               size_t srclen)
 {
-    CLARINET_IGNORE(dst);
-    CLARINET_IGNORE(src);
-    CLARINET_IGNORE(srclen);
-    // TODO
-    
+    if (dst && src && srclen > 0)
+    {
+        const char first = src[0];
+        const char last = src[srclen-1];
+        if (isdigit(first) && isdigit(last)) /* either ipv4 or invalid */
+        {
+            size_t i = 0;
+            while(i < srclen) /* consume the address part until a ':' is found */
+            {
+                const char c = src[i];
+                if (c == ':')
+                    break;
+                /* 
+                 * using 15 explicitly here instead of INET_ADDRSTRLEN-1 because some systems define INET_ADDRSTRLEN 
+                 * as 22 instead of 16 to account for the port number 
+                 */
+                if (i >= 15 || (c != '.' && !isdigit(c))) /* not a valid ipv4 endpoint */
+                    return CLARINET_EINVAL;                             
+                    
+                i++;
+            }
+            
+            const size_t n = srclen - i;
+            if (n < 2 || n > 6) /* not enough or too much for a valid port number */
+                return CLARINET_EINVAL;
+                
+            uint16_t port = 0;
+            int errcode = clarinet_decode_port(&port, &src[i+1], n-1); 
+            if (errcode == CLARINET_ENONE)
+            {
+                clarinet_addr addr;
+                errcode = clarinet_addr_ipv4_from_string(&addr, src, i);
+                if(errcode == CLARINET_ENONE)             
+                {
+                    memset(dst, 0, sizeof(clarinet_endpoint));
+                    dst->addr = addr;
+                    dst->port = port;
+                }
+            }
+            
+            return errcode;
+        }            
+        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        else if (first == '[' && isdigit(last)) /* either ipv6 or invalid */
+        {
+            size_t i = 0;
+            while(i < srclen) /* consume the address part until a ']' is found */
+            {
+                const char c = src[i];
+                if (c == ']')
+                    break;
+                /* 
+                 * using 56 explicitly here instead of INET6_ADDRSTRLEN-1 most systems don't account for the scope id 
+                 * and may even reserve space for the port instead
+                 */
+                if (i >= 56 || (c != '.' && c != ':' && c != '%' && !isdigit(c))) /* not a valid ipv6 endpoint */
+                    return CLARINET_EINVAL;
+                    
+                i++;
+            }
+            
+            const size_t n = srclen - i;
+            if (n < 3 || n > 7 || src[i+1] != ':') /* not enough or too much for a valid port number */
+                return CLARINET_EINVAL;
+                
+            uint16_t port = 0;
+            int errcode = clarinet_decode_port(&port, &src[i+2], n-2); 
+            if (errcode == CLARINET_ENONE)
+            {
+                clarinet_addr addr;
+                errcode = clarinet_addr_ipv6_from_string(&addr, &src[1], i-2);
+                if(errcode == CLARINET_ENONE)             
+                {
+                    memset(dst, 0, sizeof(clarinet_endpoint));
+                    dst->addr = addr;
+                    dst->port = port;
+                }
+            }
+                
+            return errcode;            
+        }
+        #endif
+    }
+
     return CLARINET_EINVAL;
 }
 
@@ -202,7 +310,9 @@ clarinet_endpoint_from_sockaddr(clarinet_endpoint* restrict dst,
             dst->addr.family = CLARINET_AF_INET6;
             dst->addr.as.ipv6.flowinfo = addr->sin6_flowinfo;
             clarinet_addr_ipv6_from_inet6(&dst->addr.as.ipv6.u, &addr->sin6_addr);
+            #if defined(HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
             dst->addr.as.ipv6.scope_id = addr->sin6_scope_id;
+            #endif
             dst->port = addr->sin6_port;           
         }
         #endif        

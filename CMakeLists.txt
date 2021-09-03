@@ -740,6 +740,7 @@ target_sources(${PROJECT_NAME}
         src/portable/fallback/strlcat.c
         src/portable/fallback/strlcpy.c
         src/portable/fallback/strtok_r.c
+        src/portable/fallback/strerror_s.c
 )
 
 # Add platform specific sources. 

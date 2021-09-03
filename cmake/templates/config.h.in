@@ -59,9 +59,11 @@
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 #cmakedefine HAVE_SYS_SOCKIO_H 1
 
+/* Define to 1 if bsd/string.h is required strlcpy/strlcat */
+#cmakedefine HAVE_BSD_STRING_H 1
+
 /* Define to 1 if strings.h declares `ffs' */
 #cmakedefine STRINGS_H_DECLARES_FFS 1
-
 
 /***************************
  * Non-standard functions
@@ -198,16 +200,16 @@
 /* DTLS */
 #cmakedefine CLARINET_ENABLE_DTLS 1
 
-/* UDTP */
+/* UDTP over DTLC */
 #cmakedefine CLARINET_ENABLE_UDTP 1
 
-/* UDTPS */
+/* UDTP over DTLS */
 #cmakedefine CLARINET_ENABLE_UDTPS 1
 
-/* Use ENet */
+/* ENet */
 #cmakedefine CLARINET_ENABLE_ENET 1
 
-/* Use ENet over DTLS */
+/* ENet over DTLS */
 #cmakedefine CLARINET_ENABLE_ENETS 1
 
 /* TCP */

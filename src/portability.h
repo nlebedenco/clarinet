@@ -24,6 +24,11 @@
 #define _GNU_SOURCE
 #endif
 
+/* Intellisense doesn't like the restrict keyword. */
+#ifdef __INTELLISENSE__
+    #define restrict 
+#endif
+
 /* Define a macro to force inline for internal use. */
 #if defined(_MSC_VER)
     #define CLARINET_INLINE __forceinline
@@ -49,8 +54,7 @@
     #endif
 #else
     #if defined(_MSC_VER) || defined(__MINGW32__)
-        /* strncat_s() is supported at least since Visual Studio 2005 and we require Visual Studio 2015 or later. */
-        #define strlcat(x, y, z) 	                    strncat_s((x), (z), (y), _TRUNCATE)
+        #define strlcat(dst, src, dstsize) 	            strncat_s((dst), (dstsize), (src), _TRUNCATE)
     #else
         size_t strlcat(char* restrict dst, 
                        const char* restrict src, 
@@ -64,8 +68,7 @@
     #endif
 #else
     #if defined(_MSC_VER) || defined(__MINGW32__)
-        /* strncpy_s() is supported at least since Visual Studio 2005 and we require Visual Studio 2015 or later. */
-        #define strlcpy(x, y, z)                        strncpy_s((x), (z), (y), _TRUNCATE)
+        #define strlcpy(dst, src, dstsize)              strncpy_s((dst), (dstsize), (src), _TRUNCATE)
     #else
         size_t strlcpy(char* restrict dst, 
                        const char* restrict src, 
@@ -75,16 +78,16 @@
 
 #if !defined(HAVE_STRTOK_R)
     #if defined(_WIN32)
-        /* Microsoft gives it a different name. */
         #define strtok_r(str, delim, saveptr)	        strtok_s(str, delim, saveptr)
     #else
         char* strtok_r(char *str, const char *delim, char **saveptr);
     #endif
 #endif /* HAVE_STRTOK_R */
 
+/* If <crtdbg.h> has been included, and _DEBUG is defined, and __STDC__ is zero, <crtdbg.h> will define strdup() to
+ * call _strdup_dbg().  So if it's already defined, don't redefine it. 
+ */
 #if defined(_MSC_VER)
-    /* If <crtdbg.h> has been included, and _DEBUG is defined, and __STDC__ is zero, <crtdbg.h> will define strdup() to
-     * call _strdup_dbg().  So if it's already defined, don't redefine it. */
     #if !defined(strdup)
         #define strdup(s)                               _strdup(s)
     #endif
@@ -132,15 +135,17 @@
 #endif /* __WIN32 */
 
 
-/* Define a portable thread-safe strerror */
-#if defined(HAVE_STRERROR_S)
-    #define strerror_c(buf, buflen, errnum)             strerror_s(buf, buflen, errnum)
-#elif defined(HAVE_STRERROR_R) && defined(HAVE_POSIX_STRERROR_R)        
-    #define strerror_c(buf, buflen, errnum)             strerror_r(errnum, buf, buflen)
-#elif defined(HAVE_STRERROR_R) && defined(HAVE_GNU_STRERROR_R)
-    int strerror_c(char* buf, size_t buflen, int errnum);       
-#else
-    #define strerror_c(buf, buflen, errnum)             (ENOSYS)
+/* Define strerror_s if not available */
+#if !defined(HAVE_STRERROR_S)
+    #if defined(HAVE_STRERROR_R) && defined(HAVE_POSIX_STRERROR_R)        
+        #define strerror_s(buf, buflen, errnum)         strerror_r(errnum, buf, buflen)
+    #elif defined(HAVE_STRERROR_R) && defined(HAVE_GNU_STRERROR_R)
+        #include <stddef.h>
+        int strerror_s(char* buf, size_t buflen, int errnum);       
+    #else /* if there is no safe alternative for strerror_s define as if it returned an error itself */
+        #include <errno.h>
+        #define strerror_c(buf, buflen, errnum)         (ENOSYS)
+    #endif    
 #endif
 
 /* Include stdlib.h to check for min/max as this is normally where they are defined. */
@@ -154,11 +159,6 @@
 /* Define min if not defined. */
 #ifndef min
 #define min(a,b)                                        (((a) < (b)) ? (a) : (b))
-#endif
-
-/* Intellisense doesn't like the restrict keyword. */
-#ifdef __INTELLISENSE__
-    #define restrict 
 #endif
 
 #endif // PORTABILITY_H

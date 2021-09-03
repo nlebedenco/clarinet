@@ -121,6 +121,14 @@ extern "C" {
  *
  * Macros that receive arguments should normally be defined in lower case following the same name convention of 
  * functions so no builds will break if we eventually replace those macros with real functions.
+ *
+ * Struct and Union initialization is a mess in C/C++. C99 supports member designators but C++ does not. C99 supports
+ * compound literals but C++ does not unless using compiler extensions. Currently GCC, clang and MSVC are known to 
+ * support compound literals so we'll assume it to be a non-official standard. In C, a compound literal designates an 
+ * unnamed object with static or automatic storage duration. In C++, a compound literal designates a temporary object 
+ * that only lives until the end of its full-expression. As a result, well-defined C code that takes the address of a 
+ * subobject of a compound literal can be undefined in C++. This is not an issue for the private source files which are
+ * C-only but must be taken into account by library user's when referring to macros that define compound literals.
  **********************************************************************************************************************/
 
 enum clarinet_errcode
@@ -291,7 +299,7 @@ typedef struct clarinet_endpoint clarinet_endpoint;
 /** 
  * Maximum string length required to format an address. The longest possible string representation is that of an 
  * IPv4MappedToIPv6 address with the largest scope id that can be supported (56+1 for the nul-termination). 
- * e.g: 0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967296 
+ * e.g: 0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295 
  */
 #define CLARINET_ADDR_STRLEN                            (56+1)
 
@@ -299,17 +307,17 @@ typedef struct clarinet_endpoint clarinet_endpoint;
  * Maximum string length required to format an endpoint. The longest possible string representation is that of an 
  * IPv4MappedToIPv6 address with the largest scope id that can be supported and the largest port (56+8+1 for the 
  * nul-termination). Note that square brackets are used to enclose IPv6 addresss and prevent ambiguity of the ':' sign.
- * e.g: [0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967296]:65535 
+ * e.g: [0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295]:65535 
  */
 #define CLARINET_ENDPOINT_STRLEN                        (CLARINET_ADDR_STRLEN + 8) 
 
-#define CLARINET_ADDR_IPV4_ANY                          { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } }
-#define CLARINET_ADDR_IPV4_LOOPBACK                     { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } }
-#define CLARINET_ADDR_IPV4_BROADCAST                    { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } }    
+#define CLARINET_ADDR_IPV4_ANY                          ((clarinet_addr){ CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } })
+#define CLARINET_ADDR_IPV4_LOOPBACK                     ((clarinet_addr){ CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } })
+#define CLARINET_ADDR_IPV4_BROADCAST                    ((clarinet_addr){ CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } })    
 
-#define CLARINET_ADDR_IPV6_ANY                          { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } }
-#define CLARINET_ADDR_IPV6_LOOPBACK                     { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   1 } }, 0 } } }
-#define CLARINET_ADDR_IPV4MAPPED_LOOPBACK               { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127,   0,   0,   1 } }, 0 } } }
+#define CLARINET_ADDR_IPV6_ANY                          ((clarinet_addr){ CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } })
+#define CLARINET_ADDR_IPV6_LOOPBACK                     ((clarinet_addr){ CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   1 } }, 0 } } })
+#define CLARINET_ADDR_IPV4MAPPED_LOOPBACK               ((clarinet_addr){ CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127,   0,   0,   1 } }, 0 } } })
 
 #define clarinet_addr_is_ipv4(addr)                     ((addr)->family == CLARINET_AF_INET)
 #define clarinet_addr_is_ipv6(addr)                     ((addr)->family == CLARINET_AF_INET6)
@@ -376,8 +384,8 @@ typedef struct clarinet_endpoint clarinet_endpoint;
 
 /** Returns true if the address is an IPv4 broadcast address. */
 #define clarinet_addr_is_ipv4_broadcast(addr)           \
-    (((addr)->family == CLARINET_AF_INET4)              \
-  && ((addr)->as.ipv4.u.dword[0] = 0xFFFFFFFF))
+    (((addr)->family == CLARINET_AF_INET)               \
+  && ((addr)->as.ipv4.u.dword[0] == 0xFFFFFFFF))
   
 #define clarinet_addr_is_ipv6_multicast(addr)           \
     (((addr)->family == CLARINET_AF_INET6)              \
@@ -426,15 +434,24 @@ typedef struct clarinet_endpoint clarinet_endpoint;
   || clarinet_addr_is_ipv6_loopback(addr)                   \
   || clarinet_addr_is_ipv4mapped_loopback(addr))
                                                       
+
+/** 
+ * Returns true if the address pointed by addr represents a broadcast address. Always false for IPv6 addresses since 
+ * broadcasting is not supportted in IPv6 even if using an IPv4MappedToIPv6 address. 
+ */
+#define clarinet_addr_is_broadcast(addr)                clarinet_addr_is_ipv4_broadcast(addr)
+
 /** Returns true if addresses pointed by a and b are equal. */
-#define clarinet_addr_is_equal(a, b)                        \
-    (((a)->family == (b)->family)                           \
-  && ((a)->as.ipv6.flowinfo == (b)->as.ipv6.flowinfo)       \
-  && ((a)->as.ipv6.u.dword[0] == (b)->as.ipv6.u.dword[0])   \
-  && ((a)->as.ipv6.u.dword[1] == (b)->as.ipv6.u.dword[1])   \
-  && ((a)->as.ipv6.u.dword[2] == (b)->as.ipv6.u.dword[2])   \
-  && ((a)->as.ipv6.u.dword[3] == (b)->as.ipv6.u.dword[3])   \
-  && ((a)->as.ipv6.scope_id == (b)->as.ipv6.scope_id))
+#define clarinet_addr_is_equal(a, b)                            \
+    ((a)->family == (b)->family                                 \
+  && (a)->as.ipv6.u.dword[3] == (b)->as.ipv6.u.dword[3]         \
+  && ((a)->family == CLARINET_AF_INET                           \
+   || ((a)->family == CLARINET_AF_INET6                         \
+    && (a)->as.ipv6.flowinfo == (b)->as.ipv6.flowinfo           \
+    && (a)->as.ipv6.u.dword[0] == (b)->as.ipv6.u.dword[0]       \
+    && (a)->as.ipv6.u.dword[1] == (b)->as.ipv6.u.dword[1]       \
+    && (a)->as.ipv6.u.dword[2] == (b)->as.ipv6.u.dword[2]       \
+    && (a)->as.ipv6.scope_id == (b)->as.ipv6.scope_id)))
 
 /** 
  * Returns true if addresses pointed by a and b are equivalent but not necessarily equal. This could be the case when 
@@ -470,8 +487,15 @@ clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
                                        
 /**
  * Converts the addres pointed by src into a string in Internet standard format and store it in the buffer pointed by 
- * dst. CLARINET_EINVAL is returned if either src or dst are NULL, if the address pointed by src is invalid or dstlen is
- * not enough to contain the complete string. On success returns the number of characters written into dst. 
+ * dst. CLARINET_EINVAL is returned if either src or dst are NULL, if the address pointed by src is invalid or dstlen 
+ * is not enough to contain the complete string. On success returns the number of characters written into dst not 
+ * counting the terminating null character. IPv4 address are converted to decimal form ddd.ddd.ddd.ddd while IPv6 
+ * addresses are converted according to RFC4291 and RFC5952 which favors the more compact form when more than one 
+ * representation is possible. Additionally a numeric scope id may be appended following a '%' sign when the address 
+ * scope id is non-zero. Note that addresses with a text scope id or an empty scope id are not supported. E.g: 
+ * '::1%eth0' or '::1%' are never produced and cannot be converted back into valid address structures. On the other 
+ * hand '::1' and '::1%0' are both valid representations containing a numeric scope_id although this function would 
+ * only ever produce the former when the scope id is zero.
  */
 CLARINET_API
 int clarinet_addr_to_string(char* restrict dst,
@@ -480,10 +504,11 @@ int clarinet_addr_to_string(char* restrict dst,
                                                  
 
 /**
- * Converts the string pointed by src into an address and store it in the buffer pointed by dst.
- * CLARINET_EINVAL is returned if either src or dst are NULL, if the string pointed by src is invalid or srclen is not 
- * enough to describe a complete address. On success returns the number of characters written to dst including the 
- * NUL-termination character.
+ * Converts the string pointed by src into an address and stores it in the buffer pointed by dst. srclen must contain 
+ * the size of the string pointed by src not counting the termination character. If src does not point to a valid 
+ * address representation the function returns CLARINET_EINVAL. If either dst or src are NULL or src does not contain 
+ * a valid address representation with exact srclen size the conversion fails and the function returns CLARINET_EINVAL. 
+ * On success, returns CLARINET_ENONE.
  */
 CLARINET_API 
 int 
@@ -495,10 +520,10 @@ clarinet_addr_from_string(clarinet_addr* restrict dst,
 /**
  * Converts the endpoint pointed by src into a string in Internet standard format and store it in the buffer pointed by
  * dst. CLARINET_EINVAL is returned if either src or dst are NULL, if the address pointed by src is invalid or dstlen is
- * not enough to contain the complete string. On success returns the number of characters written to dst including the 
- * NUL-termination character. Note that a port number is always included even if the port number is zero. If this is not 
- * desired, one can always check the port number is zero and use clarinet_addr_to_string passing the endpoint's addr 
- * field instead.
+ * not enough to contain the complete string. On success returns the number of characters written to dst not counting 
+ * the terminating null character. Note that a port number is always included even if the port number is zero. If this 
+ * is not desired, one can always check the port number is zero and use clarinet_addr_to_string passing the endpoint's 
+ * addr field instead.
  */
 CLARINET_API 
 int 
@@ -507,10 +532,11 @@ clarinet_endpoint_to_string(char* restrict dst,
                             const clarinet_endpoint* restrict src);
 
 /**
- * Converts the string pointed by src into an endpoint and store it in the buffer pointed by dst.
- * CLARINET_EINVAL is returned if either src or dst are NULL, if the string pointed by src is invalid or srclen is not 
- * enough to describe a complete address. On success returns CLARINET_ENONE. Note that a string containing only an 
- * address without port is still considered a valid endpoint. In this case the endpoint's port number defaults to 0.
+ * Converts the string pointed by src into an endpoint and stores it in the buffer pointed by dst. srclen must contain
+ * the size of the string pointed by src not counting the termination character. If src does not point to a valid
+ * endpoint representation the function returns CLARINET_EINVAL. If either dst or src are NULL or src does not contain
+ * a valid endpoint representation with exact srclen size the conversion fails and the function returns CLARINET_EINVAL.
+ * On success, returns CLARINET_ENONE. Note that a string without port number is not a valid endpoint representation.
  */
 CLARINET_API
 int
@@ -555,6 +581,9 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
  * socket will handle incoming IPv4 packets and behaviour will depend on the operating system.
  **********************************************************************************************************************/
 
+/**
+ * Flags used to specify immediate boolean options to clarinet_udp_open(3).
+ */
 enum clarinet_udp_flag
 {
     CLARINET_UDP_FLAG_NONE = 0,
@@ -566,9 +595,9 @@ enum clarinet_udp_flag
 typedef enum clarinet_udp_flag clarinet_udp_flag;
 
 /** 
- * Options corresponding to flags are defined in the range [1, 32] for convenience so we can transform option to flag 
- * easily with CLARINET_OPTION_TO_FLAG(opt). All other options are associated with non-boolean values 
- * and thus are defined in the range [33, 65535].
+ * Socket option identifiers. Options corresponding to flags are conveniently defined in the range [1, 32] so we can 
+ * transform option to flag easily with clarinet_udp_option_to_flag(opt). All other options are associated with 
+ * non-boolean values and thus are defined in the range [33, 65535].
  */
 enum clarinet_udp_option
 {
@@ -591,7 +620,7 @@ typedef enum clarinet_udp_option clarinet_udp_option;
 /**
  * These are options the user can only set when the udp socket is open. This is due to most platforms providing distinct 
  * operations for creating and binding a socket and not allowing certain options to be modified after bind. Since we 
- * combine creation and binding in a single operation (clarinet_udp_open(2)) this is the only opportunity to setup 
+ * combine creation and binding in a single operation (clarinet_udp_open(3)) this is the only opportunity to setup 
  * these options. Note that platforms may impose different limits on each option which might also depend on system 
  * configuration. For example, Linux imposes a limit on the sizes of RCVBUF and SNDBUF which is adjustable via sysctl. 
  * For send_timeout and recv_timeout a value of 0 effectively disables the timeout in all platforms, that is,  
@@ -610,7 +639,7 @@ struct clarinet_udp_settings
 typedef struct clarinet_udp_settings clarinet_udp_settings;
 
 
-#define CLARINET_UDP_SETTINGS_DEFAULT                   {8192, 8192, 0, 0, 64} 
+#define CLARINET_UDP_SETTINGS_DEFAULT                   ((clarinet_udp_settings){8192, 8192, 0, 0, 64}) 
 
 /** 
  * Converts a clarinet_udp_option 'opt' in the range [1, 32] to a bitmask = 2^(opt-1) without branching. The macro 
