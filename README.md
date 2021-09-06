@@ -161,16 +161,16 @@ directory.
 
 ## Tests
 
-The `tests` folder contains unit tests defined using [cmocka](https://cmocka.org/). Each test target represents a set of
-unit tests grouped under a single executable which can be declared by a cmake file fragment named `<TESTSETNAME>.cmake`. 
-The minimum content of such a fragment should be:
+The `tests` folder contains unit tests defined in C++ using [catch2](https://github.com/catchorg/Catch2). Each test 
+target represents a set of cases grouped under a single executable which can be declared by a cmake file fragment named 
+`<TESTSETNAME>.cmake`. The minimum content of such a fragment should be:
 
 ```
 target_test(<TESTSETNAME>)
-target_sources(<TESTSETNAME> PRIVATE src/<TESTSETNAME>.c)
+target_sources(<TESTSETNAME> PRIVATE src/<TESTSETNAME>.cpp)
 ```
 
-where `<TESTSETNAME>` must be replaced by the name of the actual test set. This way test sets can be added or removed 
+where `<TESTSETNAME>` must be replaced by the name of the actual test set. This way test cases can be added or removed 
 without affecting the CMakeLists.txt and will not interfere with other tests. Note test sets should normally be agnostic 
 to execution order but they are guaranteed to be included in `NATURAL` order so contiguous digits are compared as whole 
 numbers. For example: the following list 10.0 1.1 2.1 8.0 2.0 3.1 will be sorted to 1.1 2.0 2.1 3.1 8.0 10.0 as opposed 
@@ -196,35 +196,11 @@ projects may configure their own unit tests using the variable `BUILD_TESTING` b
 in building unit tests of sub-projects (dependencies). If for any reason a top project do want to build and run our unit 
 tests (e.g. top project is only an agregator) then it can force `CLARINET_BUILD_TESTING=ON`.
 
-### Saving test reports
-
-Test reports can be saved in xml following a jUnit style. This can be accomplished by using the `CMOCKA_MESSAGE_OUTPUT` 
-and `CMOCKA_XML_FILE` variables as follows:
-
-- `CMOCKA_MESSAGE_OUTPUT`, with the following values:
-  - `STDOUT` for the default standard output printer
-  - `SUBUNIT` for subunit output
-  - `TAP` for Test Anythng Protocol (TAP) output
-  - `XML` for xUnit XML format
-- `CMOCKA_XML_FILE`, to set in which file to write the result of the tests. You can give the value `cm_%g.xml` in order 
-to create one xml file per group of tests. `%g` takes the group name of the test under execution.
-
-For example, before executing the tests on Linux, set the variables as:
-
-```
-$> export CMOCKA_MESSAGE_OUTPUT=xml
-$> export CMOCKA_XML_FILE=cm_%g.xml
-```
-
-And the equivalent on Windows would be:
-
-```
-> set CMOCKA_MESSAGE_OUTPUT=xml
-> set CMOCKA_XML_FILE=cm_%g.xml
-```
-
-This way xml reports will be created beside the test executables. See [cmocka](https://cmocka.org/) for more details.
-
+The auto generated Visual Studio project *RUN_TESTS* or the makefile target *test* will run all tests when built but 
+they do not depend on the tests themselves therefore will not automatically rebuild out-of-date tests. Visual Studio 
+2015, 2017 and 2019 require the [Test Adapter Catch2](https://github.com/JohnnyHendriks/TestAdapter_Catch2) 
+extension for tests to be discovered in the test explorer window. Running a test out of the test explorer windoe will 
+rebuild if the executable is out-of-date.
 
 ## TODO
 

@@ -7,6 +7,7 @@
  * using WSAStringToAddress/WSAAddressToString on Windows either because all WSA functions require WSAStartup to be 
  * called first and dynamically load the winsock dll but we want to do that only if/when a socket is actually created
  * as opposed to a simple address-string conversion. 
+ * 
  */
  
 int
@@ -23,7 +24,7 @@ clarinet_addr_to_string(char* restrict dst,
             if (inet_ntop(AF_INET, &addr, dst, dstlen))
                 return (int)min(strnlen(dst, dstlen), INT_MAX-1);
         }
-        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         else if (clarinet_addr_is_ipv6(src))
         {
             if (dstlen >= 11) /* must have enough space to reserve for scope_id (%4294967296) */
@@ -63,7 +64,7 @@ clarinet_addr_from_string(clarinet_addr* restrict dst,
     {
         /* There is no way of knowing if src is an ipv4 or ipv6 we so must try one conversion then the other. */
         int errcode = clarinet_addr_ipv4_from_string(dst, src, srclen);
-        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         if (errcode != CLARINET_ENONE)
             errcode = clarinet_addr_ipv6_from_string(dst, src, srclen);
         #endif
@@ -100,7 +101,7 @@ clarinet_endpoint_to_string(char* restrict dst,
             int n = clarinet_addr_to_string(dst + offset, dstlen - reserved, &src->addr);
             if (n > 0)
             {                               
-                #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)         
+                #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
                 if (clarinet_addr_is_ipv6(&src->addr))
                 {
                     dst[0] = '[';
@@ -194,7 +195,7 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
             
             return errcode;
         }            
-        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         else if (first == '[' && isdigit(last)) /* either ipv6 or invalid */
         {
             size_t i = 0;
@@ -260,7 +261,7 @@ clarinet_endpoint_to_sockaddr(struct sockaddr* restrict dst,
             
             return CLARINET_ENONE;
         }
-        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         else if (clarinet_addr_is_ipv6(&src->addr) && dstlen >= sizeof(struct sockaddr_in6))
         {
             struct sockaddr_in6* addr = (struct sockaddr_in6*)dst;
@@ -301,7 +302,7 @@ clarinet_endpoint_from_sockaddr(clarinet_endpoint* restrict dst,
             clarinet_addr_ipv4_from_inet(&dst->addr.as.ipv4.u, &addr->sin_addr);
             dst->port = addr->sin_port;
         }
-        #if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+        #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         else if (src->sa_family == AF_INET6 && srclen >= sizeof(struct sockaddr_in6))
         {
             struct sockaddr_in6* addr = (struct sockaddr_in6*)src;

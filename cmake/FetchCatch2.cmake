@@ -19,24 +19,24 @@
 
 include(FetchContent)
 
-message(CHECK_START "Fetching cmocka")
+message(CHECK_START "Fetching Catch2")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
+set(FETCHCONTENT_UPDATES_DISCONNECTED_Catch2 ON)
+
+# TODO: replace commit hash by v3.0 tag when it's released
 FetchContent_Declare(
-  cmocka
-  GIT_REPOSITORY https://git.cryptomilk.org/projects/cmocka.git
-  GIT_TAG        cmocka-1.1.5
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        432d03d1aab8472a0813c34a7f0e2e1a2c585d22
   GIT_SHALLOW    1
 )
 
-set(WITH_STATIC_LIB ON) # CACHE BOOL "CMocka: Build with a static library" FORCE)
-set(WITH_CMOCKERY_SUPPORT OFF) # CACHE BOOL "CMocka: Install a cmockery header" FORCE)
-set(WITH_EXAMPLES OFF) # CACHE BOOL "CMocka: Build examples" FORCE)
-set(UNIT_TESTING OFF) # CACHE BOOL "CMocka: Build with unit testing" FORCE)
-set(PICKY_DEVELOPER OFF) # CACHE BOOL "CMocka: Build with picky developer flags" FORCE)
-
-FetchContent_Populate(cmocka)
-add_subdirectory(${cmocka_SOURCE_DIR} ${cmocka_BINARY_DIR} EXCLUDE_FROM_ALL)
+FetchContent_GetProperties(Catch2)
+if(NOT Catch2_POPULATED)
+    FetchContent_Populate(Catch2)
+    add_subdirectory(${catch2_SOURCE_DIR} ${catch2_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 message(CHECK_PASS "done")

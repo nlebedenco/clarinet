@@ -37,8 +37,8 @@ if(POLICY CMP0126)
     cmake_policy(SET CMP0126 NEW)
 endif()
 
-# Set custom cmake modules path
-list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+# Add custom cmake modules path
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Set custom cmake helpers path
 set (CMAKE_HELPER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/helpers)
@@ -180,8 +180,15 @@ macro(target_compile_option _target _scope _option)
     string(TOUPPER WITH_${_temp_option_variable} _uppercase_option_variable)
     # Adjust negative warning options so GCC can issue some type of diagnostic when not supported.
     string(REGEX REPLACE "-Wno-" "-W" _safe_option ${_option})
-    check_c_compiler_flag("${_safe_option}" ${_uppercase_option_variable})
-    if(${${_uppercase_option_variable}})
+    get_target_property(_lang ${_target} LINKER_LANGUAGE)
+    if (_lang STREQUAL "C")
+        check_c_compiler_flag("${_safe_option}" ${_lang}_${_uppercase_option_variable})
+    elseif (_lang STREQUAL "CXX")    
+        check_cxx_compiler_flag("${_safe_option}" ${_lang}_${_uppercase_option_variable})
+    else()
+        message(FATAL_ERROR "Target LINKER_LANGUAGE is undefined")
+    endif()    
+    if(${${_lang}_${_uppercase_option_variable}})
         target_compile_options(${_target} ${_scope} ${_option})
     endif()
 endmacro()
@@ -300,7 +307,8 @@ macro(target_compile_warnings _target)
             target_compile_option(${_target} PRIVATE -wd4668)
 
             # Disable warnings about whether a function is, or isn't, going to be expanded inline.
-            target_compile_option(${_target} PRIVATE -wd4710 -wd4711)
+            target_compile_option(${_target} PRIVATE -wd4710)
+            target_compile_option(${_target} PRIVATE -wd4711)
 
             # Disable warnings about whether we're adding padding bytes after structure members.
             target_compile_option(${_target} PRIVATE -wd4820)
@@ -344,6 +352,7 @@ endmacro()
 include(CheckIncludeFile)
 include(CheckIncludeFiles)
 include(CheckCCompilerFlag)
+include(CheckCXXCompilerFlag)
 include(CheckFunctionExists)
 include(CMakePushCheckState)
 include(CheckSymbolExists)
@@ -446,7 +455,7 @@ if(NOT WIN32)
             check_symbol_exists(strlcat "bsd/string.h" LIBBSD_HAS_STRLCAT)
             if (LIBBSD_HAS_STRLCAT)
                 list(APPEND PRIVATE_LINK_LIBRARIES bsd)
-                set(HAVE_BSD_STRING_H TRUE)
+                set(HAVE_STRLCAT_IN_BSD_STRING_H TRUE)
                 set(HAVE_STRLCAT TRUE)
             endif()    
         cmake_pop_check_state()
@@ -462,7 +471,7 @@ if(NOT WIN32)
             check_symbol_exists(strlcpy "bsd/string.h" LIBBSD_HAS_STRLCPY)
             if (LIBBSD_HAS_STRLCPY)
                 list(APPEND PRIVATE_LINK_LIBRARIES bsd)
-                set(HAVE_BSD_STRING_H TRUE)
+                set(HAVE_STRLCPY_IN_BSD_STRING_H TRUE)
                 set(HAVE_STRLCPY TRUE)
             endif()    
         cmake_pop_check_state()
@@ -472,6 +481,15 @@ if(NOT WIN32)
     check_function_exists(vsyslog HAVE_VSYSLOG)
     check_function_exists(fcntl HAVE_FCNTL)
     check_function_exists(poll HAVE_POLL)
+    
+    # Check if we have ffs() and if it is declared in <strings.h>
+    check_function_exists(ffs HAVE_FFS)
+    if(HAVE_FFS)
+    # OK, we have ffs(). Is it declared in <strings.h>? This test fails if we don't have <strings.h> or if we do
+    # but it doesn't declare ffs().
+    check_symbol_exists(ffs strings.h HAVE_FFS_IN_STRINGS_H)
+endif()
+
 endif()
 
 # We require getaddrinfo(), inet_ntop() and inet_pton(). On UN*X systems, we also prefer versions of recvmsg() that
@@ -665,14 +683,6 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND ${PROJECT_NAME_UPPERCASE}_ENABLE_IP
     endif()
 endif()
 
-# Check if we have ffs() and if it is declared in <strings.h>
-check_function_exists(ffs HAVE_FFS)
-if(HAVE_FFS)
-# OK, we have ffs(). Is it declared in <strings.h>? This test fails if we don't have <strings.h> or if we do
-# but it doesn't declare ffs().
-check_symbol_exists(ffs strings.h STRINGS_H_DECLARES_FFS)
-endif()
-
 # Check Pthreads.
 # We might need it, because some libraries we use might use them, but we don't necessarily depend on them.
 # That's only on UN*X; on Windows, if they use threads, we assume they're native Windows threads.
@@ -741,6 +751,7 @@ target_sources(${PROJECT_NAME}
         src/portable/fallback/strlcpy.c
         src/portable/fallback/strtok_r.c
         src/portable/fallback/strerror_s.c
+        src/portable/fallback/ffs.c
 )
 
 # Add platform specific sources. 
@@ -755,6 +766,7 @@ target_sources(${PROJECT_NAME}
 # Set up public header
 # Enable position independent code (i.e. -fPIC) if building shared lib.
 set_target_properties(${PROJECT_NAME} PROPERTIES
+    LINKER_LANGUAGE C
     VERSION ${PROJECT_VERSION}
     C_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
@@ -1014,6 +1026,9 @@ endif()
 
 # Save configuration
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/catch2.runsettings.in ${CMAKE_CURRENT_BINARY_DIR}/.runsettings)
+endif()
 
 ########################################################################################################################
 # Report Features

@@ -3,6 +3,7 @@
 
 #include <string.h>
 
+const clarinet_addr clarinet_addr_none                 = { 0 };
 const clarinet_addr clarinet_addr_ipv4_any             = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
 const clarinet_addr clarinet_addr_ipv4_loopback        = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } };
 const clarinet_addr clarinet_addr_ipv4_broadcast       = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } };    
@@ -122,6 +123,7 @@ clarinet_addr_map_to_ipv4(clarinet_addr* restrict dst,
             return CLARINET_ENONE;
         }
 
+        #if defined(CLARINET_ENABLE_IPV6)
         if (clarinet_addr_is_ipv4mapped(src))
         {
             memset(dst, 0, sizeof(clarinet_addr));
@@ -129,6 +131,7 @@ clarinet_addr_map_to_ipv4(clarinet_addr* restrict dst,
             dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
             return CLARINET_ENONE;
         }
+        #endif
     }
     
     return CLARINET_EINVAL;
@@ -140,6 +143,7 @@ clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
 {
     if (dst && src)
     {
+        #if defined(CLARINET_ENABLE_IPV6)
         if (clarinet_addr_is_ipv6(src))
         {
             memcpy(dst, src, sizeof(clarinet_addr));
@@ -154,6 +158,7 @@ clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
             dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
             return CLARINET_ENONE;
         }
+        #endif
     }
 
     return CLARINET_EINVAL;

@@ -59,11 +59,6 @@
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 #cmakedefine HAVE_SYS_SOCKIO_H 1
 
-/* Define to 1 if bsd/string.h is required strlcpy/strlcat */
-#cmakedefine HAVE_BSD_STRING_H 1
-
-/* Define to 1 if strings.h declares `ffs' */
-#cmakedefine STRINGS_H_DECLARES_FFS 1
 
 /***************************
  * Non-standard functions
@@ -108,8 +103,14 @@
 /* Define to 1 if you have the `strlcat' function. */
 #cmakedefine HAVE_STRLCAT 1
 
+/* Define to 1 if 'strlcat' is declared in bsd/string.h  */
+#cmakedefine HAVE_STRCAT_IN_BSD_STRING_H 1
+
 /* Define to 1 if you have the `strlcpy' function. */
 #cmakedefine HAVE_STRLCPY 1
+
+/* Define to 1 if 'strlcpy' is declared in bsd/string.h  */
+#cmakedefine HAVE_STRLCPY_IN_BSD_STRING_H 1
 
 /* Define to 1 if you have the `strtok_r' function. */
 #cmakedefine HAVE_STRTOK_R 1
@@ -144,6 +145,11 @@
 /* Define to 1 if you have the `clock_gettime' function. */
 #cmakedefine HAVE_CLOCK_GETTIME 1
 
+/* Define to 1 if you have ffs(3) */
+#cmakedefine HAVE_FFS
+
+/* Define to 1 if 'ffs' is declared in strings.h */
+#cmakedefine HAVE_FFS_IN_STRINGS_H 1
 
 /***************************
  * Version

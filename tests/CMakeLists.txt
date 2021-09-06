@@ -2,7 +2,7 @@
 #   Configuration
 ########################################################################################################################
 
-set(${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER "Tests")
+set(${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER "CTest")
 
 
 ########################################################################################################################
@@ -11,13 +11,24 @@ set(${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER "Tests")
 
 macro(target_test _target)
     add_executable(${_target})
+    
+    target_sources(${_target}
+        PRIVATE 
+            src/test.h
+    )
 
+    # For now all tests are in CXX this must be reviewed if the test framework changes
+    set_target_properties(${_target} PROPERTIES
+        LINKER_LANGUAGE CXX
+    )
+    
     target_compile_features(${_target}
         PRIVATE
-            c_std_99
-            c_function_prototypes
-            c_restrict
-            c_variadic_macros
+            cxx_std_11
+            cxx_variadic_macros
+            cxx_defaulted_functions
+            cxx_defaulted_move_initializers
+            cxx_nullptr
     )
 
     # Export a symbol to indicate that we have a config.h auto generated.
@@ -32,6 +43,23 @@ macro(target_test _target)
     target_spectre_mitigation(${_target})
     target_compile_warnings(${_target})
 
+    if(MSVC AND NOT CLANG)
+        # Disable warning about the optimizer removing inline functions that are not called
+        target_compile_option(${_target} PRIVATE -wd4514)    
+        # Disable warnings about deleted functions
+        target_compile_option(${_target} PRIVATE -wd4623)
+        target_compile_option(${_target} PRIVATE -wd4625)
+        target_compile_option(${_target} PRIVATE -wd4626)
+        target_compile_option(${_target} PRIVATE -wd5026)
+        target_compile_option(${_target} PRIVATE -wd5027)
+        # Disable warning about the compiler not being able to enforce left-to-right evaluation order in braced initializer list
+        target_compile_option(${_target} PRIVATE -wd4868)
+        # Disable warning about throwable function exported by C interface in the Win SDK (bad bad microsoft...!)
+        target_compile_option(${_target} PRIVATE -wd5039)       
+        # Disable warning about unscoped enum        
+        target_compile_option(${_target} PRIVATE -wd26812)
+    endif()
+
     target_include_directories(${_target}
         PRIVATE
             $<INSTALL_INTERFACE:include>
@@ -39,27 +67,28 @@ macro(target_test _target)
             ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${CMAKE_BINARY_DIR}/CMakeConfig
     )
-
+    
     target_link_libraries(${_target}
-        ${PROJECT_NAME}
-        cmocka-static
+        PRIVATE
+            ${PROJECT_NAME}
+            Catch2::Catch2WithMain
     )
+   
+    set_target_properties(${_target} PROPERTIES FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER})
 
-    set_target_properties(${_target} PROPERTIES
-        FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}
-    )
-
-    add_test(NAME ${_target} COMMAND $<TARGET_FILE:${_target}>)
+    # Register catch2 tests defined in target
+    catch_discover_tests(${_target})
 endmacro()
 
 
 ########################################################################################################################
 #   Dependencies
 ########################################################################################################################
-
-set(CMAKE_PROJECT_cmocka_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CMockaIncludeBefore.cmake)
-include(FetchCMocka)
-set_target_properties(cmocka-static PROPERTIES 
+include(FetchCatch2)
+set_target_properties(Catch2 PROPERTIES 
+    FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}/Dependencies
+)
+set_target_properties(Catch2WithMain PROPERTIES 
     FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}/Dependencies
 )
 
@@ -67,6 +96,8 @@ set_target_properties(cmocka-static PROPERTIES
 ########################################################################################################################
 #   Tests
 ########################################################################################################################
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+include(Catch)
 
 file(GLOB cmakeTestFiles ${CMAKE_CURRENT_SOURCE_DIR}/*.cmake)
 list(SORT cmakeTestFiles COMPARE NATURAL CASE INSENSITIVE ORDER ASCENDING)

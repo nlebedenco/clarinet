@@ -49,7 +49,7 @@
 #include <stdarg.h>
 
 #if defined(HAVE_STRLCAT)
-    #if defined(HAVE_BSD_STRING_H)
+    #if defined(HAVE_STRLCAT_IN_BSD_STRING_H)
         #include <bsd/string.h>
     #endif
 #else
@@ -63,7 +63,7 @@
 #endif /* HAVE_STRLCAT */
 
 #if defined(HAVE_STRLCPY)
-    #if defined(HAVE_BSD_STRING_H)
+    #if defined(HAVE_STRLCPY_IN_BSD_STRING_H)
         #include <bsd/string.h>
     #endif
 #else
@@ -146,6 +146,14 @@
         #include <errno.h>
         #define strerror_c(buf, buflen, errnum)         (ENOSYS)
     #endif    
+#endif
+
+#if defined(HAVE_FFS)
+    #if defined(HAVE_FFS_IN_STRINGS_H)
+        #include "strings.h"
+    #endif
+#else 
+    int ffs(int i);
 #endif
 
 /* Include stdlib.h to check for min/max as this is normally where they are defined. */

@@ -297,6 +297,8 @@ typedef struct clarinet_endpoint clarinet_endpoint;
  * Global constants that can be used for initialization in C++ 
  * (instead of compound literals which some compilers don't support e.g. MSVC) 
  */
+CLARINET_API const clarinet_addr clarinet_addr_none;
+
 CLARINET_API const clarinet_addr clarinet_addr_ipv4_any;
 CLARINET_API const clarinet_addr clarinet_addr_ipv4_loopback;
 CLARINET_API const clarinet_addr clarinet_addr_ipv4_broadcast;
@@ -320,6 +322,7 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
  */
 #define CLARINET_ENDPOINT_STRLEN                        (CLARINET_ADDR_STRLEN + 8) 
 
+#define CLARINET_ADDR_NONE                              clarinet_addr_none
 #define CLARINET_ADDR_IPV4_ANY                          clarinet_addr_ipv4_any
 #define CLARINET_ADDR_IPV4_LOOPBACK                     clarinet_addr_ipv4_loopback
 #define CLARINET_ADDR_IPV4_BROADCAST                    clarinet_addr_ipv4_broadcast
@@ -450,13 +453,16 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
  */
 #define clarinet_addr_is_broadcast(addr)                clarinet_addr_is_ipv4_broadcast(addr)
 
-/** Returns true if addresses pointed by a and b are equal. */
+/** 
+ * Returns true if addresses pointed by a and b are equal. 
+ * If famlily is CLARINET_AF_INET only the last dword is required to be equal.
+ * Otherwise for both CLARINET_AF_INET6 and CLARINET_AF_NONE all ipv6 fields must be equal.
+ */
 #define clarinet_addr_is_equal(a, b)                            \
     ((a)->family == (b)->family                                 \
   && (a)->as.ipv6.u.dword[3] == (b)->as.ipv6.u.dword[3]         \
   && ((a)->family == CLARINET_AF_INET                           \
-   || ((a)->family == CLARINET_AF_INET6                         \
-    && (a)->as.ipv6.flowinfo == (b)->as.ipv6.flowinfo           \
+   || ((a)->as.ipv6.flowinfo == (b)->as.ipv6.flowinfo           \
     && (a)->as.ipv6.u.dword[0] == (b)->as.ipv6.u.dword[0]       \
     && (a)->as.ipv6.u.dword[1] == (b)->as.ipv6.u.dword[1]       \
     && (a)->as.ipv6.u.dword[2] == (b)->as.ipv6.u.dword[2]       \
@@ -776,9 +782,9 @@ CLARINET_API int clarinet_udp_getopt(int sockfd,
 
 
 #if defined(__cplusplus)
-    #if defined(restrict) && !RESTRICT_PREDEFINED
-        #undef restrict
-    #endif
+#if defined(restrict) && !RESTRICT_PREDEFINED
+#undef restrict
+#endif
 #endif
 
 #if defined(__cplusplus)
