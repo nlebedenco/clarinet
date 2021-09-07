@@ -169,4 +169,15 @@
 #define min(a,b)                                        (((a) < (b)) ? (a) : (b))
 #endif
 
+/* Include socket headers. */
+#if defined(_WIN32)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>    
+#else /* BSD, Linux, macOS, iOS, Android, PS4, PS5 */
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
+
 #endif // PORTABILITY_H

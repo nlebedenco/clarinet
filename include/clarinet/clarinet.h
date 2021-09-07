@@ -140,7 +140,8 @@ enum clarinet_errcode
     CLARINET_EPROTO = -7,                       /* Protocol error */
     CLARINET_EPROTONOSUPPORT = -8,              /* Protocol not supported */
     CLARINET_ETIME = -9,                        /* Timeout */
-    CLARINET_EOVERFLOW = -10                    /* Buffer overflow */
+    CLARINET_EOVERFLOW = -10,                   /* Buffer overflow */
+    CLARINET_ENOSYS = -11,                      /* Function is not implemented */
 };
 
 typedef enum clarinet_errcode clarinet_errcode;
@@ -297,15 +298,33 @@ typedef struct clarinet_endpoint clarinet_endpoint;
  * Global constants that can be used for initialization in C++ 
  * (instead of compound literals which some compilers don't support e.g. MSVC) 
  */
-CLARINET_API const clarinet_addr clarinet_addr_none;
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_none;
 
-CLARINET_API const clarinet_addr clarinet_addr_ipv4_any;
-CLARINET_API const clarinet_addr clarinet_addr_ipv4_loopback;
-CLARINET_API const clarinet_addr clarinet_addr_ipv4_broadcast;
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_ipv4_any;
 
-CLARINET_API const clarinet_addr clarinet_addr_ipv6_any;
-CLARINET_API const clarinet_addr clarinet_addr_ipv6_loopback;
-CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_ipv4_loopback;
+
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_ipv4_broadcast;
+
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_ipv6_any;
+
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_ipv6_loopback;
+
+CLARINET_API 
+const clarinet_addr 
+clarinet_addr_ipv4mapped_loopback;
 
 /** 
  * Maximum string length required to format an address. The longest possible string representation is that of an 
@@ -354,7 +373,6 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
 
 #define clarinet_addr_is_ipv6_any(addr)                                     \
    (((addr)->family == CLARINET_AF_INET6)                                   \
- && ((addr)->as.ipv6.flowinfo == 0)                                         \
  && (((addr)->as.ipv6.u.dword[0]                                            \
     | (addr)->as.ipv6.u.dword[1]                                            \
     | (addr)->as.ipv6.u.dword[2]                                            \
@@ -363,17 +381,12 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
 
 #define clarinet_addr_is_ipv4_loopback(addr)                                \
     (((addr)->family == CLARINET_AF_INET)                                   \
-  && ((addr)->as.ipv6.flowinfo == 0)                                        \
-  && (((addr)->as.ipv6.u.dword[0]                                           \
-     | (addr)->as.ipv6.u.dword[1]                                           \
-     | (addr)->as.ipv6.u.word[2]) == 0)                                     \
   && ((addr)->as.ipv6.u.byte[12] == 127)                                    \
   && ((addr)->as.ipv6.u.byte[15] > 0 && (addr)->as.ipv6.u.byte[15] < 255)   \
   && ((addr)->as.ipv6.scope_id == 0))
 
 #define clarinet_addr_is_ipv6_loopback(addr)                                \
     (((addr)->family == CLARINET_AF_INET6)                                  \
-  && ((addr)->as.ipv6.flowinfo == 0)                                        \
   && (((addr)->as.ipv6.u.dword[0]                                           \
       | (addr)->as.ipv6.u.dword[1]                                          \
       | (addr)->as.ipv6.u.dword[2]) == 0)                                   \
@@ -383,7 +396,6 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
 
 #define clarinet_addr_is_ipv4mapped_loopback(addr)                          \
     (((addr)->family == CLARINET_AF_INET6)                                  \
-  && ((addr)->as.ipv6.flowinfo == 0)                                        \
   && (((addr)->as.ipv6.u.word[0]                                            \
      | (addr)->as.ipv6.u.word[1]                                            \
      | (addr)->as.ipv6.u.word[2]                                            \
@@ -429,7 +441,6 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
  */
 #define clarinet_addr_is_any(addr)                                                  \
    ((((addr)->family == CLARINET_AF_INET) || ((addr)->family == CLARINET_AF_INET6)) \
-  && ((addr)->as.ipv6.flowinfo == 0)                                                \
   && (((addr)->as.ipv6.u.dword[0]                                                   \
      | (addr)->as.ipv6.u.dword[1]                                                   \
      | (addr)->as.ipv6.u.dword[2]                                                   \
@@ -456,14 +467,15 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
 /** 
  * Returns true if addresses pointed by a and b are equal. 
  * If famlily is CLARINET_AF_INET only the last dword is required to be equal.
- * Otherwise for both CLARINET_AF_INET6 and CLARINET_AF_NONE all ipv6 fields must be equal.
+ * Otherwise for both CLARINET_AF_INET6 and CLARINET_AF_NONE all ipv6 fields must be equal. 
+ * Note that flowinfo is not considered an identifying part of an IPv6 address so two addresses A and B that conly 
+ * differ by flowinfo are considered equal.
  */
 #define clarinet_addr_is_equal(a, b)                            \
     ((a)->family == (b)->family                                 \
   && (a)->as.ipv6.u.dword[3] == (b)->as.ipv6.u.dword[3]         \
   && ((a)->family == CLARINET_AF_INET                           \
-   || ((a)->as.ipv6.flowinfo == (b)->as.ipv6.flowinfo           \
-    && (a)->as.ipv6.u.dword[0] == (b)->as.ipv6.u.dword[0]       \
+   || ((a)->as.ipv6.u.dword[0] == (b)->as.ipv6.u.dword[0]       \
     && (a)->as.ipv6.u.dword[1] == (b)->as.ipv6.u.dword[1]       \
     && (a)->as.ipv6.u.dword[2] == (b)->as.ipv6.u.dword[2]       \
     && (a)->as.ipv6.scope_id == (b)->as.ipv6.scope_id)))
@@ -472,12 +484,18 @@ CLARINET_API const clarinet_addr clarinet_addr_ipv4mapped_loopback;
  * Returns true if addresses pointed by a and b are equivalent but not necessarily equal. This could be the case when 
  * comparing an IPv4 address with an IPv4mappedToIPv6 address. They are never equal because the families involved are 
  * different (one is INET the other INET6) but could be equivalent if both represent the same (ipv4) network address.
+ * Note that flowinfo is not considered an identifying part of an IPv6 address so two addresses A and B that conly 
+ * differ by flowinfo are considered equal.
  */
 #define clarinet_addr_is_equivalent(a, b)                                       \
     (clarinet_addr_is_equal(a, b)                                               \
   || (((a)->as.ipv6.u.dword[3] == (b)->as.ipv6.u.dword[3])                      \
    && ((clarinet_addr_is_ipv4(a) && clarinet_addr_is_ipv4mapped(b))             \
     || (clarinet_addr_is_ipv4(b) && clarinet_addr_is_ipv4mapped(a)))))
+
+#define clarinet_endpoint_is_equal(a, b)                (((a)->port == (b)->port) && clarinet_addr_is_equal(&(a)->addr, &(b)->addr))
+
+#define clarinet_endpoint_is_equivalent(a, b)           (((a)->port == (b)->port) && clarinet_addr_is_equivalent(&(a)->addr, &(b)->addr))
 
 /** 
  * Converts the IPv4MappedToIPv6 address pointed by src into an IPv4 address and copies it into the memory pointed by 
@@ -504,18 +522,23 @@ clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
  * Converts the addres pointed by src into a string in Internet standard format and store it in the buffer pointed by 
  * dst. CLARINET_EINVAL is returned if either src or dst are NULL, if the address pointed by src is invalid or dstlen 
  * is not enough to contain the complete string. On success returns the number of characters written into dst not 
- * counting the terminating null character. IPv4 address are converted to decimal form ddd.ddd.ddd.ddd while IPv6 
+ * counting the terminating null character. IPv4 addresses are converted to decimal form ddd.ddd.ddd.ddd while IPv6 
  * addresses are converted according to RFC4291 and RFC5952 which favors the more compact form when more than one 
  * representation is possible. Additionally a numeric scope id may be appended following a '%' sign when the address 
  * scope id is non-zero. Note that addresses with a text scope id or an empty scope id are not supported. E.g: 
- * '::1%eth0' or '::1%' are never produced and cannot be converted back into valid address structures. On the other 
- * hand '::1' and '::1%0' are both valid representations containing a numeric scope_id although this function would 
- * only ever produce the former when the scope id is zero.
+ * '::1%eth0' or '::1%', will never be produced and cannot be converted into valid address structures using 
+ * clarinet_addr_from_string(3). On the other hand '::1' and '::1%0' are both valid representations containing a 
+ * numeric scope_id of zero although this function would only ever produce the former. Note that CLARINET_EINVAL is 
+ * returned instead of CLARINET_ENOTSUP when src is a well formed IPv6 address but the library has not been compiled 
+ * with ipv6 support. The src parameter in this case is considered invalid. This is consistent with the baehaviour of 
+ * clarinet_address_from_string(3) which cannot determine if a string is a valid IPv6 address when the library has no 
+ * IPv6 support compiled and thus has no other choice but to return CLARINET_EINVAL.
  */
 CLARINET_API
-int clarinet_addr_to_string(char* restrict dst,
-                            size_t dstlen,
-                            const clarinet_addr* restrict src);
+int 
+clarinet_addr_to_string(char* restrict dst,
+                        size_t dstlen,
+                        const clarinet_addr* restrict src);
                                                  
 
 /**
@@ -653,8 +676,11 @@ struct clarinet_udp_settings
 
 typedef struct clarinet_udp_settings clarinet_udp_settings;
 
+CLARINET_API 
+const clarinet_udp_settings 
+clarinet_udp_settings_default;
 
-#define CLARINET_UDP_SETTINGS_DEFAULT                   ((clarinet_udp_settings){8192, 8192, 0, 0, 64}) 
+#define CLARINET_UDP_SETTINGS_DEFAULT       clarinet_udp_settings_default
 
 /** 
  * Converts a clarinet_udp_option 'opt' in the range [1, 32] to a bitmask = 2^(opt-1) without branching. The macro 
@@ -666,52 +692,64 @@ typedef struct clarinet_udp_settings clarinet_udp_settings;
  * operand to shift left no more than 31 bits. Note that if 'opt' is a compile time constant then all this is calculated 
  * at compile time so no runtime penalty.
  */
-#define clarinet_udp_option_to_flag(opt)                (((~((clarinet_udp_option)(opt) -1)) >> ((sizeof(clarinet_udp_option) << 3)-1)) << (((clarinet_udp_option)(opt) -1) & 0x1F))
+#define clarinet_udp_option_to_flag(opt)    (((~((clarinet_udp_option)(opt) -1)) >> ((sizeof(clarinet_udp_option) << 3)-1)) << (((clarinet_udp_option)(opt) -1) & 0x1F))
 
 /**
  *
  */
-CLARINET_API int clarinet_udp_open(const clarinet_endpoint* restrict endpoint, 
-                                   const clarinet_udp_settings* restrict settings,
-                                   uint32_t flags);
+CLARINET_API 
+int 
+clarinet_udp_open(const clarinet_endpoint* restrict endpoint, 
+                  const clarinet_udp_settings* restrict settings,
+                  uint32_t flags);
 
 /**
  *
  */
-CLARINET_API int clarinet_udp_close(int sockfd);
+CLARINET_API 
+int 
+clarinet_udp_close(int sockfd);
 
 /**
  *
  */
-CLARINET_API int clarinet_udp_send(int sockfd, 
-                                   const void* restrict buf,
-                                   size_t len, 
-                                   const clarinet_endpoint* restrict dst);
+CLARINET_API 
+int 
+clarinet_udp_send(int sockfd, 
+                  const void* restrict buf,
+                  size_t len, 
+                  const clarinet_endpoint* restrict dst);
 /**
  *
  */
-CLARINET_API int clarinet_udp_recv(int sockfd, 
-                                   void* restrict buf, 
-                                   size_t len, 
-                                   clarinet_endpoint* restrict src);
+CLARINET_API 
+int 
+clarinet_udp_recv(int sockfd, 
+                  void* restrict buf, 
+                  size_t len, 
+                  clarinet_endpoint* restrict src);
 
 /**
  *
  */
-CLARINET_API int clarinet_udp_setopt(int sockfd, 
-                                     int proto, 
-                                     int optname,
-                                     const void* restrict optval, 
-                                     size_t optlen);
+CLARINET_API 
+int 
+clarinet_udp_setopt(int sockfd, 
+                    int proto, 
+                    int optname,
+                    const void* restrict optval, 
+                    size_t optlen);
 
 /**
  *
  */
-CLARINET_API int clarinet_udp_getopt(int sockfd, 
-                                     int proto, 
-                                     int optname, 
-                                     void* restrict optval, 
-                                     size_t* restrict optlen);
+CLARINET_API 
+int 
+clarinet_udp_getopt(int sockfd, 
+                    int proto, 
+                    int optname, 
+                    void* restrict optval, 
+                    size_t* restrict optlen);
 
 
 /***********************************************************************************************************************

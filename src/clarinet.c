@@ -3,15 +3,16 @@
 
 #include <string.h>
 
-const clarinet_addr clarinet_addr_none                 = { 0 };
-const clarinet_addr clarinet_addr_ipv4_any             = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
-const clarinet_addr clarinet_addr_ipv4_loopback        = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } };
-const clarinet_addr clarinet_addr_ipv4_broadcast       = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } };    
+const clarinet_addr clarinet_addr_none                      = { 0 };
+const clarinet_addr clarinet_addr_ipv4_any                  = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
+const clarinet_addr clarinet_addr_ipv4_loopback             = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } };
+const clarinet_addr clarinet_addr_ipv4_broadcast            = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } };    
 
-const clarinet_addr clarinet_addr_ipv6_any             = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
-const clarinet_addr clarinet_addr_ipv6_loopback        = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   1 } }, 0 } } };
-const clarinet_addr clarinet_addr_ipv4mapped_loopback  = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127,   0,   0,   1 } }, 0 } } };
+const clarinet_addr clarinet_addr_ipv6_any                  = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
+const clarinet_addr clarinet_addr_ipv6_loopback             = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   1 } }, 0 } } };
+const clarinet_addr clarinet_addr_ipv4mapped_loopback       = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127,   0,   0,   1 } }, 0 } } };
 
+const clarinet_udp_settings clarinet_udp_settings_default   = {8192, 8192, 0, 0, 64};
 
 uint32_t 
 clarinet_get_semver(void)

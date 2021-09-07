@@ -79,7 +79,7 @@ clarinet_endpoint_to_string(char* restrict dst,
                             size_t dstlen,
                             const clarinet_endpoint* restrict src)
 {
-     if (src && dst && dstlen > 0 && dstlen < INT_MAX) 
+    if (src && dst && dstlen > 0 && dstlen < INT_MAX) 
     {           
         const uint16_t port = src->port;
         
@@ -96,7 +96,7 @@ clarinet_endpoint_to_string(char* restrict dst,
             reserved = 6;
         }
         
-        if (dstlen >= reserved)   /* must have enough space to reserve for port (:65535 or []:65535) */
+        if (dstlen > reserved)   /* must have enough space to reserve for port (:65535 or []:65535) */
         {               
             int n = clarinet_addr_to_string(dst + offset, dstlen - reserved, &src->addr);
             if (n > 0)
@@ -137,12 +137,13 @@ clarinet_decode_port(uint16_t* restrict port,
         if (!isdigit(c))
             return CLARINET_EINVAL;
         
-        const uint16_t inc = k * (uint16_t)(c - '0');
-        if (inc > (UINT16_MAX - *port)) /* not a valid port number */
+        const uint32_t inc = k * (uint16_t)(c - '0');
+        if (inc > (uint32_t)(UINT16_MAX - *port)) /* not a valid port number */
             return CLARINET_EINVAL;
 
-        *port += inc;
+        *port += (uint16_t)inc;
         k *= 10;
+        n--;
     }
     
     return CLARINET_ENONE;    
@@ -198,7 +199,7 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
         #if defined(CLARINET_ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
         else if (first == '[' && isdigit(last)) /* either ipv6 or invalid */
         {
-            size_t i = 0;
+            size_t i = 1;     /* consume '[' */
             while(i < srclen) /* consume the address part until a ']' is found */
             {
                 const char c = src[i];
@@ -208,7 +209,7 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
                  * using 56 explicitly here instead of INET6_ADDRSTRLEN-1 most systems don't account for the scope id 
                  * and may even reserve space for the port instead
                  */
-                if (i >= 56 || (c != '.' && c != ':' && c != '%' && !isdigit(c))) /* not a valid ipv6 endpoint */
+                if (i >= 56 || (c != '.' && c != ':' && c != '%' && !isxdigit(c))) /* not a valid ipv6 endpoint */
                     return CLARINET_EINVAL;
                     
                 i++;
@@ -223,7 +224,7 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
             if (errcode == CLARINET_ENONE)
             {
                 clarinet_addr addr;
-                errcode = clarinet_addr_ipv6_from_string(&addr, &src[1], i-2);
+                errcode = clarinet_addr_ipv6_from_string(&addr, &src[1], i-1);
                 if(errcode == CLARINET_ENONE)             
                 {
                     memset(dst, 0, sizeof(clarinet_endpoint));

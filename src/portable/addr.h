@@ -10,17 +10,6 @@
 #include <ctype.h>
 #include <assert.h>
 
-#if defined(_WIN32)
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    #include <windows.h>    
-#else /* BSD, Linux, macOS, iOS, Android, PS4, PS5 */
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-#endif
-
-
 int 
 clarinet_endpoint_to_sockaddr(struct sockaddr* restrict dst,
                               size_t dstlen,
