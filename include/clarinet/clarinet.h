@@ -144,6 +144,7 @@ extern "C" {
     E(CLARINET_EACCES,            "Access denied") \
     E(CLARINET_EINVAL,            "Invalid Argument") \
     E(CLARINET_ENOTREADY,         "Underlying system or device not ready") \
+    E(CLARINET_EWOULDBLOCK,       "Operation could not be completed immediately") \
     E(CLARINET_EALREADY,          "Operation is already in progress") \
     E(CLARINET_ENOTSOCK,          "Operation attempted with an invalid socket descriptor") \
     E(CLARINET_EMSGSIZE,          "Message too large") \
@@ -684,9 +685,10 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
  * source address and source port of another socket previously bound as long as that other socket also had
  * CLARINET_SO_REUSEADDR enabled. This is accomplished by setting SO_REUSEPORT|SO_REUSEADDR on macOS and Linux when
  * CLARINET_SO_REUSEADDR is enabled. On Windows SO_REUSEADDR is set when CLARINET_SO_REUSEADDR is enabled and
- * SO_EXCLUSIVEADDRUSE is set when CLARINET_SO_REUSEADDR is disabled.
+ * SO_EXCLUSIVEADDRUSE is set when CLARINET_SO_REUSEADDR is disabled. Linux < 3.9 do not have SO_REUSEPORT but in this
+ * case SO_REUSEADDR works exactly like SO_REUSEPORT on BSD, that is, exact reuse is allowed only if both sockets enable
+ * SO_REUSEADDR.
  * 
- *
  * There is no clarinet_udp_connect() because dgram delivery rules may be quite different between platforms. On Unix 
  * (including macOS) when a UDP socket is bound to a foreign address by connect() it effectively assumes a 5-tuple 
  * identity so when a dgram arrives the system first selects all sockets associated with the src address of the 
@@ -728,11 +730,10 @@ enum clarinet_socket_option
     CLARINET_SO_KEEPALIVE,
     CLARINET_SO_IPV6DUAL,
     
-    /* Properties */
-    CLARINET_SO_ERROR = 33,
+    /* Properties */    
+    CLARINET_SO_TTL = 33,
     CLARINET_SO_SNDBUF,
-    CLARINET_SO_RCVBUF,
-    CLARINET_SO_TTL,
+    CLARINET_SO_RCVBUF,    
     CLARINET_SO_LINGER,
     CLARINET_SO_DONTLINGER, /* disable linger without affecting the timeout already configured - in TCP forces a RST and no TIME_WAIT on close*/
 };

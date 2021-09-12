@@ -1,4 +1,6 @@
-﻿/* cmakeconfig.h.in */
+﻿#pragma once
+#ifndef CONFIG_H
+#define CONFIG_H
 
 /***************************
  * Standard headers
@@ -133,6 +135,13 @@
 /* Define to 1 if `sin6_scopeid' is a member of `struct sockaddr_in6'. */
 #cmakedefine HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 
+/* Define to 1 if you have `SO_REUSEPORT'. */
+#cmakedefine HAVE_SO_REUSEPORT 1
+
+#if HAVE_SO_REUSEPORT || defined(_WIN32) || defined(__linux__)
+#define HAVE_EXACT_REUSEADDR  1
+#endif
+
 /* define if we have the Linux getnetbyname_r() */
 #cmakedefine HAVE_GETNETBYNAME_R 1
 
@@ -227,6 +236,4 @@
 /* TLS */
 #cmakedefine CLARINET_ENABLE_TLS 1
 
-
-
-
+#endif /* CONFIG_H */

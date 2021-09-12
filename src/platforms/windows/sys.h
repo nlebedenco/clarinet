@@ -36,6 +36,18 @@ int
 clarinet_socket_get_endpoint(clarinet_socket* restrict sp,
                              clarinet_endpoint* restrict endpoint);
 
+int
+clarinet_socket_send(clarinet_socket* restrict sp,
+                     const void* restrict buf,
+                     size_t len,
+                     const clarinet_endpoint* restrict dst);
+
+int
+clarinet_socket_recv(clarinet_socket* restrict sp,
+                     void* restrict buf,
+                     size_t len,
+                     clarinet_endpoint* restrict src);
+
 /** Helper for setting the socket as non-blocking */
 CLARINET_INLINE
 int 

@@ -30,18 +30,18 @@
 int 
 clarinet_error_from_wsaerr(const int wsaerr)
 {
+    /* WSAEOPNOTSUPP (10045) "Operation not supported" should never be relayed to the end-user. It can only happen due 
+     * to socket mishandling. For example by calling accept() on a udp socket or using incompatible send/recv flags. */
+    assert(wsaerr != WSAEOPNOTSUPP);
+
     /* WSAEINPROGRESS (10036) "Operation now in progress" is not equivalent to EINPROGRESS. 
      *
-     * TL;DR
+     * TL;DR: On Unix EINPROGRESS is only indicated by connect(2) and is semantically equivalent to EWOULDBLOCK (and by 
+     * extension to WSAEWOULDBLOCK). On Windows (winsock 2.x) WSAEINPROGRESS should only (if ever) be indicated by 
+     * connect() and is semantically equivalent to WSAEALREADY (and by extension to EALREADY).
      *
-     * On Unix EINPROGRESS is only indicated by connect(2) and is semantically equivalent to EWOULDBLOCK (and by 
-     * extension to WSAEWOULDBLOCK).
-     *
-     * On Windows (winsock 2.x) WSAEINPROGRESS should only (if ever) be indicated by connect() and is semantically 
-     * equivalent to WSAEALREADY (and by extension to EALREADY).
      *
      * The long story:
-     *
      * On BSD sockets EINPROGRESS is indicated when an operation that takes a long time to complete (such as a 
      * connect(2)) was attempted on a non-blocking socket (see ioctl(2)). On windows this is indicated by 
      * WSAEWOULDBLOCK because WSAEINPROGRESS only applies to blocking calls!. When winsock was introduced (v1.x), 
@@ -62,7 +62,7 @@ clarinet_error_from_wsaerr(const int wsaerr)
      * should never reach the user.
      */
      
-    /* WSAENETRESET (10052) "Network dropped connection on reset" requires special handling on UDP sockets.
+    /* WSAENETRESET (10052) "Network dropped connection on reset" has a special meaning for TCP and UDP sockets.
      * For a connection-oriented socket, this error indicates that the connection has been broken due to keep-alive 
      * activity that detected a failure while the operation was in progress. This is semantically equivalent to 
      * ENETRESET. For a datagram socket, this error indicates that the time to live has expired which is detectable
@@ -71,14 +71,8 @@ clarinet_error_from_wsaerr(const int wsaerr)
      * be ignored for udp sockets on both setsockopt(), send() and recv(). 
      */
    
-    /* WSAEWOULDBLOCK (10035) "Resource temporarily unavailable" should never be relayed to the end-user. All operations 
-     * are non-blocking after all so this information is redundant. It cannot even be considered an error. */
-    assert(wsaerr != WSAEWOULDBLOCK); 
-    
-    /* WSAEOPNOTSUPP (10045) "Operation not supported" should never be relayed to the end-user. It can only happen due 
-     * to socket mishandling. For example by calling accept() on a udp socket or using incompatible send/recv flags. */
-    assert(wsaerr != WSAEOPNOTSUPP);
-    
+    /* WSAEWOULDBLOCK (10035) "Resource temporarily unavailable" may be relayed to the end-user from send() or recv() */
+        
     switch(wsaerr)
     {
         case 0: 
@@ -102,6 +96,8 @@ clarinet_error_from_wsaerr(const int wsaerr)
             return CLARINET_EACCES;                        
         case WSAEMFILE:                     /* Too many open sockets */
             return CLARINET_EMFILE;         
+        case WSAEWOULDBLOCK:                /* Operations on a nonblocking socket could not be completed immediately */
+            return CLARINET_EWOULDBLOCK;
         case WSAEINPROGRESS:                /* A blocking operation is currently executing. Winsock only allows a single blocking operation—per-task/thread */
         case WSAEALREADY:                   /* In other cases when an operation is already in progress a function may fail with WSAEALREADY. */        
             return CLARINET_EALREADY;       
@@ -172,9 +168,9 @@ clarinet_socket_option_to_sockopt(int* restrict optlevel,
 }
 
 CLARINET_INLINE
-int
+void
 clarinet_socket_free(clarinet_socket** spp,
-    void(*destructor)(clarinet_socket* sp))
+                     void(*destructor)(clarinet_socket* sp))
 {
     if (destructor)
     {
@@ -184,12 +180,11 @@ clarinet_socket_free(clarinet_socket** spp,
     }
     clarinet_free(*spp);
     *spp = NULL;
-    return CLARINET_ENONE;
 }
 
 
 CLARINET_INLINE
-int
+void
 clarinet_socket_free_and_cleanup(clarinet_socket** spp,
                                  void(*destructor)(clarinet_socket* sp))
 {
@@ -203,7 +198,6 @@ clarinet_socket_free_and_cleanup(clarinet_socket** spp,
     *spp = NULL;
     /* At this point any error produced by WSACleanup is irrelevant because there is nothing the end user can do */
     WSACleanup();
-    return CLARINET_ENONE;
 }
 
 int
@@ -256,7 +250,8 @@ clarinet_socket_close(clarinet_socket** spp,
                 }
                 else
                 {
-                    return clarinet_socket_free_and_cleanup(spp, destructor);
+                    clarinet_socket_free_and_cleanup(spp, destructor);
+                    return CLARINET_ENONE;
                 }
             }
         }
@@ -266,23 +261,25 @@ clarinet_socket_close(clarinet_socket** spp,
         switch (wsaerr)
         {
             /* It's not clear in the documentation when/why/how closesocket() would return WSAENETDOWN and what to do in
-             * that case. Could the network recover and the socket still be valid? Are there any resources still
+             * that case. Could the network recover and the socket still be valid? Would resources still be
              * acquired? For now assuming the socket is in an unrecoverable state. */
-        case WSAENETDOWN:
-        /* WSANOTINITIALISED and WSAENOTSOCK means the socket is in an unrecoverable state so the only thing to do is
-         * free the allocated memory */
-        case WSANOTINITIALISED:
-        case WSAENOTSOCK:
-            return clarinet_socket_free(spp, destructor);
-        /* Anything else should include only WSAEINPROGRESS and WSAEINTR which are not expected because the
-         * pseudo-blocking facilities of WinSock 1 are not used and the socket can only be in non-blocking mode
-         * but if anything unexpected is returned the user can at least be made aware and try to close again */
-        default:
-            return clarinet_error_from_wsaerr(wsaerr);
+            case WSAENETDOWN:
+            /* WSANOTINITIALISED and WSAENOTSOCK means the socket is in an unrecoverable state so the only thing to do 
+             * is free the allocated memory */
+            case WSANOTINITIALISED:
+            case WSAENOTSOCK:
+                clarinet_socket_free(spp, destructor);
+                return CLARINET_ENONE;
+            /* Anything else should include only WSAEINPROGRESS and WSAEINTR which are not expected because the
+             * pseudo-blocking facilities of WinSock 1 are not used and the socket can only be in non-blocking mode
+             * but if anything unexpected is returned the user can at least be made aware and try to close again */
+            default:
+                return clarinet_error_from_wsaerr(wsaerr);
         }
     }
 
-    return clarinet_socket_free_and_cleanup(spp, destructor);
+    clarinet_socket_free_and_cleanup(spp, destructor);
+    return CLARINET_ENONE;
 }
 
 int
@@ -299,4 +296,54 @@ clarinet_socket_get_endpoint(clarinet_socket* restrict sp,
         return clarinet_error_from_wsaerr(WSAGetLastError());
 
     return clarinet_endpoint_from_sockaddr(endpoint, &ss);
+}
+
+int
+clarinet_socket_send(clarinet_socket* restrict sp,
+                     const void* restrict buf,
+                     size_t len,
+                     const clarinet_endpoint* restrict dst)
+{
+    if (!sp || !buf || !dst || len > INT_MAX)
+        return CLARINET_EINVAL;
+    
+    if (len == 0)
+        return CLARINET_ENONE;
+       
+    struct sockaddr_storage ss;
+    const int errcode = clarinet_endpoint_to_sockaddr(&ss, dst);
+    if (errcode != CLARINET_ENONE)
+        return errcode;
+    
+    const int n = sendto(sp->handle, buf, (int)len, 0, (struct sockaddr*)&ss, sizeof(ss));
+    if (n < 0)
+        return clarinet_error_from_wsaerr(WSAGetLastError());
+    
+    return (int)n;
+}
+
+int
+clarinet_socket_recv(clarinet_socket* restrict sp,
+                     void* restrict buf,
+                     size_t len,
+                     clarinet_endpoint* restrict src)
+{
+     if (!sp || !buf || len == 0 || len > INT_MAX || !src)
+        return CLARINET_EINVAL;
+          
+    struct sockaddr_storage ss;   
+    int slen = sizeof(ss);
+    const int n = recvfrom(sp->handle, buf, (int)len, 0, (struct sockaddr*)&ss, &slen);
+    if (n < 0)
+        return clarinet_error_from_wsaerr(WSAGetLastError());
+    
+    /* Sanity: improbable but possible */
+    if (slen > sizeof(ss))
+        return CLARINET_EADDRNOTAVAIL;
+    
+    const int errcode = clarinet_endpoint_from_sockaddr(src, &ss);
+    if (errcode != CLARINET_ENONE)
+        return CLARINET_EADDRNOTAVAIL;
+
+    return (int)n;
 }

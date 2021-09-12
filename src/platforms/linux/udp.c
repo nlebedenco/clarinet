@@ -37,6 +37,16 @@ clarinet_udp_open(clarinet_udp_socket** spp,
     const int errcode = clarinet_endpoint_to_sockaddr(&ss, local);
     if (errcode != CLARINET_ENONE)
         return errcode;
+    
+    const uint32_t ipv6dual = flags & clarinet_socket_option_to_flag(CLARINET_SO_IPV6DUAL);
+    if (ipv6dual && (local->addr.family != CLARINET_AF_INET6 || !(CLARINET_FEATURE_IPV6DUAL & clarinet_get_features())))
+        return CLARINET_EINVAL;
+    
+    const int ipv6only = ipv6dual ? 0 : 1;
+    const int reuseaddrport = (flags & clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR)) ? 1 : 0;
+    const int ttl = settings->ttl;
+    const int sendbuf = (int)settings->send_buffer_size;
+    const int recvbuf = (int)settings->recv_buffer_size;
        
     int sockfd = socket(ss.ss_family, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd != INVALID_SOCKET)
@@ -45,13 +55,8 @@ clarinet_udp_open(clarinet_udp_socket** spp,
          * Technically IP_TTL is not required to fail on setsockopt so one should check whether IP_TTL is supported by 
          * using getsockopt first to get the current value and if getsockopt fails then IP_TTL is not supported but all 
          * windows versions since Windows Vista support this option. The same applies to IPV6_UNICAST_HOPS. */
-        const int reuseaddrport = (flags & clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR)) ? 1 : 0;
-        const int ipv6only = (flags & clarinet_socket_option_to_flag(CLARINET_SO_IPV6DUAL)) ? 0 : 1;
-        const int ttl = settings->ttl;
-        const int sendbuf = (int)settings->send_buffer_size;
-        const int recvbuf = (int)settings->recv_buffer_size;
         if ( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR
-    #if defined(SO_REUSEPORT) /* only documented for Linux >= 3.9 but may be present on some patched 2.6 (e.g. REHL 2.6.32) */
+    #if defined(SO_REUSEPORT) /* SO_REUSEPORT is only supported on Linux >= 3.9 but may be present on some patched 2.6 systems (e.g. REHL 2.6.32) */
          || setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR
     #endif 
          || setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (const char*)&sendbuf, sizeof(sendbuf)) == SOCKET_ERROR   
@@ -91,25 +96,20 @@ clarinet_udp_close(clarinet_udp_socket** spp)
 }
 
 int
+clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
+                          clarinet_endpoint* restrict endpoint)
+{
+    return clarinet_socket_get_endpoint((clarinet_socket*)sp, endpoint);
+}
+
+int
 clarinet_udp_send(clarinet_udp_socket* restrict sp,
                   const void* restrict buf,
                   size_t len,
                   const clarinet_endpoint* restrict dst)
 {
-    CLARINET_IGNORE(sp);
-    CLARINET_IGNORE(buf);
-    CLARINET_IGNORE(len);
-    CLARINET_IGNORE(dst);
-    return CLARINET_ENOSYS;
+    return clarinet_socket_send((clarinet_socket*)sp, buf, len, dst);
 }
-
-int
-clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
-                          clarinet_endpoint* restrict endpoint)
-{
-    return clarinet_socket_get_endpoint(&sp->base, endpoint);
-}
-
 
 int
 clarinet_udp_recv(clarinet_udp_socket* restrict sp,
@@ -117,11 +117,7 @@ clarinet_udp_recv(clarinet_udp_socket* restrict sp,
                   size_t len,
                   clarinet_endpoint* restrict src)
 {
-    CLARINET_IGNORE(sp);
-    CLARINET_IGNORE(buf);
-    CLARINET_IGNORE(len);
-    CLARINET_IGNORE(src);
-    return CLARINET_ENOSYS;
+    return clarinet_socket_recv((clarinet_socket*)sp, buf, len, src);   
 }
 
 int

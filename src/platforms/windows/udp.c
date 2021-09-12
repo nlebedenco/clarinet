@@ -46,6 +46,17 @@ clarinet_udp_open(clarinet_udp_socket** spp,
     int wsaerr = WSAStartup(wsa_version, &wsa_data);
     if (wsaerr != 0)
         return clarinet_error_from_wsaerr(wsaerr);
+
+    const uint32_t ipv6dual = flags & clarinet_socket_option_to_flag(CLARINET_SO_IPV6DUAL);
+    if (ipv6dual && (local->addr.family != CLARINET_AF_INET6 || !(CLARINET_FEATURE_IPV6DUAL & clarinet_get_features())))
+        return CLARINET_EINVAL;
+    
+    const DWORD ipv6only = ipv6dual ? 0 : 1;
+    const ULONG reuseaddr = (flags & clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR)) ? 1 : 0;
+    const ULONG exclusiveaddr = (~reuseaddr) & 1;   
+    const DWORD ttl = (DWORD)settings->ttl;
+    const int sendbuf = (int)settings->send_buffer_size;
+    const int recvbuf = (int)settings->recv_buffer_size;
      
     SOCKET sockfd = socket(ss.ss_family, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd != INVALID_SOCKET)
@@ -54,14 +65,8 @@ clarinet_udp_open(clarinet_udp_socket** spp,
          * Technically IP_TTL is not required to fail on setsockopt so one should check whether IP_TTL is supported by 
          * using getsockopt first to get the current value and if getsockopt fails then IP_TTL is not supported but all 
          * windows versions since Windows Vista support this option. The same applies to IPV6_UNICAST_HOPS. */
-        const ULONG reuseaddr = (flags & clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR)) ? 1 : 0;
-        const ULONG exclusiveaddr = (~reuseaddr) & 1;
-        const DWORD ipv6only = (flags & clarinet_socket_option_to_flag(CLARINET_SO_IPV6DUAL)) ? 0 : 1;
-        const DWORD ttl = (DWORD)settings->ttl;
-        const int sendbuf = (int)settings->send_buffer_size;
-        const int recvbuf = (int)settings->recv_buffer_size;
-        if ( setsockopt(sockfd, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char*)&exclusiveaddr, sizeof(exclusiveaddr)) == SOCKET_ERROR
-         || setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddr, sizeof(reuseaddr)) == SOCKET_ERROR
+        if ( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddr, sizeof(reuseaddr)) == SOCKET_ERROR
+         || setsockopt(sockfd, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char*)&exclusiveaddr, sizeof(exclusiveaddr)) == SOCKET_ERROR
          || setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (const char*)&sendbuf, sizeof(sendbuf)) == SOCKET_ERROR   
          || setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (const char*)&recvbuf, sizeof(recvbuf)) == SOCKET_ERROR   
          || (ss.ss_family == AF_INET && setsockopt(sockfd, IPPROTO_IP, IP_TTL, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR)
@@ -73,6 +78,13 @@ clarinet_udp_open(clarinet_udp_socket** spp,
          || bind(sockfd, (struct sockaddr*)&ss, sizeof(ss)) == SOCKET_ERROR)
         {
             wsaerr = WSAGetLastError();
+            /* WSAEACCESS could only have been returned by bind() if the address is in effect in use by another socket 
+             * with SO_EXCLUSIVEADDRUSE or the address is a broadcast address but SO_BROADCAST was not enabled. In the 
+             * first case we would like to return CLARINET_EADDRINUSE instead of CLARINET_EACCESS because this is what 
+             * BSD platforms return and CLARINET_SO_REUSEADDR is defined as semantically equivalent to 
+             * [SO_REUSEADDR|SO_REUSEPORT] */
+             if (wsaerr == WSAEACCES && !clarinet_addr_is_broadcast(&local->addr))
+                 wsaerr = WSAEADDRINUSE;
             /* There is not much we can do if close fails here... 
              * perhaps log the additional error if logging is enabled. */
             closesocket(sockfd); 
@@ -101,25 +113,20 @@ clarinet_udp_close(clarinet_udp_socket** spp)
 }
 
 int
+clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
+                          clarinet_endpoint* restrict endpoint)
+{
+    return clarinet_socket_get_endpoint((clarinet_socket*)sp, endpoint);
+}
+
+int
 clarinet_udp_send(clarinet_udp_socket* restrict sp,
                   const void* restrict buf,
                   size_t len,
                   const clarinet_endpoint* restrict dst)
 {
-    CLARINET_IGNORE(sp);
-    CLARINET_IGNORE(buf);
-    CLARINET_IGNORE(len);
-    CLARINET_IGNORE(dst);
-    return CLARINET_ENOSYS;
+    return clarinet_socket_send((clarinet_socket*)sp, buf, len, dst);
 }
-
-int
-clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
-                          clarinet_endpoint* restrict endpoint)
-{
-    return clarinet_socket_get_endpoint(&sp->base, endpoint);
-}
-
 
 int
 clarinet_udp_recv(clarinet_udp_socket* restrict sp,
@@ -127,12 +134,9 @@ clarinet_udp_recv(clarinet_udp_socket* restrict sp,
                   size_t len,
                   clarinet_endpoint* restrict src)
 {
-    CLARINET_IGNORE(sp);
-    CLARINET_IGNORE(buf);
-    CLARINET_IGNORE(len);
-    CLARINET_IGNORE(src);
-    return CLARINET_ENOSYS;
+    return clarinet_socket_recv((clarinet_socket*)sp, buf, len, src);   
 }
+
 
 int
 clarinet_udp_set_option(clarinet_udp_socket* restrict sp,

@@ -637,6 +637,12 @@ else()
     check_struct_has_member("struct sockaddr" sa_len sys/socket.h HAVE_STRUCT_SOCKADDR_SA_LEN)
 endif()
 
+# Check SO_REUSEPORT support
+if(NOT WIN32)
+    file(READ ${CMAKE_HELPER_PATH}/check_so_reuseport.c C_SOURCE_SO_REUSEPORT)
+    check_c_source_compiles("${C_SOURCE_SO_REUSEPORT}" HAVE_SO_REUSEPORT)
+endif()
+
 # Check for IPv6 support by checking if sockaddr_in6 exists and has sin6_addr.
 if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6)
     if(WIN32)
