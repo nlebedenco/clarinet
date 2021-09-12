@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #ifndef PORTABILITY_H
 #define	PORTABILITY_H
 
@@ -16,17 +16,12 @@
  * compilers.
  ***********************************************************************************************************************/
 
-#if defined(HAVE_CONFIG_H)
+#if HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#if defined(HAVE_GNU_ASPRINTF) || defined(HAVE_GNU_VASPRINTF) 
+#if (HAVE_GNU_ASPRINTF || HAVE_GNU_VASPRINTF) 
 #define _GNU_SOURCE
-#endif
-
-/* Intellisense doesn't like the restrict keyword. */
-#ifdef __INTELLISENSE__
-    #define restrict 
 #endif
 
 /* Define a macro to force inline for internal use. */
@@ -47,9 +42,10 @@
 #define CLARINET_STATIC_INLINE static CLARINET_INLINE
 
 #include <stdarg.h>
+#include <stddef.h>
 
-#if defined(HAVE_STRLCAT)
-    #if defined(HAVE_STRLCAT_IN_BSD_STRING_H)
+#if HAVE_STRLCAT
+    #if HAVE_STRLCAT_IN_BSD_STRING_H
         #include <bsd/string.h>
     #endif
 #else
@@ -62,8 +58,8 @@
     #endif
 #endif /* HAVE_STRLCAT */
 
-#if defined(HAVE_STRLCPY)
-    #if defined(HAVE_STRLCPY_IN_BSD_STRING_H)
+#if HAVE_STRLCPY
+    #if HAVE_STRLCPY_IN_BSD_STRING_H
         #include <bsd/string.h>
     #endif
 #else
@@ -76,7 +72,7 @@
     #endif
 #endif /* HAVE_STRLCPY */
 
-#if !defined(HAVE_STRTOK_R)
+#if !HAVE_STRTOK_R
     #if defined(_WIN32)
         #define strtok_r(str, delim, saveptr)	        strtok_s(str, delim, saveptr)
     #else
@@ -95,12 +91,12 @@
 
 /* We want asprintf(), for some cases where we use it to construct dynamically-allocated variable-length strings. It's 
  * present on some, but not all, platforms. */
-#if !defined(HAVE_GNU_ASPRINTF)
+#if !HAVE_GNU_ASPRINTF
     int asprintf(char** restrict strp, 
                  const char* restrict fmt, ...);
 #endif
 
-#if !defined(HAVE_GNU_VASPRINTF)
+#if !HAVE_GNU_VASPRINTF
     int vasprintf(char** restrict strp, 
                   const char* restrict fmt, 
                   va_list ap);
@@ -136,11 +132,10 @@
 
 
 /* Define strerror_s if not available */
-#if !defined(HAVE_STRERROR_S)
-    #if defined(HAVE_STRERROR_R) && defined(HAVE_POSIX_STRERROR_R)        
+#if !HAVE_STRERROR_S
+    #if HAVE_STRERROR_R && HAVE_POSIX_STRERROR_R
         #define strerror_s(buf, buflen, errnum)         strerror_r(errnum, buf, buflen)
-    #elif defined(HAVE_STRERROR_R) && defined(HAVE_GNU_STRERROR_R)
-        #include <stddef.h>
+    #elif HAVE_STRERROR_R && HAVE_GNU_STRERROR_R
         int strerror_s(char* buf, size_t buflen, int errnum);       
     #else /* if there is no safe alternative for strerror_s define as if it returned an error itself */
         #include <errno.h>
@@ -148,8 +143,9 @@
     #endif    
 #endif
 
-#if defined(HAVE_FFS)
-    #if defined(HAVE_FFS_IN_STRINGS_H)
+
+#if HAVE_FFS
+    #if HAVE_FFS_IN_STRINGS_H
         #include "strings.h"
     #endif
 #else 
@@ -161,23 +157,57 @@
 
 /* Define max if not defined. */
 #ifndef max
-#define max(a,b)                                        (((a) (b)) ? (a) : (b))
+#define max(a,b) (((a) > (b)) ? (a) : (b))
 #endif
 
 /* Define min if not defined. */
 #ifndef min
-#define min(a,b)                                        (((a) < (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
 /* Include socket headers. */
 #if defined(_WIN32)
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <windows.h>    
+#include <windows.h> 
+typedef ADDRESS_FAMILY sa_family_t;
 #else /* BSD, Linux, macOS, iOS, Android, PS4, PS5 */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET (~0)
+#endif
+#ifndef SOCKET_ERROR
+#define SOCKET_ERROR (-1)
+#endif
 #endif
 
-#endif // PORTABILITY_H
+/* Fallback socklen_t */
+#if !HAVE_SOCKLEN_T
+typedef size_t socklen_t;
+#endif
+
+/* Fallback sockaddr_storage struct */
+#if !HAVE_STRUCT_SOCKADDR_STORAGE
+struct sockaddr_storage
+{   
+    union 
+    {
+        struct 
+        {
+            #if HAVE_STRUCT_SOCKADDR_SA_LEN
+            uint8_t ss_len;
+            #endif  
+            sa_family_t ss_family;
+        };
+#if HAVE_SOCKADDR_IN6_SIN6_ADDR
+        struct sockaddr_in6 __ss_padding;
+#else
+        struct sockaddr_in __ss_padding;
+#endif /* HAVE_SOCKADDR_IN6_SIN6_ADDR */
+    };
+};
+#endif /* !HAVE_STRUCT_SOCKADDR_STORAGE */
+
+#endif /* PORTABILITY_H */

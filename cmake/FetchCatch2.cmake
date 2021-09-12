@@ -29,7 +29,8 @@ FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG        432d03d1aab8472a0813c34a7f0e2e1a2c585d22
-  GIT_SHALLOW    1
+  # The GIT_SHALLOW option sometimes causes a git error ("reference is not a tree") for unknown reasons
+  # GIT_SHALLOW    1 
 )
 
 FetchContent_GetProperties(Catch2)

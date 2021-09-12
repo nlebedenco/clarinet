@@ -34,7 +34,7 @@ macro(target_test _target)
     # Export a symbol to indicate that we have a config.h auto generated.
     target_compile_definitions(${_target}
         PRIVATE
-            HAVE_CONFIG_H
+            HAVE_CONFIG_H=1
     )
         
     target_profiler(${_target})

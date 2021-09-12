@@ -1,4 +1,4 @@
-﻿#include "test.h"
+#include "test.h"
 
 TEST_CASE("Library Semantic Version", "[details][version]")      
 {
@@ -110,7 +110,7 @@ TEST_CASE("Library Protocol Flags", "[details][protocols]")
     REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_TLS);
     #endif
     
-    REQUIRE(protocols == CLARINET_PROTO_NONE);
+    REQUIRE(protocols == CLARINET_PROTO_SOCK);
 }
 
 TEST_CASE("Library Feature Flags", "[details][features]") 

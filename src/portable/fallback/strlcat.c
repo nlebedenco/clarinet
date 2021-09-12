@@ -25,38 +25,38 @@
  *
  * Returns strlen(src) + MIN(dsize, strlen(initial dst)). If retval >= dsize, truncation occurred.
  */
-#if !defined(HAVE_STRLCAT)
-    #if !defined(_MSC_VER) && !defined(__MINGW32__)
-        size_t
-        strlcat(char * restrict dst, const char * restrict src, size_t dsize)
+#if !HAVE_STRLCAT
+#if !defined(_MSC_VER) && !defined(__MINGW32__)
+size_t
+strlcat(char * restrict dst, const char * restrict src, size_t dsize)
+{
+    const char *odst = dst;
+    const char *osrc = src;
+    size_t n = dsize;
+    size_t dlen;
+
+    /* Find the end of dst and adjust bytes left but don't go past end. */
+    while (n-- != 0 && *dst != '\0')
+        dst++;
+    
+    dlen = (size_t)(dst - odst);
+    n = dsize - dlen;
+
+    if (n-- == 0)
+        return(dlen + strlen(src));
+    
+    while (*src != '\0') 
+    {
+        if (n != 0) 
         {
-            const char *odst = dst;
-            const char *osrc = src;
-            size_t n = dsize;
-            size_t dlen;
-
-            /* Find the end of dst and adjust bytes left but don't go past end. */
-            while (n-- != 0 && *dst != '\0')
-                dst++;
-            
-            dlen = dst - odst;
-            n = dsize - dlen;
-
-            if (n-- == 0)
-                return(dlen + strlen(src));
-            
-            while (*src != '\0') 
-            {
-                if (n != 0) 
-                {
-                    *dst++ = *src;
-                    n--;
-                }
-                src++;
-            }
-            *dst = '\0';
-
-            return(dlen + (src - osrc));	/* count does not include NUL */
+            *dst++ = *src;
+            n--;
         }
-    #endif
+        src++;
+    }
+    *dst = '\0';
+
+    return(dlen + (size_t)(src - osrc));	/* count does not include NUL */
+}
+#endif
 #endif    

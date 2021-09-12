@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
 #ifndef CLARINET_H
 #define CLARINET_H
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -14,7 +15,7 @@ extern "C" {
  * Utility macros
  **********************************************************************************************************************/
 
-/** Stringification. */
+/* Stringification. */
 #define CLARINET_STR(s)     #s
 #define CLARINET_XSTR(s)    CLARINET_STR(s)
 
@@ -90,9 +91,15 @@ extern "C" {
 
 #define CLARINET_API CLARINET_VISIBLITY extern
 
+#if defined(_WIN32)
+    #define CLARINET_CALLBACK __cdecl
+#else
+    #define CLARINET_CALLBACK
+#endif    
+
 /* 
- * Replace 'restrict' in C++ with somthing supported by the compiler.
- * And MSVC Intellisense doesn't like the restrict keyword. 
+ * Replace 'restrict' in C++ with something supported by the compiler.
+ * MSVC Intellisense doesn't like the restrict keyword either. 
  */
 #ifdef __INTELLISENSE__
     #define restrict 
@@ -128,51 +135,75 @@ extern "C" {
  * global consts which can be used for initialization.
  **********************************************************************************************************************/
 
-enum clarinet_errcode
-{
-    CLARINET_ENONE = 0,                         /* Success */ 
-    CLARINET_EFAIL = -1,                        /* Operation failed (unspecified error) */
-    CLARINET_ESHUTDOWN = -2,                    /* Not initialized */
-    CLARINET_EALREADY = -3,                     /* Operation already in progress */
-    CLARINET_EINVAL = -4,                       /* Invalid Argument */
-    CLARINET_ENOTSUP = -5,                      /* Operation is not supported */
-    CLARINET_EPERM = -6,                        /* Operation is not permitted */
-    CLARINET_EPROTO = -7,                       /* Protocol error */
-    CLARINET_EPROTONOSUPPORT = -8,              /* Protocol not supported */
-    CLARINET_ETIME = -9,                        /* Timeout */
-    CLARINET_EOVERFLOW = -10,                   /* Buffer overflow */
-    CLARINET_ENOSYS = -11,                      /* Function is not implemented */
-};
+#define CLARINET_ERRORS(E) \
+    E(CLARINET_EPERM,             "Operation is not permitted") \
+    E(CLARINET_ENOSYS,            "Operation is not implemented") \
+    E(CLARINET_EINTR,             "Operation interrupted") \
+    E(CLARINET_EIO,               "I/O error") \
+    E(CLARINET_ENOMEM,            "Not enough memory") \
+    E(CLARINET_EACCES,            "Access denied") \
+    E(CLARINET_EINVAL,            "Invalid Argument") \
+    E(CLARINET_ENOTREADY,         "Underlying system or device not ready") \
+    E(CLARINET_EALREADY,          "Operation is already in progress") \
+    E(CLARINET_ENOTSOCK,          "Operation attempted with an invalid socket descriptor") \
+    E(CLARINET_EMSGSIZE,          "Message too large") \
+    E(CLARINET_ENOPROTOOPT,       "Protocol option not available") \
+    E(CLARINET_EPROTONOSUPPORT,   "Protocol not supported") \
+    E(CLARINET_ENOTSUPP,          "Operation is not supported") \
+    E(CLARINET_ENOBUFS,           "Not enough buffer space or queue is full") \
+    E(CLARINET_EADDRINUSE,        "Address already in use") \
+    E(CLARINET_EADDRNOTAVAIL,     "Address is not available/cannot be assigned") \
+    E(CLARINET_ENETDOWN,          "Network is down") \
+    E(CLARINET_ENETUNREACH,       "Network is unreachable") \
+    E(CLARINET_ENETRESET,         "Network reset possibly due to keepalive timeout") \
+    E(CLARINET_ENOTCONN,          "Socket is not connected") \
+    E(CLARINET_EISCONN,           "Socket is already connected") \
+    E(CLARINET_ECONNABORTED,      "Connection aborted (closed locally)") \
+    E(CLARINET_ECONNRESET,        "Connection reset by peer (closed remotely)") \
+    E(CLARINET_ECONNSHUTDOWN,     "Connection is shutdown and cannot send") \
+    E(CLARINET_ECONNTIMEOUT,      "Connection timeout") \
+    E(CLARINET_ECONNREFUSED,      "Connection refused") \
+    E(CLARINET_EHOSTDOWN,         "Host is down") \
+    E(CLARINET_EHOSTUNREACH,      "No route to host.") \
+    E(CLARINET_EPROCLIM,          "Too many processes or tasks") \
+    E(CLARINET_EMFILE,            "Too many files") \
+    E(CLARINET_ELIBACC,           "Cannot access a needed shared library") \
+    E(CLARINET_ELIBBAD,           "Accessing a corrupted shared library") \
 
-typedef enum clarinet_errcode clarinet_errcode;
+#define CLARINET_DECLARE_ENUM_ITEM(e, s) e,
+
+enum clarinet_error
+{
+    CLARINET_ENONE = 0,                             /* Success */       
+    CLARINET_EDEFAULT = INT_MIN,                    /* Operation failed (unspecified error) */
+
+    CLARINET_ERRORS(CLARINET_DECLARE_ENUM_ITEM)     /* Specific error codes */
+};
 
 enum clarinet_proto
 {
-    CLARINET_PROTO_NONE = 0,                    /* None */
-    CLARINET_PROTO_UDP = (1 << 1),              /* User Datagram Protocol (RFC768) */
-    CLARINET_PROTO_DTLC = (1 << 2),             /* Datagram Transport Layer Connectivity (Custom) */
-    CLARINET_PROTO_DTLS = (1 << 3),             /* Datagram Transport Layer Security (RFC6347) */
-    CLARINET_PROTO_UDTP = (1 << 4),             /* User Datagram Transmission Protocol (Custom) */
-    CLARINET_PROTO_UDTPS = (1 << 5),            /* User Datagram Transmission Protocol Secure (Custom) */
-    CLARINET_PROTO_ENET = (1 << 6),             /* ENet (http://enet.bespin.org/index.html) */
-    CLARINET_PROTO_ENETS = (1 << 7),            /* ENet Secure (Custom) */
-    CLARINET_PROTO_TCP = (1 << 8),              /* Transmission Control Protocol (RFC793) */
-    CLARINET_PROTO_TLS = (1 << 9)               /* Transport Layer Security (RFC8446) */
+    CLARINET_PROTO_NONE  = 0,                   /* None */
+    CLARINET_PROTO_SOCK  = (1 <<  1),           /* Network layer abstraction provided by the system (currently either inet or inet6). */
+    CLARINET_PROTO_UDP   = (1 <<  2),           /* User Datagram Protocol (RFC768) */
+    CLARINET_PROTO_TCP   = (1 <<  3),           /* Transmission Control Protocol (RFC793) */    
+    CLARINET_PROTO_DTLC  = (1 <<  4),           /* Datagram Transport Layer Connectivity (Custom) */
+    CLARINET_PROTO_DTLS  = (1 <<  5),           /* Datagram Transport Layer Security (RFC6347) */
+    CLARINET_PROTO_UDTP  = (1 <<  6),           /* User Datagram Transmission Protocol (Custom) */
+    CLARINET_PROTO_UDTPS = (1 <<  7),           /* User Datagram Transmission Protocol Secure (Custom) */
+    CLARINET_PROTO_ENET  = (1 <<  8),           /* ENet (http://enet.bespin.org/index.html) */
+    CLARINET_PROTO_ENETS = (1 <<  9),           /* ENet Secure (Custom) */    
+    CLARINET_PROTO_TLS   = (1 << 10)            /* Transport Layer Security (RFC8446) */
 };
-
-typedef enum clarinet_proto clarinet_proto;
 
 enum clarinet_feature
 {
-    CLARINET_FEATURE_NONE = 0,                  /* None */
-    CLARINET_FEATURE_DEBUG = (1 << 0),          /* Debug information built-in */
-    CLARINET_FEATURE_PROFILE = (1 << 1),        /* Profiler instrumentation built-in */
-    CLARINET_FEATURE_LOG = (1 << 2),            /* Log built-in */
-    CLARINET_FEATURE_IPV6 = (1 << 3),           /* Support for IPv6 */
+    CLARINET_FEATURE_NONE     = 0,              /* None */
+    CLARINET_FEATURE_DEBUG    = (1 << 0),       /* Debug information built-in */
+    CLARINET_FEATURE_PROFILE  = (1 << 1),       /* Profiler instrumentation built-in */
+    CLARINET_FEATURE_LOG      = (1 << 2),       /* Log built-in */
+    CLARINET_FEATURE_IPV6     = (1 << 3),       /* Support for IPv6 */
     CLARINET_FEATURE_IPV6DUAL = (1 << 4)        /* Support for IPv6 in dual-stack mode */
 };
-
-typedef enum clarinet_feature clarinet_feature;
 
 CLARINET_API
 uint32_t
@@ -197,6 +228,40 @@ clarinet_get_protocols(void);
 CLARINET_API 
 uint32_t
 clarinet_get_features(void);
+
+CLARINET_API
+const char*
+clarinet_error_name(int err);
+
+CLARINET_API
+const char*
+clarinet_error_str(int err);
+
+
+/***********************************************************************************************************************
+ * Memory allocation
+ **********************************************************************************************************************/
+
+struct clarinet_allocator
+{
+    void* (CLARINET_CALLBACK * malloc)(size_t size);    /* (required) default is malloc() */
+    void  (CLARINET_CALLBACK * free)(void * memory);    /* (required) default is free() */
+    void  (CLARINET_CALLBACK * nomem)(void);            /* (optional) default is abort() */
+};
+
+typedef struct clarinet_allocator clarinet_allocator;
+
+CLARINET_API
+int
+clarinet_set_allocator(const clarinet_allocator* allocator);
+
+CLARINET_API
+void *
+clarinet_malloc(size_t size);
+
+CLARINET_API
+void
+clarinet_free(void* ptr);
 
 
 /***********************************************************************************************************************
@@ -260,8 +325,6 @@ enum clarinet_addr_family
     CLARINET_AF_INET = 2,
     CLARINET_AF_INET6 = 10 
 };
-
-typedef enum clarinet_addr_family clarinet_addr_family;
 
 /**
  * IP address
@@ -340,15 +403,6 @@ clarinet_addr_ipv4mapped_loopback;
  * e.g: [0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295]:65535 
  */
 #define CLARINET_ENDPOINT_STRLEN                        (CLARINET_ADDR_STRLEN + 8) 
-
-#define CLARINET_ADDR_NONE                              clarinet_addr_none
-#define CLARINET_ADDR_IPV4_ANY                          clarinet_addr_ipv4_any
-#define CLARINET_ADDR_IPV4_LOOPBACK                     clarinet_addr_ipv4_loopback
-#define CLARINET_ADDR_IPV4_BROADCAST                    clarinet_addr_ipv4_broadcast
-
-#define CLARINET_ADDR_IPV6_ANY                          clarinet_addr_ipv6_any
-#define CLARINET_ADDR_IPV6_LOOPBACK                     clarinet_addr_ipv6_loopback
-#define CLARINET_ADDR_IPV4MAPPED_LOOPBACK               clarinet_addr_ipv4mapped_loopback
 
 #define clarinet_addr_is_ipv4(addr)                     ((addr)->family == CLARINET_AF_INET)
 #define clarinet_addr_is_ipv6(addr)                     ((addr)->family == CLARINET_AF_INET6)
@@ -521,18 +575,25 @@ clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
 /**
  * Converts the addres pointed by src into a string in Internet standard format and store it in the buffer pointed by 
  * dst. CLARINET_EINVAL is returned if either src or dst are NULL, if the address pointed by src is invalid or dstlen 
- * is not enough to contain the complete string. On success returns the number of characters written into dst not 
+ * is not enough to contain the nul-terminated string. On success returns the number of characters written into dst not 
  * counting the terminating null character. IPv4 addresses are converted to decimal form ddd.ddd.ddd.ddd while IPv6 
  * addresses are converted according to RFC4291 and RFC5952 which favors the more compact form when more than one 
  * representation is possible. Additionally a numeric scope id may be appended following a '%' sign when the address 
- * scope id is non-zero. Note that addresses with a text scope id or an empty scope id are not supported. E.g: 
- * '::1%eth0' or '::1%', will never be produced and cannot be converted into valid address structures using 
- * clarinet_addr_from_string(3). On the other hand '::1' and '::1%0' are both valid representations containing a 
+ * scope id is non-zero. Addresses with a text scope id or an empty scope id are not supported. 
+ * E.g: '::1%eth0' or '::1%', will never be produced and cannot be converted into valid address structures using 
+ * clarinet_addr_from_string(). On the other hand '::1' and '::1%0' are both valid representations containing a 
  * numeric scope_id of zero although this function would only ever produce the former. Note that CLARINET_EINVAL is 
  * returned instead of CLARINET_ENOTSUP when src is a well formed IPv6 address but the library has not been compiled 
  * with ipv6 support. The src parameter in this case is considered invalid. This is consistent with the baehaviour of 
- * clarinet_address_from_string(3) which cannot determine if a string is a valid IPv6 address when the library has no 
- * IPv6 support compiled and thus has no other choice but to return CLARINET_EINVAL.
+ * clarinet_address_from_string() which cannot determine if a string is a valid IPv6 address when the library has no 
+ * IPv6 support compiled and thus has no other choice but to return CLARINET_EINVAL. 
+ * There are valid cases when the resulting string may not match an orignal string used to initialize the address E.g.: 
+ * '::1%00012345' is invalid because leading zeros are not allowed in the scope id but 
+ * '0000:0000:0000:0000:0000:0000:0000:1%00012345' is valid and when converted back the result will be the shorter form 
+ * '::1%12345'. Some platforms may tolerate the IPv4 dot-decimal notation inside an IPv6 address string to contain 
+ * leading zeros (e.g: windows) because the IPv6 format specification is unambiguous about the dot-notation (octal 
+ * numbers are not allowed). Yet some platforms may disallowed it completely (e.g: linux). As a rule of thumb leading 
+ * decimal zeros should be avoided.
  */
 CLARINET_API
 int 
@@ -546,7 +607,8 @@ clarinet_addr_to_string(char* restrict dst,
  * the size of the string pointed by src not counting the termination character. If src does not point to a valid 
  * address representation the function returns CLARINET_EINVAL. If either dst or src are NULL or src does not contain 
  * a valid address representation with exact srclen size the conversion fails and the function returns CLARINET_EINVAL. 
- * On success, returns CLARINET_ENONE.
+ * On success, returns CLARINET_ENONE. Note that leading zeros are not allowed in the ipv4 decimal notation and neither 
+ * in the ipv6 scope id.
  */
 CLARINET_API 
 int 
@@ -561,7 +623,12 @@ clarinet_addr_from_string(clarinet_addr* restrict dst,
  * not enough to contain the complete string. On success returns the number of characters written to dst not counting 
  * the terminating null character. Note that a port number is always included even if the port number is zero. If this 
  * is not desired, one can always check the port number is zero and use clarinet_addr_to_string passing the endpoint's 
- * addr field instead.
+ * addr field instead. 
+ * There are valid cases when the resulting string may not match an orignal string used to initialize the endpoint. 
+ * E.g.: '[::1%00012345]:00123' is not valid because of leading zeros in the scope id and port number but 
+ * '[0000:0000:0000:0000:0000:0000:0000:1%12345]:123' will produce an IPv6 endpoint with scope_id = 12345 and port 
+ * number = 123. When this endpoint is converted back to a string the result will be the shortest form 
+ * '[::1%12345]:123'.
  */
 CLARINET_API 
 int 
@@ -575,6 +642,7 @@ clarinet_endpoint_to_string(char* restrict dst,
  * endpoint representation the function returns CLARINET_EINVAL. If either dst or src are NULL or src does not contain
  * a valid endpoint representation with exact srclen size the conversion fails and the function returns CLARINET_EINVAL.
  * On success, returns CLARINET_ENONE. Note that a string without port number is not a valid endpoint representation.
+ * Leading zeros are not allowed in the port number, in the ipv4 decimal fields or in the ipv6 scope id.
  */
 CLARINET_API
 int
@@ -584,23 +652,49 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
 
 
 /***********************************************************************************************************************
- * UDP
+ * SOCKET
  *
- * Creates a UDP socket that can be open and bound to a local endpoint in a single operation using clarinet_udp_open(2).
- * The 'settings' parameter can specify options that must be configured before the bind and so cannot be modified by 
- * calling clarinet_udp_setopt(5). Sockets are blocking and dual stack is disabled by default despite some operating
- * systems having a specific configuration for it (e.g. sysctl:/proc/sys/net/ipv6/bindv6only on Linux). This is
- * to ensure portability is consistent and predictable. See UDP flags for more information. Timeout settings are ignored
- * if the socket is non-blocking. Binding is exact and exclusive so reuse-address follows the same semantics as in Linux 
- * with [SO_REUSEADDR|SO_REUSEPORT] or Windows with [SO_REUSEADDR|SO_EXCLUSIVEADDR]. There is no UDP "connect" 
- * functionality because dgram packet delivery rules may be substantially different between platforms. On BSD/Linux 
- * (including macOS) when a UDP socket is bound to a foreign address by connect(2) it effectively assumes a 5-tuple 
+ * All basic socket operations are non-blocking. There is no point in having blocking operations because to efficiently 
+ * support user space protocols the network stack is modelled assuming a lockstep loop with bottom-up update and 
+ * top-down flush. It must be possible to handle multiple sockets in a single thread and a layer must be able to respond
+ * to time events even in the abscense of incoming data.
+ *
+ * All sockets are represented as pointers to opaque types and thus can only be manipulated by their corresponding 
+ * protocol API.
+ *
+ * The socket is open and bound to a local endpoint in a single operation. All the options provided in settings are 
+ * applied BEFORE binding and cannot be modifiedr by calling clarinet_xxx_setopt(). By default, sockets are blocking 
+ * with dual stack disabled despite some operating systems having a specific configuration for it 
+ * (e.g. sysctl:/proc/sys/net/ipv6/bindv6only on Linux). This strategy provides consistency and predictability. See 
+ * clarinet_socket_option for details. Send/Recv timeouts are not defined because they do not apply to non-blocking
+ * sockets.
+ *
+ * By default, no two sockets can be bound to the same combination of source address and source port. As long as the
+ * source port is different, the source address is actually irrelevant. Binding socketA to ipA:portA and socketB to
+ * ipB:portB is always possible if ipA != ipB holds true, even when portA == portB. E.g. socketA belongs to a FTP server
+ * program and is bound to 192.168.0.1:21 and socketB belongs to another FTP server program and is bound to 10.0.0.1:21,
+ * both bindings will succeed. Keep in mind, though, that a socket may be locally bound to "any address". If a socket is
+ * bound to 0.0.0.0:21, it is bound to all existing local addresses at the same time and in that case no other socket
+ * can be bound to port 21, regardless which specific IP address it tries to bind to, as 0.0.0.0 conflicts with all
+ * existing local IP addresses.
+ * 
+ * Binding with CLARINET_SO_REUSEADDR always implies exact address reuse unless explicitly unsupported by the platform
+ * in which case at least the default behaviour of SO_REUSEADDR as described in BSD is guaranteed. On Windows, Linux, 
+ * macOS and any other BSD compatible platform using CLARINET_SO_REUSEADDR allows a socket to reuse the exact same
+ * source address and source port of another socket previously bound as long as that other socket also had
+ * CLARINET_SO_REUSEADDR enabled. This is accomplished by setting SO_REUSEPORT|SO_REUSEADDR on macOS and Linux when
+ * CLARINET_SO_REUSEADDR is enabled. On Windows SO_REUSEADDR is set when CLARINET_SO_REUSEADDR is enabled and
+ * SO_EXCLUSIVEADDRUSE is set when CLARINET_SO_REUSEADDR is disabled.
+ * 
+ *
+ * There is no clarinet_udp_connect() because dgram delivery rules may be quite different between platforms. On Unix 
+ * (including macOS) when a UDP socket is bound to a foreign address by connect() it effectively assumes a 5-tuple 
  * identity so when a dgram arrives the system first selects all sockets associated with the src address of the 
  * packet and then picks the socket with the most specific local address matching the destination address of the 
- * packet. On windows however, UDP associations established with connect(2) do not affect routing. They only serve as 
- * defaults for send(2) and recv(2) so on Windows all UDP sockets have a foreign address *:* and the first entry 
+ * packet. On windows however, UDP associations established with connect() do not affect routing. They only serve as 
+ * defaults for send() and recv() so on Windows all UDP sockets have a foreign address *:* and the first entry 
  * on the routing table with a local address that matches the destination address of the arriving packet is picked. This
- * basically prevents UDP servers from ever using connect(2) and operate with multiple sockets as with TCP. Besides 
+ * basically prevents UDP servers from ever using connect() and operate with multiple sockets as with TCP. Besides 
  * "connected" UDP sockets by definition prevent upper layers from implementing any support to IP mobility.
  *
  * Note that besides platform support, dual-stack also requires a local IPv6 address (either an explicit one or the 
@@ -613,143 +707,201 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
  * appropriately and only use them with dual stack sockets. If an IP address is to be passed to a regular IPv4 socket, 
  * the address must be a regular IPv4 address not a IPv4MappedToIPv6 address. 
  *
- * An application with a UDP socket bound to [::] (IPv6) and dual-stack enabled occupies the port on both IPv6 and IPv4. 
- * Therefore a second UDP socket cannot be bound to 0.0.0.0 (IPv4 only) on the same port unless 
- * CLARINET_UDP_FLAG_REUSEADDR is used. Note however that in this particular case it is impossible to determine which 
+ * An application with a socket bound to [::] (IPv6) and dual-stack enabled occupies the port on both IPv6 and IPv4. 
+ * Therefore a second socket cannot be bound to 0.0.0.0 (IPv4 only) with the same protocol on the same port unless 
+ * CLARINET_SO_REUSEADDR is used. Note however that in this particular case it is impossible to determine which 
  * socket will handle incoming IPv4 packets and behaviour will depend on the operating system.
+ *
  **********************************************************************************************************************/
-
-/**
- * Flags used to specify immediate boolean options to clarinet_udp_open(3).
- */
-enum clarinet_udp_flag
-{
-    CLARINET_UDP_FLAG_NONE = 0,
-    CLARINET_UDP_FLAG_NONBLOCK = (1 << 0),
-    CLARINET_UDP_FLAG_REUSEADDR = (1 << 1),
-    CLARINET_UDP_FLAG_IPV6DUAL = (1 << 2)
-};
-
-typedef enum clarinet_udp_flag clarinet_udp_flag;
-
+ 
 /** 
- * Socket option identifiers. Options corresponding to flags are conveniently defined in the range [1, 32] so we can 
- * transform option to flag easily with clarinet_udp_option_to_flag(opt). All other options are associated with 
+ * Socket options corresponding to flags are conveniently defined in the range [1, 32] so they can be internally 
+ * converted to flags more efficiently using clarinet_socket_option_to_flag. All other options are associated with 
  * non-boolean values and thus are defined in the range [33, 65535].
  */
-enum clarinet_udp_option
+enum clarinet_socket_option
 {
-    CLARINET_UDP_OPTION_NONE = 0,
+    CLARINET_SO_NONE = 0,
     
-    CLARINET_UDP_OPTION_NONBLOCK = 1,
-    CLARINET_UDP_OPTION_REUSEADDR = 2,
-    CLARINET_UDP_OPTION_IPV6DUAL = 3,
+    /* Flags */
+    CLARINET_SO_REUSEADDR,
+    CLARINET_SO_KEEPALIVE,
+    CLARINET_SO_IPV6DUAL,
     
-    CLARINET_UDP_OPTION_ERROR = 33,
-    CLARINET_UDP_OPTION_SNDBUF = 34,
-    CLARINET_UDP_OPTION_RCVBUF = 35,
-    CLARINET_UDP_OPTION_SNDTIMEO = 36,
-    CLARINET_UDP_OPTION_RCVTIMEO = 37,
-    CLARINET_UDP_OPTION_TTL = 38
+    /* Properties */
+    CLARINET_SO_ERROR = 33,
+    CLARINET_SO_SNDBUF,
+    CLARINET_SO_RCVBUF,
+    CLARINET_SO_TTL,
+    CLARINET_SO_LINGER,
+    CLARINET_SO_DONTLINGER, /* disable linger without affecting the timeout already configured - in TCP forces a RST and no TIME_WAIT on close*/
 };
 
-typedef enum clarinet_udp_option clarinet_udp_option;
+/** 
+ * Converts a clarinet_socket_option 'opt' in the range [1, 32] to a bitmask = 2^(x-1) without branching. The macro 
+ * produces 0 if opt <= 0 and 2^(opt-1 mod 32) if opt >= 33. 
+ *
+ * The number of bits in an enum clarinet_socket_option type is determined at compile time by 
+ * (sizeof(clarinet_socket_option) << 3) then (opt-1) is negated and the most significant bit is shifted n-1 bits to yield 
+ * either 0 or 1 and form the first operand of the actual bitmask shift. Finally ((opt-1) & 0x1F) is used as the second 
+ * operand to shift left no more than 31 bits. Note that if 'opt' is a compile time constant then all this is calculated 
+ * at compile time so no runtime penalty.
+ */
+#define clarinet_socket_option_to_flag(opt)    (uint32_t)(((~((uint32_t)((opt) -1))) >> ((sizeof(uint32_t) << 3)-1)) << (((uint32_t)((opt) -1)) & 0x1F))
+
 
 /**
- * These are options the user can only set when the udp socket is open. This is due to most platforms providing distinct 
- * operations for creating and binding a socket and not allowing certain options to be modified after bind. Since we 
- * combine creation and binding in a single operation (clarinet_udp_open(3)) this is the only opportunity to setup 
- * these options. Note that platforms may impose different limits on each option which might also depend on system 
- * configuration. For example, Linux imposes a limit on the sizes of RCVBUF and SNDBUF which is adjustable via sysctl. 
- * For send_timeout and recv_timeout a value of 0 effectively disables the timeout in all platforms, that is,  
- * the respective operation will never timeout but some platforms may impose a minimum latency for the timeout. 
- * Anecdotal evidence suggests some Windows versions impose a minimum of 500ms.
+ * These are options the users can only set when the socket is first open. This is due to platforms providing distinct 
+ * operations for creation and binding of a socket and not allowing certain options to be modified after bind. Since we 
+ * combine creation and binding in a single operation there is no other opportunity to setup these options. Note that 
+ * platforms may impose different limitations on each option which might also depend on system configuration. 
+ * For example, Linux imposes a limit on the sizes of RCVBUF and SNDBUF which is adjustable via sysctl. 
  */
-struct clarinet_udp_settings
+struct clarinet_socket_settings
 {
     uint32_t send_buffer_size;      /* send buffer size in bytes */
     uint32_t recv_buffer_size;      /* receive buffer size in bytes */
-    uint32_t send_timeout;          /* send timeout in milliseconds */
-    uint32_t recv_timeout;          /* receive timeout in milliseconds */
     uint8_t ttl;                    /* packet time-to-live (hop limit on ipv6) */
 };
 
-typedef struct clarinet_udp_settings clarinet_udp_settings;
+
+/***********************************************************************************************************************
+ * UDP
+ **********************************************************************************************************************/
+
+typedef struct clarinet_udp_socket clarinet_udp_socket;
+typedef struct clarinet_socket_settings clarinet_udp_settings;
 
 CLARINET_API 
 const clarinet_udp_settings 
 clarinet_udp_settings_default;
 
-#define CLARINET_UDP_SETTINGS_DEFAULT       clarinet_udp_settings_default
-
-/** 
- * Converts a clarinet_udp_option 'opt' in the range [1, 32] to a bitmask = 2^(opt-1) without branching. The macro 
- * produces 0 if opt <= 0 and 2^(opt-1 mod 32) if opt >= 33. 
- *
- * The number of bits in an enum clarinet_udp_option type is determined at compile time by 
- * (sizeof(clarinet_udp_option) << 3) then (opt-1) is negated and the most significant bit is shifted n-1 bits to yield 
- * either 0 or 1 and form the first operand of the actual bitmask shift. Finally ((opt-1) & 0x1F) is used as the second 
- * operand to shift left no more than 31 bits. Note that if 'opt' is a compile time constant then all this is calculated 
- * at compile time so no runtime penalty.
- */
-#define clarinet_udp_option_to_flag(opt)    (((~((clarinet_udp_option)(opt) -1)) >> ((sizeof(clarinet_udp_option) << 3)-1)) << (((clarinet_udp_option)(opt) -1) & 0x1F))
-
-/**
- *
- */
 CLARINET_API 
-int 
-clarinet_udp_open(const clarinet_endpoint* restrict endpoint, 
+int
+clarinet_udp_open(clarinet_udp_socket** spp,
+                  const clarinet_endpoint* restrict endpoint, 
                   const clarinet_udp_settings* restrict settings,
                   uint32_t flags);
 
-/**
- *
- */
 CLARINET_API 
 int 
-clarinet_udp_close(int sockfd);
+clarinet_udp_close(clarinet_udp_socket** spp);
 
-/**
- *
- */
+CLARINET_API
+int
+clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
+                          clarinet_endpoint* restrict endpoint);
+
 CLARINET_API 
 int 
-clarinet_udp_send(int sockfd, 
+clarinet_udp_send(clarinet_udp_socket* restrict sp,
                   const void* restrict buf,
                   size_t len, 
                   const clarinet_endpoint* restrict dst);
-/**
- *
- */
 CLARINET_API 
 int 
-clarinet_udp_recv(int sockfd, 
+clarinet_udp_recv(clarinet_udp_socket* restrict sp,
                   void* restrict buf, 
                   size_t len, 
                   clarinet_endpoint* restrict src);
 
-/**
- *
- */
 CLARINET_API 
 int 
-clarinet_udp_setopt(int sockfd, 
+clarinet_udp_set_option(clarinet_udp_socket* restrict sp,
+                        int proto, 
+                        int optname,
+                        const void* restrict optval, 
+                        size_t optlen);
+
+CLARINET_API 
+int 
+clarinet_udp_get_option(clarinet_udp_socket* restrict sp,
+                        int proto, 
+                        int optname, 
+                        void* restrict optval, 
+                        size_t* restrict optlen);
+
+
+/***********************************************************************************************************************
+ * TCP
+ **********************************************************************************************************************/
+
+/* For now there is no option to disable delayed acks because only Linux and Windows seem to provide the means to do it 
+ * and yet there are several conflicting details. See https://github.com/dotnet/runtime/issues/798 for a discussion on 
+ * the topic. 
+ */
+enum clarinet_tcp_option
+{
+    /* Options */
+    CLARINET_TCP_NODELAY = 33,
+    CLARINET_TCP_KEEPCNT,
+    CLARINET_TCP_KEEPIDLE,
+    CLARINET_TCP_KEEPINTVL,
+};
+
+typedef struct clarinet_tcp_socket clarinet_tcp_socket;
+typedef struct clarinet_socket_settings clarinet_tcp_settings;
+
+CLARINET_API 
+const clarinet_tcp_settings 
+clarinet_tcp_settings_default;
+
+CLARINET_API 
+int
+clarinet_tcp_listen(clarinet_tcp_socket** restrict spp,
+                    const clarinet_endpoint* restrict local, 
+                    const clarinet_udp_settings* restrict settings,
+                    uint32_t flags);
+
+CLARINET_API 
+int 
+clarinet_tcp_connect(clarinet_tcp_socket** restrict spp,
+                     const clarinet_endpoint* restrict local, 
+                     const clarinet_endpoint* restrict remote, 
+                     const clarinet_udp_settings* restrict settings,
+                     uint32_t flags);
+
+
+CLARINET_API 
+int 
+clarinet_tcp_close(clarinet_tcp_socket** spp);
+
+CLARINET_API
+int
+clarinet_tcp_get_endpoint(clarinet_tcp_socket* restrict sp,
+                          clarinet_endpoint* restrict endpoint);
+
+CLARINET_API 
+int 
+clarinet_tcp_send(clarinet_tcp_socket* restrict sp,
+                  const void* restrict buf,
+                  size_t len, 
+                  const clarinet_endpoint* restrict dst);
+
+CLARINET_API 
+int 
+clarinet_tcp_recv(clarinet_tcp_socket* restrict sp,
+                  void* restrict buf, 
+                  size_t len, 
+                  clarinet_endpoint* restrict src);
+
+CLARINET_API 
+int 
+clarinet_tcp_setopt(clarinet_tcp_socket* restrict sp,
                     int proto, 
                     int optname,
                     const void* restrict optval, 
                     size_t optlen);
 
-/**
- *
- */
 CLARINET_API 
 int 
-clarinet_udp_getopt(int sockfd, 
+clarinet_tcp_getopt(clarinet_tcp_socket* restrict sp,
                     int proto, 
                     int optname, 
                     void* restrict optval, 
                     size_t* restrict optlen);
+
+
 
 
 /***********************************************************************************************************************
@@ -760,7 +912,7 @@ clarinet_udp_getopt(int sockfd,
  * support either server or client authentication.
  * 
  * The underlying UDP socket must be non-blocking so the flag CLARINET_UDP_FLAG_NONBLOCK is automatically added if not 
- * provided by the user in clarinet_enet_open(3).
+ * provided by the user in clarinet_enet_open().
  **********************************************************************************************************************/
 
 /***********************************************************************************************************************
@@ -771,7 +923,7 @@ clarinet_udp_getopt(int sockfd,
  * <https://datatracker.ietf.org/doc/draft-ietf-tls-dtls-connection-id/>
  *
  * The underlying UDP socket must be non-blocking so the flag CLARINET_UDP_FLAG_NONBLOCK is automatically added if not 
- * provided by the user in clarinet_enet_open(3).
+ * provided by the user in clarinet_enet_open().
  **********************************************************************************************************************/
 
 /***********************************************************************************************************************
@@ -795,23 +947,19 @@ clarinet_udp_getopt(int sockfd,
  * Creates an ENet socket following the same protocol proposed and implemented by Lee Salzman at
  * <http://enet.bespin.org/index.html>. This implementation differs slightly from the original in terms of control but 
  * the protocol should be 100% compatible. This was required because the original ENet implementation was IPv4 only and 
- * employed a single update function (enet_host_service(3)) that also serves to poll for network events whereas all 
+ * employed a single update function (enet_host_service()) that also serves to poll for network events whereas all 
  * protocol interfaces implemeted by Clarinet communicate network events when a recv is performed and rely on two 
  * separate update chains - one for receiving data up the stack (update) and another for sending data down the stack 
  * (flush).
  *
  * The underlying UDP socket must be non-blocking so the flag CLARINET_UDP_FLAG_NONBLOCK is automatically added if not 
- * provided by the user in clarinet_enet_open(3).
+ * provided by the user in clarinet_enet_open().
  **********************************************************************************************************************/
 
 /***********************************************************************************************************************
  * ENETS
  *
  * Creates an ENet socket based on a non-blocking DTLS socket instead of UDP.
- **********************************************************************************************************************/
-
-/***********************************************************************************************************************
- * TCP
  **********************************************************************************************************************/
 
 /***********************************************************************************************************************

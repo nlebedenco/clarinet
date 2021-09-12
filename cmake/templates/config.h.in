@@ -32,6 +32,9 @@
 /* Define to 1 if you have the <stdint.h> header file. */
 #cmakedefine HAVE_STDINT_H 1
 
+/* Define to 1 if you have the <limits.h> header file. */
+#cmakedefine HAVE_LIMITS_H 1
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #cmakedefine HAVE_INTTYPES_H 1
 
@@ -146,7 +149,7 @@
 #cmakedefine HAVE_CLOCK_GETTIME 1
 
 /* Define to 1 if you have ffs(3) */
-#cmakedefine HAVE_FFS
+#cmakedefine HAVE_FFS 1
 
 /* Define to 1 if 'ffs' is declared in strings.h */
 #cmakedefine HAVE_FFS_IN_STRINGS_H 1

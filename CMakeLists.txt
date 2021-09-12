@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.18)
 
 # For project version variables
 if(POLICY CMP0048)
@@ -290,32 +290,26 @@ macro(target_compile_warnings _target)
         if(MSVC AND NOT CLANG)
             # Enable all warnings first
             target_compile_option(${_target} PRIVATE -Wall)
-
             # In theory, we care whether somebody uses f() rather than f(void) to declare a function with no arguments,
             # but, in practice, there are places in the Windows header files that appear to do that, so we squelch that
             # warning.
             target_compile_option(${_target} PRIVATE -wd4255)
-
             # Windows FD_SET() generates this, so we suppress it.
             target_compile_option(${_target} PRIVATE -wd4548)
-
             # Perhaps testing something #defined to be 0 with #ifdef is an error, and it should be tested with #if, but
             # perhaps it's not, and Microsoft does that in its headers, so we squelch that warning.
             target_compile_option(${_target} PRIVATE -wd4574)
-
             # The Windows headers also test not-defined values in #if, so we don't want warnings about that, either.
             target_compile_option(${_target} PRIVATE -wd4668)
-
             # Disable warnings about whether a function is, or isn't, going to be expanded inline.
             target_compile_option(${_target} PRIVATE -wd4710)
             target_compile_option(${_target} PRIVATE -wd4711)
-
             # Disable warnings about whether we're adding padding bytes after structure members.
             target_compile_option(${_target} PRIVATE -wd4820)
-
             # Disable warnings about Spectre mitigation
             target_compile_option(${_target} PRIVATE -wd5045)
-
+            # Disable warnings about implicit int to float conversion
+            target_compile_option(${_target} PRIVATE -wd5219)
             # Treat all (remaining) warnings as errors.
             target_compile_option(${_target} PRIVATE -WX)
         else()
@@ -323,6 +317,10 @@ macro(target_compile_warnings _target)
             # them as if they all support GCC-style -W options.
             target_compile_option(${_target} PRIVATE -Wall)
             target_compile_option(${_target} PRIVATE -Wcomma)
+            target_compile_option(${_target} PRIVATE -Wconversion)
+            target_compile_option(${_target} PRIVATE -Wimplicit-int-conversion)
+            target_compile_option(${_target} PRIVATE -Wfloat-conversion)
+            target_compile_option(${_target} PRIVATE -Wimplicit-float-conversion)
             # The concept of covered switch default is not safe in C because enums are not strongly-typed.
             target_compile_option(${_target} PRIVATE -Wno-covered-switch-default)
             target_compile_option(${_target} PRIVATE -Wdocumentation)
@@ -385,7 +383,7 @@ check_required_include_file(stdarg.h HAVE_STDARG_H)
 check_required_include_file(string.h HAVE_STRING_H)
 check_required_include_file(stddef.h HAVE_STDDEF_H)
 check_required_include_file(stdint.h HAVE_STDINT_H)
-check_required_include_file(stdbool.h HAVE_STDBOOL_H)
+check_required_include_file(limits.h HAVE_LIMITS_H)
 
 check_include_file(float.h HAVE_FLOAT_H)
 check_include_file(setjmp.h HAVE_SETJMP_H)
@@ -393,7 +391,9 @@ check_include_file(inttypes.h HAVE_INTTYPES_H)
 
 # Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
 if(NOT WIN32)
-    check_include_file(unistd.h HAVE_UNISTD_H)
+    if (UNIX)
+        check_required_include_file(unistd.h HAVE_UNISTD_H)
+    endif()   
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
     check_include_file(sys/stat.h HAVE_SYS_STAT_H)
     check_include_file(sys/socket.h HAVE_SYS_SOCKET_H)
@@ -448,15 +448,11 @@ if(NOT WIN32)
     check_function_exists(strlcat HAVE_STRLCAT)
     if (NOT HAVE_STRLCAT)
         cmake_push_check_state()
-            # Some systems might have it through libbsd. On many Linux distros this requires libbsd-dev package to be 
-            # installed which might not be.
+            # Some systems might have it through libbsd but we don't want to force a dependency.
             set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-            list(APPEND CMAKE_REQUIRED_LIBRARIES bsd) 
-            check_symbol_exists(strlcat "bsd/string.h" LIBBSD_HAS_STRLCAT)
-            if (LIBBSD_HAS_STRLCAT)
-                list(APPEND PRIVATE_LINK_LIBRARIES bsd)
+            check_symbol_exists(strlcat "bsd/string.h" HAVE_STRLCAT)
+            if (HAVE_STRLCAT)
                 set(HAVE_STRLCAT_IN_BSD_STRING_H TRUE)
-                set(HAVE_STRLCAT TRUE)
             endif()    
         cmake_pop_check_state()
     endif()
@@ -464,15 +460,12 @@ if(NOT WIN32)
     check_function_exists(strlcpy HAVE_STRLCPY)
     if (NOT HAVE_STRLCPY)
         cmake_push_check_state()
-            # Some systems might have it through libbsd. On many Linux distros this requires libbsd-dev package to be 
+            # Some systems might have it through libbsd but we don't want to force a dependency.
             # installed which might not be.
             set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-            list(APPEND CMAKE_REQUIRED_LIBRARIES bsd)
-            check_symbol_exists(strlcpy "bsd/string.h" LIBBSD_HAS_STRLCPY)
-            if (LIBBSD_HAS_STRLCPY)
-                list(APPEND PRIVATE_LINK_LIBRARIES bsd)
+            check_symbol_exists(strlcpy "bsd/string.h" HAVE_STRLCPY)
+            if (HAVE_STRLCPY)
                 set(HAVE_STRLCPY_IN_BSD_STRING_H TRUE)
-                set(HAVE_STRLCPY TRUE)
             endif()    
         cmake_pop_check_state()
     endif()
@@ -633,8 +626,8 @@ cmake_push_check_state()
     else()
         set(CMAKE_EXTRA_INCLUDE_FILES unistd.h sys/socket.h)
     endif()
-    check_type_size("struct sockaddr_storage" HAVE_STRUCT_SOCKADDR_STORAGE)
-    check_type_size("socklen_t" HAVE_SOCKLEN_T)
+    check_type_size("socklen_t" SOCKLEN_T)
+    check_type_size("struct sockaddr_storage" STRUCT_SOCKADDR_STORAGE)
 cmake_pop_check_state()
 
 # Check if sockaddr has sa_len.
@@ -757,6 +750,8 @@ target_sources(${PROJECT_NAME}
 # Add platform specific sources. 
 target_sources(${PROJECT_NAME}
     PRIVATE
+        src/platforms/${PROJECT_SYSTEM_NAME}/sys.h
+        src/platforms/${PROJECT_SYSTEM_NAME}/sys.c
         src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
         src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
 )
@@ -838,7 +833,7 @@ endif()
 # Export a symbol to indicate that we have a config.h auto generated.
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
-        HAVE_CONFIG_H
+        HAVE_CONFIG_H=1
 )
 
 # Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that
@@ -880,10 +875,11 @@ if(MINGW)
 endif()
 
 # Report target library type
+message(STATUS "BUILD_SHARED_LIBS is ${BUILD_SHARED_LIBS}")
 if (BUILD_SHARED_LIBS)
-    message(STATUS "Target library type is SHARED")
+    message(STATUS "(building ${PROJECT_NAME} as a shared lib)")
 else()
-    message(STATUS "Target library type is STATIC")
+    message(STATUS "(building ${PROJECT_NAME} as a static lib)")
 endif()
 
 # Setup profiler instrumentation
@@ -895,7 +891,7 @@ message(STATUS "Static runtime is ${${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT}")
 if(BUILD_SHARED_LIBS)
     target_static_runtime(${PROJECT_NAME})
 else()
-    message(STATUS "Ignoring option ${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT for target ${PROJECT_NAME} (irrelevant for static libraries).")
+    message(STATUS "Ignoring option ${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT for target ${PROJECT_NAME} (irrelevant when BUILD_SHARED_LIBS is OFF).")
 endif ()
 
 message(STATUS "Stack protection is ${${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION}")

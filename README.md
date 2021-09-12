@@ -1,29 +1,55 @@
 # Clarinet
 
+## Platforms
+
+  - Windows >= 7
+  - Linux Ubuntu >= 9.04 (Jaunty Jackalope)
+  - macOS >= 10.6 (Snow Leopard)
+  
+Other relatively modern UN\*X platforms such as FreeBSD should be supported but are not tested.
+
+## Dependencies
+
+There are no imposed 3rparty runtime dependencies. The build option CLARINET_USE_STATIC_RT can be used to force link 
+to the static system runtime lib in case even the dependency on a shared libc is not desired. 
+
+### Windows
+
+Winsock 2 is required and can only be dynamically loaded, there is no static option, much like user32.dll and 
+kernel32.dll. 
+
+### UN\*X
+
+Some unix systems other than Linux may require specific shared network libraries such as libsocket (which requires 
+libnsl), libnetwork and/or libxnet.
+
 ## Build
 
-### Dependencies
+### Requirements
+
+  - CMake >- 3.18
+  - A C compiler that supports C99
+  - A CXX compiler that supports C++11 (only to build tests)
+  - Git >= 2.18
+  - (optional) Visual Studio >= 2015 (for MSVC >= 1900 and test explorer)
+
+As far as compilers go any of MSVC >= 1900, GCC >= 4.6 or CLANG >= 3.0 should do. 
 
 [Git](https://git-scm.com/docs/git) is required to automatically download submodules and the test framework.
 
-All 3rdparty submodules are configured to produce static libraries linked into the main target. Not only it simplifies 
-installation, it also contributes to consistent functionality regardless of the state of the system we deploy into.
+[Catch2](https://github.com/catchorg/Catch2) is automatically fetched from git and only used to build unit tests.
 
-#### MbedTLS 
+All submodules are configured to produce static libraries linked into the main target. Not only it simplifies 
+installation, it also contributes to keep functionality consistent regardless of the state of the system we deploy 
+into.
 
 [MbedTLS](https://github.com/ARMmbed/mbedtls) requires Python3 to generate test code and sample programs in the 
 development branch but not having python should be ok since we only build the target libraries.
 
-#### ENet
-
-[ENet](https://github.com/lsalzman/enet) has no special requirements but it relies on gethostbyname(), inet_ntoa() and 
-gethostbyaddr() which are deprecated on Windows so the compiler will issue warning C4996. This is not silenced on 
-purpose because deprecation warnings serve to remind developers that something must be done or the project will break 
-soon. Since this is a 3rdparty project, we need to track updates or eventually submit a PR to address the issue.
 
 ### CMake
 
-#### Un*x
+#### UN\*X
 
 ```
 mkdir /path/to/build_dir 
@@ -181,12 +207,13 @@ After building, all tests can be launched as follows:
 
 ```
 cd \path\to\build_dir
-ctest -C <CONFIG>
+ctest . -C <CONFIG> --output-on-failure
 ```
 
 where `<CONFIG>` is the build type used. It may be ommited when using single-config generators but is required by 
 multi-config generators such as the Visual Studio generator on Windows. See the 
 [ctest(1)](https://cmake.org/cmake/help/latest/manual/ctest.1.html) documentation page for more details. 
+The `--output-on-failure` argument is optional and provides extended information about failures (useful for debugging). 
 
 The variable `BUILD_TESTING` is used to control whether tests are configured. Default value is ON. 
 
@@ -204,6 +231,8 @@ rebuild if the executable is out-of-date.
 
 ## TODO
 
+- Add feature to enable/disable ipv6 scope id: CLARINET_ENABLE_IPV6_SCOPE_ID/CLARINET_FEATURE_IPV6_SCOPE_ID dependent on 
+  HAVE_SOCKADDR_IN6_SCOPE_ID. Adjust functions and tests accordingly.
 - Support IPv4 broadcast and IPv4/IPv6 multicast in the udp interface
 - Test cmake generator using "-T ClangCL" on windows to ensure all conditions on MSVC are supported by the clang-cl too
 - Add C# wrapper

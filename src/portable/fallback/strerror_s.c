@@ -1,11 +1,9 @@
 #include "portability.h"
 
-#if !defined(HAVE_STRERROR_S) \
-  && defined(HAVE_STRERROR_R) \
-  && !defined(HAVE_POSIX_STRERROR_R) \
-  && defined(HAVE_GNU_STRERROR_R)
-
+#include <string.h>
 #include <errno.h>
+
+#if !HAVE_STRERROR_S && HAVE_STRERROR_R && !HAVE_POSIX_STRERROR_R && HAVE_GNU_STRERROR_R
 
 /**
  * An strerror_s implementation based on GNU strerror_r.

@@ -1,0 +1,2 @@
+target_test(test_udp_interface)
+target_sources(test_udp_interface PRIVATE src/test_udp_interface.cpp)

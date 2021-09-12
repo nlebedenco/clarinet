@@ -11,14 +11,12 @@
 #include <assert.h>
 
 int 
-clarinet_endpoint_to_sockaddr(struct sockaddr* restrict dst,
-                              size_t dstlen,
+clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
                               const clarinet_endpoint* restrict src);
 
 int 
 clarinet_endpoint_from_sockaddr(clarinet_endpoint* restrict dst,
-                                const struct sockaddr* restrict src,
-                                size_t srclen);
+                                const struct sockaddr_storage* restrict src);
 
 
 CLARINET_STATIC_INLINE 
@@ -29,7 +27,7 @@ clarinet_addr_ipv4_to_inet(struct in_addr* restrict dst,
     memcpy(dst, src, min(sizeof(struct in_addr), sizeof(union clarinet_addr_ipv4_octets)));
 }
 
-#if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
 CLARINET_STATIC_INLINE 
 void 
 clarinet_addr_ipv6_to_inet6(struct in6_addr* restrict dst, 
@@ -47,7 +45,7 @@ clarinet_addr_ipv4_from_inet(union clarinet_addr_ipv4_octets* restrict dst,
     memcpy(dst, src, min(sizeof(struct in_addr), sizeof(union clarinet_addr_ipv4_octets)));
 }
 
-#if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
 CLARINET_STATIC_INLINE 
 void 
 clarinet_addr_ipv6_from_inet6(union clarinet_addr_ipv6_octets* restrict dst,
@@ -72,8 +70,11 @@ clarinet_addr_ipv4_from_string(clarinet_addr* restrict dst,
     
     if (srclen >= 7) /* minimum ipv4 is 0.0.0.0 */
     {
-        /* use a temp buffer to ensure the string is null-terminated */
-        char s[INET_ADDRSTRLEN] = {0};
+        /* Use a temp buffer to ensure the string is null-terminated. INET_ADDRSTRLEN already accounts for the 
+         * nul-termination character but we still add one more position to be able to detect when src contains anything
+         * beyond the max address string so that "255.255.255.255!", "255.255.255.255!!", etc... can be be rejected.
+         */
+        char s[INET_ADDRSTRLEN+1] = {0};
         const size_t m = min(srclen, sizeof(s) - 1); /* srclen does not count the null-termination char */
         strlcpy(s, src, m + 1);                      /* size here must include the nul-termination char */        
         struct in_addr addr = {0};
@@ -89,7 +90,7 @@ clarinet_addr_ipv4_from_string(clarinet_addr* restrict dst,
     return CLARINET_EINVAL;
 }
 
-#if defined(HAVE_SOCKADDR_IN6_SIN6_ADDR)
+#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
 CLARINET_STATIC_INLINE
 int
 clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
@@ -116,12 +117,13 @@ clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
     uint32_t k = 1;
     uint32_t scope_id = 0;            
     size_t n = srclen;
+    uint32_t inc = 0;
     while (n > 0) 
     {
         const char c = src[n-1];
         if (isdigit(c) && digits < 10)
         {
-            const uint32_t inc = k * (uint32_t)(c - '0');
+            inc = k * (uint32_t)(c - '0');
             if (inc > (UINT32_MAX - scope_id)) /* neither a valid scope id nor an ipv6 address field */
                 return CLARINET_EINVAL;
 
@@ -131,6 +133,9 @@ clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
         }
         else if (c == '%') /* end of the scope id */
         { 
+            if (inc == 0 && digits > 1) /* leading digit cannot be a zero unless this is a single-0 number */
+                return CLARINET_EINVAL;
+                
             n--; /* consume the '%' */
             break;
         }
@@ -146,8 +151,12 @@ clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
     /* At this point scope_id contains a valid value and n is the size of the REMAINING ipv6 address */
     if (n >= 2) /* a minimum ipv6 string is "::" */
     {
-         /* use a temp buffer to ensure the string is null-terminated */
-        char s[INET6_ADDRSTRLEN] = {0};
+        /* Use a temp buffer to ensure the string is null-terminated. INET6_ADDRSTRLEN already accounts for the 
+         * nul-termination character but we still add one more position to be able to detect when src contains anything
+         * beyond the max address string so that "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf!", 
+         * "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf!!", etc... can be be rejected.
+         */
+        char s[INET6_ADDRSTRLEN+1] = {0};
         const size_t m = min(n, sizeof(s) - 1); /* srclen does not count the null-termination char */
         strlcpy(s, src, m + 1);                 /* size here must include the nul-termination char */
         struct in6_addr addr = {0};

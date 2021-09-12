@@ -7,13 +7,17 @@
 #include "config.h" 
 #endif
 
-#include <cstdint>
+#include <cstdarg>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cctype>
 #include <climits>
 #include <cstring>
 #include <string>
+#include <iomanip>
+#include <iostream>
+#include <type_traits>
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -34,10 +38,6 @@
 #define FROM(i)                 INFO(format("GENERATE INDEX %d", (i)))
 
 #define EXPLAIN(fmt, ...)       INFO(format(fmt, __VA_ARGS__))
-
-template<typename T>
-T* 
-coalesce(T* p, T* fallback) { return (p == NULL) ? fallback : p; }
 
 static inline 
 std::string 
@@ -123,11 +123,78 @@ private:
 };
 
 template<typename Range>
-auto 
-Equals(const Range& range) -> EqualsRangeMatcher<Range> { return EqualsRangeMatcher<Range>{range}; }
+EqualsRangeMatcher<Range>
+Equals(const Range& range) { return EqualsRangeMatcher<Range>{range}; }
 
 static inline 
-auto 
-Equals(const char* range) -> StringEqualsMatcher { return Equals(std::string(range)); }
+StringEqualsMatcher
+Equals(const char* range) { return Equals(std::string(range)); }
 
+template< class T >
+struct is_ordinal: std::integral_constant<bool, std::is_integral<T>::value || std::is_enum<T>::value>{};
+                     
+template <typename T, typename = typename std::enable_if<is_ordinal<T>::value>::type>
+struct HexadecimalFormatter
+{   
+    T value;    
+    HexadecimalFormatter(const T& _value): value(_value) { }   
+};
+
+template<typename T>
+HexadecimalFormatter<T>
+Hex(const T& value) { return HexadecimalFormatter<T>(value); }
+
+template <typename T, typename U>
+inline bool
+operator==(const HexadecimalFormatter<T>& lhs, const HexadecimalFormatter<U>& rhs) { return (uint64_t)lhs.value == (uint64_t)(rhs.value); }   
+
+
+template <typename T, typename U>
+inline bool
+operator<(const HexadecimalFormatter<T>& lhs, const HexadecimalFormatter<U>& rhs) { return (uint64_t)lhs.value < (uint64_t)(rhs.value); }       
+
+template<typename T>
+std::ostream& operator<<( std::ostream& os, HexadecimalFormatter<T> const& value ) { return os << "0x" << std::hex << std::setw((sizeof(T) * 2)) << std::setfill('0') << value.value; }
+
+
+template <typename T, typename = typename std::enable_if<is_ordinal<T>::value>::type>
+struct ErrorFormatter
+{
+    enum clarinet_error value;
+    ErrorFormatter(const T& _value): value((clarinet_error)_value) { }
+};
+
+template<typename T>
+ErrorFormatter<T>
+Error(const T& value) { return ErrorFormatter<T>(value); }
+
+template <typename T, typename U>
+inline bool
+operator==(const ErrorFormatter<T>& lhs, const ErrorFormatter<U>& rhs) { return (int64_t)lhs.value == (int64_t)(rhs.value); }
+
+template <typename T, typename U>
+inline bool
+operator==(const T& lhs, const ErrorFormatter<U>& rhs) { return ErrorFormatter<T>(lhs) == rhs; }
+
+template <typename T, typename U>
+inline bool
+operator==(const ErrorFormatter<T>& lhs, const U& rhs) { return lhs == ErrorFormatter<U>(rhs); }
+
+template <typename T, typename U>
+inline bool
+operator<(const ErrorFormatter<T>& lhs, const ErrorFormatter<U>& rhs) { return (int64_t)lhs.value < (int64_t)(rhs.value); }
+
+template <typename T, typename U>
+inline bool
+operator<(const T& lhs, const ErrorFormatter<U>& rhs) { return ErrorFormatter<T>(lhs) < rhs; }
+
+template <typename T, typename U>
+inline bool
+operator<(const ErrorFormatter<T>& lhs, const U& rhs) { return lhs < ErrorFormatter<U>(rhs); }
+
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const ErrorFormatter<T>& value) { return os << clarinet_error_name(value.value); }
+
+ 
 #endif /* CLARINET_TESTS_TEST_H */
