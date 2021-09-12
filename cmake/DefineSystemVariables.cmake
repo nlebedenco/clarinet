@@ -1,4 +1,4 @@
-﻿# Guard agains multiple includes.
+# Guard agains multiple includes.
 if( _SYSTEM_VARIABLES_DEFINED_ )
     return()
 endif()

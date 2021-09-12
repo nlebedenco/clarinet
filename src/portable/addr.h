@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #ifndef PORTABLE_ADDR_H
 #define PORTABLE_ADDR_H
 

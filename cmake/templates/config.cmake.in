@@ -1,4 +1,4 @@
-﻿get_filename_component(CLARINET_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(CLARINET_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
 if(NOT TARGET @PACKAGE_NAME@::@PACKAGE_NAME@)
     include("${CLARINET_CMAKE_DIR}/@PACKAGE_NAME@Targets.cmake")

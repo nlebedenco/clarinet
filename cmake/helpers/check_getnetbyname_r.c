@@ -1,4 +1,4 @@
-﻿#include <netdb.h>
+#include <netdb.h>
 
 int main(void) 
 {
