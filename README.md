@@ -2,11 +2,18 @@
 
 ## Platforms
 
-  - Windows >= 7
-  - Linux Ubuntu >= 9.04 (Jaunty Jackalope)
-  - macOS >= 10.6 (Snow Leopard)
+  - Windows >= 7 (tested on Windows 10.19042.1165)
+  - Linux kernel >= 2.6. (tested Ubuntu 20.04.3)
+  - macOS >= 10.6 (tested OSX 10.15 Catalina)
   
-Other relatively modern UN\*X platforms such as FreeBSD should be supported but are not tested.
+Other relatively UN\*X platforms such as Solarias and FreeBSD should be supported but are not tested.
+
+  - Android: ?
+  - iOS: ?
+  - tvOS: ?
+  - watchOS: ?
+  - Orbis (PS4): ?
+  - Durango (XboxOne): ?
 
 ## Dependencies
 

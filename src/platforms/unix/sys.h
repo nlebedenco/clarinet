@@ -1,6 +1,6 @@
 #pragma once
-#ifndef PLATFORMS_LINUX_SYS_H
-#define PLATFORMS_LINUX_SYS_H
+#ifndef PLATFORMS_UNIX_SYS_H
+#define PLATFORMS_UNIX_SYS_H
 
 #include "portability.h"
 #include "clarinet/clarinet.h"
@@ -60,4 +60,4 @@ setsocknonblock(int sock)
     return ioctl(sock, FIONBIO, &mode);  
 }
                      
-#endif /* PLATFORMS_LINUX_SYS_H */
+#endif /* PLATFORMS_UNIX_SYS_H */

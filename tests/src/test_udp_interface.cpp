@@ -322,7 +322,7 @@ TEST_CASE("Open/Close", "[udp]")
     }
 }
 
-TEST_CASE("Get End Point", "[udp]")
+TEST_CASE("Get Endpoint", "[udp]")
 {    
     const std::vector<std::tuple<int, clarinet_endpoint>> data =
     {

@@ -43,6 +43,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H 1
 
+/* Define to 1 if you have the <errno.h> header file. */
+#cmakedefine HAVE_ERRNO_H
+
 /* Define to 1 if you have the <sys/bitypes.h> header file. */
 #cmakedefine HAVE_SYS_BITYPES_H 1
 
@@ -65,15 +68,18 @@
 #cmakedefine HAVE_SYS_SOCKIO_H 1
 
 
-/***************************
- * Non-standard functions
- ***************************/
+/******************************************************
+ * Non-standard functions and symbols
+ ******************************************************/
 
-/* define if __atomic_load_n is supported by the compiler */
+/* define if __atomic_load_n is supported by the compiler. */
 #cmakedefine HAVE___ATOMIC_LOAD_N 1
 
-/* define if __atomic_store_n is supported by the compiler */
+/* define if __atomic_store_n is supported by the compiler. */
 #cmakedefine HAVE___ATOMIC_STORE_N 1
+
+/* Define to 1 if EAGAIN == EWOULDBLOCK. */
+#cmakedefine HAVE_EAGAIN_SAME_AS_EWOULDBLOCK 1
 
 /* Define to 1 if you have the `strerror' function. */
 #cmakedefine HAVE_STRERROR 1

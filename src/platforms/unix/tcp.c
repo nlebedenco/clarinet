@@ -1,8 +1,8 @@
-#include "platforms/linux/sys.h"
+#include "platforms/unix/sys.h"
 #include "portable/addr.h"
 
-#include <unistd.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <errno.h>
 #include <assert.h>
 

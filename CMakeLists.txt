@@ -109,6 +109,20 @@ include(DefineSystemVariables)
 # because CMAKE_SYSTEM_NAME might have been adjusted there (e.g. for cross-compilation).
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PROJECT_SYSTEM_NAME)
 
+# Define a project system family for sources that are shared among SOME sytems but not all. Otherwise such sources would
+# have to be copied in multiple platforms/${PROJECT_SYSTEM_NAME} folders. Note that in some cases both
+# ${PROJECT_SYSTEM_NAME} and ${PROJECT_SYSTEM_FAMILY} may have the same value (e.g. windows). For now we only really 
+# care about windows vs unix because all windows versions use winsock and all the unix systems we support (Linux and 
+# macOS) use BSD sockets but it's possible for a derivative system to require its own family definition if it needs
+# to use an alternative socket library.
+if (WIN32)
+    set(PROJECT_SYSTEM_FAMILY windows)
+elseif(UNIX)    
+    set(PROJECT_SYSTEM_FAMILY unix)
+else()    
+    set(PROJECT_SYSTEM_FAMILY undefined)
+endif()
+
 # Define original file name for dll details
 if(WIN32)
     if(BUILD_SHARED_LIBS)
@@ -390,16 +404,19 @@ check_include_file(setjmp.h HAVE_SETJMP_H)
 check_include_file(inttypes.h HAVE_INTTYPES_H)
 
 # Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
-if(NOT WIN32)
-    if (UNIX)
-        check_required_include_file(unistd.h HAVE_UNISTD_H)
-    endif()   
+if(UNIX)
+    check_required_include_file(unistd.h HAVE_UNISTD_H)
+    check_required_include_file(errno.h HAVE_ERRNO_H)        
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
     check_include_file(sys/stat.h HAVE_SYS_STAT_H)
     check_include_file(sys/socket.h HAVE_SYS_SOCKET_H)
     check_include_file(sys/select.h HAVE_SYS_SELECT_H)
     check_include_file(sys/ioccom.h HAVE_SYS_IOCCOM_H)
     check_include_file(sys/sockio.h HAVE_SYS_SOCKIO_H)
+
+    # Check if EAGAIN has the same value as EWOULDBLOCK
+    file(READ ${CMAKE_HELPER_PATH}/check_eagain.c C_SOURCE_EAGAIN)
+    check_c_source_runs("${C_SOURCE_EAGAIN}" HAVE_EAGAIN_SAME_AS_EWOULDBLOCK)
 endif()
 
 # Check for __atomic_load_n() and __atomic_store_n() builtins.
@@ -410,7 +427,7 @@ check_c_source_compiles("int main(void) { int i = 17; return __atomic_load_n(&i,
                         HAVE___ATOMIC_LOAD_N)
 check_c_source_compiles("int main(void) { int i; __atomic_store_n(&i, 17, __ATOMIC_RELAXED); return 0; }"
                         HAVE___ATOMIC_STORE_N)
-
+                       
 # Check for safe strerror functions defined in C11, GNU and POSIX.
 check_function_exists(strerror_s HAVE_STRERROR_S)
 check_function_exists(strerror_r HAVE_STRERROR_R)
@@ -753,13 +770,20 @@ target_sources(${PROJECT_NAME}
         src/portable/fallback/ffs.c
 )
 
-# Add platform specific sources. 
+# Add system family sources. 
 target_sources(${PROJECT_NAME}
     PRIVATE
-        src/platforms/${PROJECT_SYSTEM_NAME}/sys.h
-        src/platforms/${PROJECT_SYSTEM_NAME}/sys.c
-        src/platforms/${PROJECT_SYSTEM_NAME}/udp.c
-        src/platforms/${PROJECT_SYSTEM_NAME}/tcp.c
+        src/platforms/${PROJECT_SYSTEM_FAMILY}/sys.h
+        src/platforms/${PROJECT_SYSTEM_FAMILY}/sys.c
+        src/platforms/${PROJECT_SYSTEM_FAMILY}/udp.c
+        src/platforms/${PROJECT_SYSTEM_FAMILY}/tcp.c
+)
+
+# Add system specific sources. 
+target_sources(${PROJECT_NAME}
+    PRIVATE
+        # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.h
+        # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.c
 )
 
 # Set project version for platforms add that information to the binary
