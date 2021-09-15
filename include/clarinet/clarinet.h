@@ -102,7 +102,9 @@ extern "C" {
  * MSVC Intellisense doesn't like the restrict keyword either. 
  */
 #ifdef __INTELLISENSE__
-    #define restrict 
+    #ifndef restrict
+    #define restrict
+    #endif
 #elif defined(__cplusplus)
     #if defined(restrict)    
         #define RESTRICT_PREDEFINED 1

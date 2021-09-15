@@ -2,6 +2,7 @@
 #include "portable/addr.h"
 
 #include <synchapi.h>
+#include <assert.h>
 
 /* NOTES:
  *   - All calls to WSAGetLastError are thread-safe. Winsock keeps separate error codes pre-thread.

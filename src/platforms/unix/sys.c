@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <errno.h>
+#include <assert.h>
 
 /* NOTES:
  *   - All references to errno are thread-safe. POSIX guarantees that errno is a thread-specifc global.

@@ -24,6 +24,13 @@
 #define _GNU_SOURCE
 #endif
 
+/* Intellisense doesn't like the restrict keyword */
+#ifdef __INTELLISENSE__
+#ifndef restrict
+#define restrict
+#endif
+#endif
+
 /* Define a macro to force inline for internal use. */
 #if defined(_MSC_VER)
     #define CLARINET_INLINE __forceinline

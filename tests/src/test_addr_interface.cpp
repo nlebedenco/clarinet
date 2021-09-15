@@ -1522,13 +1522,7 @@ TEST_CASE("Address From String", "[address]")
             { 27, "127.0.0.001" },   
             { 28, "::1%00012345" },
             { 29, "0000:0000:0000:0000:0000:ffff:127.0.0.333" },
-            /* inet_pton(3) on Linux does not accept the IPv4 dot-decimal notation in the last dword containing leading 
-             * zeros like it does not accepted for IPv4 addresses in general, but on Windows it is valid to have 
-             * decimals with leading zeros inside an IPv6 address string (though not when inet_pton converts a pure 
-             * IPv4 address). */
-#if 0
-            {30, "0000:0000:0000:0000:0000:ffff:127.0.0.001"},
-#endif
+            { 30, "0000:0000:0000:0000:0000:ffff:127.0.0.001"},
             { 31, "0000:0000:0000:0000:0000:ffff:127.0.0.ff" },
             { 32, "0000:0000:0000:0000:0000:ffff:127.0.0.1%0000000000" },
             { 33, "127.0.0.333" },
@@ -1596,14 +1590,9 @@ TEST_CASE("Address From String", "[address]")
         custom_ipv6_feef_1886.as.ipv6.u.byte[13] = 0xEF;
         custom_ipv6_feef_1886.as.ipv6.u.byte[14] = 0x18;
         custom_ipv6_feef_1886.as.ipv6.u.byte[15] = 0x86;
-       
-        
-#if 0
-        /* Referenced in test instance 14 - keep this commented while the issue remains open */
+              
         clarinet_addr custom_ipv6_ffff_127_0_0_10 = clarinet_addr_ipv4mapped_loopback;
         custom_ipv6_ffff_127_0_0_10.as.ipv6.u.byte[15] = 10;
-#endif
-        
        
 #endif
 
@@ -1624,14 +1613,7 @@ TEST_CASE("Address From String", "[address]")
             { 11, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%12345",      "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%12345",      custom_ipv6_with_short_scope_id },
             { 12, "::F",                                                "::f",                                                custom_ipv6_f },
             { 13, "::FEEF:1886",                                        "::254.239.24.134",                                   custom_ipv6_feef_1886 }, /* CHECK: shouldn't ::FEEF:1886 be reconstructed as ::feef:1886 instead of ::254.239.24.134 ? */
-            /* inet_pton(3) on Linux does not accept the IPv4 dot-decimal notation in the last dword containing leading
-             * zeros like it does not accepted for IPv4 addresses in general, but on Windows it is valid to have
-             * decimals with leading zeros inside an IPv6 address string (though not when inet_pton converts a pure
-             * IPv4 address). */
-#if 0
-            {14, "0000:0000:0000:0000:0000:ffff:127.0.0.010",          "::ffff:127.0.0.10",                                  custom_ipv6_ffff_127_0_0_10},
-#endif
-
+            { 14, "0000:0000:0000:0000:0000:ffff:127.0.0.10",           "::ffff:127.0.0.10",                                  custom_ipv6_ffff_127_0_0_10},
 #endif
         };
 
