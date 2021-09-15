@@ -112,8 +112,8 @@ clarinet_decode_scope_id(uint32_t* scope_id,
         if (sid > (UINT32_MAX / 10))
             return CLARINET_EINVAL;
 
-        int value = sid * 10;
-        int inc = (c - '0');
+        uint32_t value = sid * 10;
+        uint32_t inc = (c - '0');
         if (inc > (UINT32_MAX - value))
             return CLARINET_EINVAL;
         
@@ -293,8 +293,8 @@ clarinet_pton6(struct in6_addr* restrict addr,
         if (tp == endp)
             return CLARINET_EINVAL;
 
-        const int n = tp - colonp;
-        for (int i = 1; i <= n; i++)
+        const size_t n = tp - colonp;
+        for (i = 1; i <= n; i++)
         {
             endp[-i] = colonp[n - i]; /* endp[-i] is equivalent to *(endp - i) */
             colonp[n - i] = 0;
