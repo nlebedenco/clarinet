@@ -641,7 +641,7 @@ clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
             memset(dst, 0, sizeof(struct sockaddr_in6));
             
             #if HAVE_STRUCT_SOCKADDR_SA_LEN
-            add->sin6_len = sizeof(struct sockaddr_in6);
+            addr->sin6_len = sizeof(struct sockaddr_in6);
             #endif
             addr->sin6_family = AF_INET6;
             addr->sin6_port = src->port;
