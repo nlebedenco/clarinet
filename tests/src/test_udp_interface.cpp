@@ -171,24 +171,14 @@ TEST_CASE("Open/Close", "[udp]")
 
         clarinet_endpoint second = { loopback.addr, first.port };
         clarinet_udp_socket* other_socket = nullptr;
-        errcode = clarinet_udp_open(&other_socket, &second, &clarinet_udp_settings_default, clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR));        
-        #if HAVE_EXACT_REUSEADDR        
+        
+        errcode = clarinet_udp_open(&other_socket, &second, &clarinet_udp_settings_default, clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR));
         REQUIRE(Error(errcode) == Error(CLARINET_EADDRINUSE));
         REQUIRE(other_socket == nullptr);
-        #else
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        REQUIRE(other_socket != nullptr);
-        #endif
     
         errcode = clarinet_udp_close(&socket);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(socket == nullptr);
-
-        #if !HAVE_EXACT_REUSEADDR
-        errcode = clarinet_udp_close(&other_socket);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        REQUIRE(other_socket == nullptr);
-        #endif        
     }
     
     SECTION("Open loopback same port twice - both without REUSEADDR")
@@ -273,23 +263,16 @@ TEST_CASE("Open/Close", "[udp]")
 
         clarinet_udp_socket* other_socket = nullptr;
         errcode = clarinet_udp_open(&other_socket, &local_endpoint, &clarinet_udp_settings_default, flags);
-        #if HAVE_EXACT_REUSEADDR
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(other_socket != nullptr);
-        #else
-        REQUIRE(Error(errcode) == Error(CLARINET_EADDRINUSE));
-        REQUIRE(other_socket == nullptr);
-        #endif    
         
         errcode = clarinet_udp_close(&socket);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(socket == nullptr);
 
-        #if HAVE_EXACT_REUSEADDR
         errcode = clarinet_udp_close(&other_socket);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(other_socket == nullptr);
-        #endif
     }
     
     SECTION("Open any in dual stack mode")

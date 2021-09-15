@@ -212,11 +212,12 @@ clarinet_socket_send(clarinet_socket* restrict sp,
         return CLARINET_ENONE;
        
     struct sockaddr_storage ss;
-    const int errcode = clarinet_endpoint_to_sockaddr(&ss, dst);
+    socklen_t sslen;
+    const int errcode = clarinet_endpoint_to_sockaddr(&ss, &sslen, dst);
     if (errcode != CLARINET_ENONE)
         return errcode;
     
-    const ssize_t n = sendto(sp->handle, buf, len, 0, (struct sockaddr*)&ss, sizeof(ss));
+    const ssize_t n = sendto(sp->handle, buf, len, 0, (struct sockaddr*)&ss, sslen);
     if (n < 0)
         return clarinet_error_from_errno(errno);
     

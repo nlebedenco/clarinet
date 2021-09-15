@@ -1050,6 +1050,15 @@ if(NOT "${EXTRA_CFLAGS}" STREQUAL "")
     message(STATUS "Extra compile options: (${EXTRA_CFLAGS})")
 endif()
 
+if (APPLE)
+    # tell ranlib to ignore empty compilation units
+    set(CMAKE_C_ARCHIVE_FINISH   "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
+    set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
+    # prevents ar from invoking ranlib, let CMake do it
+    set(CMAKE_C_ARCHIVE_CREATE   "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
+endif()
+
 # Save configuration
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
 if (CMAKE_GENERATOR MATCHES "Visual Studio")

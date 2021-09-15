@@ -616,6 +616,7 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
 
 int
 clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
+                              socklen_t* restrict dstlen,
                               const clarinet_endpoint* restrict src)
 {
     if (src && dst)
@@ -624,7 +625,8 @@ clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
         {
             struct sockaddr_in* addr = (struct sockaddr_in*)dst;
             memset(dst, 0, sizeof(struct sockaddr_in));
-            
+            if (dstlen)
+                *dstlen = sizeof(struct sockaddr_in);
             #if HAVE_STRUCT_SOCKADDR_SA_LEN
             addr->sin_len = sizeof(struct sockaddr_in);
             #endif
@@ -639,6 +641,8 @@ clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
         {
             struct sockaddr_in6* addr = (struct sockaddr_in6*)dst;
             memset(dst, 0, sizeof(struct sockaddr_in6));
+            if (dstlen)
+                *dstlen = sizeof(struct sockaddr_in6);
             
             #if HAVE_STRUCT_SOCKADDR_SA_LEN
             addr->sin6_len = sizeof(struct sockaddr_in6);
