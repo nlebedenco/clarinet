@@ -58,6 +58,17 @@ macro(target_test _target)
         target_compile_option(${_target} PRIVATE -wd5039)       
         # Disable warning about unscoped enum        
         target_compile_option(${_target} PRIVATE -wd26812)
+        # Disable warning for member variable not initialized
+        target_compile_option(${_target} PRIVATE -wd26495)    
+        # Disable warning about comparing signed/unsigned int
+        target_compile_option(${_target} PRIVATE -wd4388)     
+        # Disable warning for abstract/virtual class not having a virtual dtor */
+        target_compile_option(${_target} PRIVATE -wd5204)     
+    else()
+        # Disable warning about non-literal format strings
+        target_compile_option(${_target} PRIVATE -Wno-format-nonliteral)
+        # Catch2 does implicit convertions that changes sign and we can't avoid it.
+        target_compile_option(${_target} PRIVATE -Wno-sign-conversion)
     endif()
 
     target_include_directories(${_target}
@@ -99,7 +110,7 @@ set_target_properties(Catch2WithMain PROPERTIES
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(Catch)
 
-file(GLOB cmakeTestFiles ${CMAKE_CURRENT_SOURCE_DIR}/*.cmake)
+file(GLOB cmakeTestFiles ${CMAKE_CURRENT_SOURCE_DIR}/cmake/*.cmake)
 list(SORT cmakeTestFiles COMPARE NATURAL CASE INSENSITIVE ORDER ASCENDING)
 foreach(cmakeTestFile ${cmakeTestFiles})
     message("Including ${cmakeTestFile}")

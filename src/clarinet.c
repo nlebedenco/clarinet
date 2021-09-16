@@ -160,6 +160,7 @@ clarinet_default_free(void* ptr)
 }
 
 static 
+CLARINET_NORETURN
 void 
 clarinet_default_nomem(void) 
 { 

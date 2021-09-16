@@ -302,21 +302,22 @@ clarinet_socket_get_endpoint(clarinet_socket* restrict sp,
 int
 clarinet_socket_send(clarinet_socket* restrict sp,
                      const void* restrict buf,
-                     size_t len,
+                     size_t buflen,
                      const clarinet_endpoint* restrict dst)
 {
-    if (!sp || !buf || !dst || len > INT_MAX)
+    if (!sp || !buf || !dst || buflen > INT_MAX)
         return CLARINET_EINVAL;
     
-    if (len == 0)
+    if (buflen == 0)
         return CLARINET_ENONE;
        
     struct sockaddr_storage ss;
-    const int errcode = clarinet_endpoint_to_sockaddr(&ss, dst);
+    socklen_t sslen; 
+    const int errcode = clarinet_endpoint_to_sockaddr(&ss, &sslen, dst);
     if (errcode != CLARINET_ENONE)
         return errcode;
     
-    const int n = sendto(sp->handle, buf, (int)len, 0, (struct sockaddr*)&ss, sizeof(ss));
+    const int n = sendto(sp->handle, buf, (int)buflen, 0, (struct sockaddr*)&ss, sslen);
     if (n < 0)
         return clarinet_error_from_wsaerr(WSAGetLastError());
     
@@ -326,15 +327,15 @@ clarinet_socket_send(clarinet_socket* restrict sp,
 int
 clarinet_socket_recv(clarinet_socket* restrict sp,
                      void* restrict buf,
-                     size_t len,
+                     size_t buflen,
                      clarinet_endpoint* restrict src)
 {
-     if (!sp || !buf || len == 0 || len > INT_MAX || !src)
+     if (!sp || !buf || buflen == 0 || buflen > INT_MAX || !src)
         return CLARINET_EINVAL;
           
     struct sockaddr_storage ss;   
     int slen = sizeof(ss);
-    const int n = recvfrom(sp->handle, buf, (int)len, 0, (struct sockaddr*)&ss, &slen);
+    const int n = recvfrom(sp->handle, buf, (int)buflen, 0, (struct sockaddr*)&ss, &slen);
     if (n < 0)
         return clarinet_error_from_wsaerr(WSAGetLastError());
     

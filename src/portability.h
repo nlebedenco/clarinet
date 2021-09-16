@@ -1,6 +1,6 @@
 #pragma once
 #ifndef PORTABILITY_H
-#define	PORTABILITY_H
+#define    PORTABILITY_H
 
 /***********************************************************************************************************************
  * Configuration and portability definitions.
@@ -48,6 +48,26 @@
 
 #define CLARINET_STATIC_INLINE static CLARINET_INLINE
 
+/* Define a macro to no return for internal use. */
+#if defined(HAVE_STDRETURN_H)
+    #include <stdnoreturn.h>
+    #define CLARINET_NORETURN noreturn
+#else    
+    #if defined(_MSC_VER)
+        #define CLARINET_NORETURN __declspec(noreturn)
+    #elif defined(__GNUC__)
+        #define CLARINET_NORETURN __attribute__((noreturn))
+    #elif defined(__CLANG__)
+        #if __has_attribute(__noreturn__)
+            #define CLARINET_NORETURN __attribute__((__noreturn__))
+        #else
+            #define CLARINET_NORETURN
+        #endif
+    #else
+        #define CLARINET_NORETURN 
+    #endif
+#endif
+
 #include <stdarg.h>
 #include <stddef.h>
 
@@ -57,7 +77,7 @@
     #endif
 #else
     #if defined(_MSC_VER) || defined(__MINGW32__)
-        #define strlcat(dst, src, dstsize) 	            strncat_s((dst), (dstsize), (src), _TRUNCATE)
+        #define strlcat(dst, src, dstsize)                 strncat_s((dst), (dstsize), (src), _TRUNCATE)
     #else
         size_t strlcat(char* restrict dst, 
                        const char* restrict src, 
@@ -81,7 +101,7 @@
 
 #if !HAVE_STRTOK_R
     #if defined(_WIN32)
-        #define strtok_r(str, delim, saveptr)	        strtok_s(str, delim, saveptr)
+        #define strtok_r(str, delim, saveptr)            strtok_s(str, delim, saveptr)
     #else
         char* strtok_r(char *str, const char *delim, char **saveptr);
     #endif

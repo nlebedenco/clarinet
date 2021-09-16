@@ -19,24 +19,12 @@
 #include <iostream>
 #include <type_traits>
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#if (_MSC_VER >= 1800) /* Disable warnings we can't fix. */
-#pragma warning(disable : 26812)    /* disable warning for unscoped enum warning (/wd26812 is not recognized) */
-#pragma warning(disable : 26495)    /* disable warning for member variable not initialized */
-#pragma warning(disable : 4388)     /* disable warning about comparing signed/unsigned int */
-#pragma warning(disable : 5204)     /* disable warning for abstract/virtual class not having a virtual dtor */
-#endif
-#endif
+#include <functional>
+#include <utility>
 
 #include "catch2/catch_all.hpp"
 
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
 #define FROM(i)                 INFO(format("GENERATE INDEX %d", (i)))
-
 #define EXPLAIN(fmt, ...)       INFO(format(fmt, __VA_ARGS__))
 
 static inline 
@@ -44,8 +32,8 @@ std::string
 format(const char* fmt, ...) {
     size_t size = 64;    
     va_list ap;
-    while (1) 
-    {     // Maximum two passes on a POSIX system...
+    while (1) // maximum two passes on a POSIX system... 
+    {   
         auto buf = std::make_unique<char[]>(size);
         va_start(ap, fmt);
         int n = vsnprintf(buf.get(), size, fmt, ap);
@@ -65,42 +53,76 @@ format(const char* fmt, ...) {
     /* NEVER REACHED */
 }
 
-using namespace Catch::Matchers;
-
-template<typename ElementType>
-struct Segment
+class not_copyable
 {
-    ElementType* begin() const { return data; }
-    ElementType* end() const { return data + len; }
+private:
+    not_copyable& operator=( const not_copyable& ) = delete;
+    not_copyable(const not_copyable&) = delete;
+public:
+    not_copyable& operator=( not_copyable&& ) = default;
+    not_copyable() = default;
+    not_copyable(not_copyable&&) = default;
+};
 
-    Segment(ElementType* _data, size_t _len) :
+class finalizer: public not_copyable
+{
+private:
+    std::function<void()> cleanup;
+
+public:
+    friend
+    void dismiss(finalizer& g) { g.cleanup = []{}; }
+
+    ~finalizer() { cleanup(); }
+
+    template<class Func>
+    finalizer(Func const& _cleanup)
+        : cleanup(_cleanup)
+    {}
+
+    finalizer(finalizer&& other)
+        : cleanup(std::move(other.cleanup))
+    { 
+        dismiss(other); 
+    }
+};
+    
+template<typename T>
+struct segment
+{
+    T* begin() const { return data; }
+    T* end() const { return data + len; }
+
+    segment(T* _data, size_t _len) :
         data(_data),
         len(_len)
     {}
 
 private:
-    ElementType* data;
+    T* data;
     size_t len;
 
 };
 
-template<typename ElementType>
-ElementType* 
-begin(Segment<ElementType>& segment) { return segment.begin();  }
+template<typename T>
+T* 
+begin(segment<T>& segment) { return segment.begin();  }
 
-template<typename ElementType>
-ElementType* 
-end(Segment<ElementType>& segment) { return segment.end(); }
+template<typename T>
+T* 
+end(segment<T>& segment) { return segment.end(); }
 
-template<typename ElementType = uint8_t>
-Segment<ElementType> 
-memory(void* buf, size_t len) { return Segment<ElementType>((ElementType*)buf, len); }
+template<typename T = uint8_t>
+segment<T> 
+memory(void* buf, size_t len) { return segment<T>((T*)buf, len); }
 
 
-template<typename Range>
+using namespace Catch::Matchers;
+
+template<typename T>
 struct EqualsRangeMatcher : Catch::Matchers::MatcherGenericBase 
 {
-    EqualsRangeMatcher(Range const& _range):
+    EqualsRangeMatcher(T const& _range):
         range(_range)
     {}
 
@@ -119,7 +141,7 @@ struct EqualsRangeMatcher : Catch::Matchers::MatcherGenericBase
     }
 
 private:
-    Range const& range;
+    T const& range;
 };
 
 template<typename Range>
@@ -148,14 +170,12 @@ template <typename T, typename U>
 inline bool
 operator==(const HexadecimalFormatter<T>& lhs, const HexadecimalFormatter<U>& rhs) { return (uint64_t)lhs.value == (uint64_t)(rhs.value); }   
 
-
 template <typename T, typename U>
 inline bool
 operator<(const HexadecimalFormatter<T>& lhs, const HexadecimalFormatter<U>& rhs) { return (uint64_t)lhs.value < (uint64_t)(rhs.value); }       
 
 template<typename T>
 std::ostream& operator<<( std::ostream& os, HexadecimalFormatter<T> const& value ) { return os << "0x" << std::hex << std::setw((sizeof(T) * 2)) << std::setfill('0') << value.value; }
-
 
 template <typename T, typename = typename std::enable_if<is_ordinal<T>::value>::type>
 struct ErrorFormatter

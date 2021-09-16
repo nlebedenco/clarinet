@@ -26,8 +26,8 @@ extern "C" {
 #else
   /* GCC or "just like GCC" */
   #define CLARINET_IS_AT_LEAST_GNUC_VERSION(major, minor) \
-	(__GNUC__ > (major) || \
-	 (__GNUC__ == (major) && __GNUC_MINOR__ >= (minor)))
+    (__GNUC__ > (major) || \
+     (__GNUC__ == (major) && __GNUC_MINOR__ >= (minor)))
 #endif
 
 /** Check whether this is Clang major.minor or a later release. */
@@ -37,8 +37,8 @@ extern "C" {
 #else
   /* Clang */
   #define CLARINET_IS_AT_LEAST_CLANG_VERSION(major, minor) \
-	(__clang_major__ > (major) || \
-	 (__clang_major__ == (major) && __clang_minor__ >= (minor)))
+    (__clang_major__ > (major) || \
+     (__clang_major__ == (major) && __clang_minor__ >= (minor)))
 #endif
 
 /** 
@@ -665,41 +665,33 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
  * All sockets are represented as pointers to opaque types and thus can only be manipulated by their corresponding 
  * protocol API.
  *
- * The socket is open and bound to a local endpoint in a single operation. All the options provided in settings are 
- * applied BEFORE binding and cannot be modifiedr by calling clarinet_xxx_setopt(). By default, sockets are blocking 
- * with dual stack disabled despite some operating systems having a specific configuration for it 
+ * A socket is open and bound to a local endpoint in a single operation. All the options provided in settings are 
+ * applied BEFORE binding and cannot be modified by calling clarinet_xxx_setopt(). By default, sockets are blocking 
+ * with dual stack disabled despite some operating systems having a specific configuration for its default value. 
  * (e.g. sysctl:/proc/sys/net/ipv6/bindv6only on Linux). This strategy provides consistency and predictability. See 
  * clarinet_socket_option for details. Send/Recv timeouts are not defined because they do not apply to non-blocking
  * sockets.
  *
- * By default, no two sockets can be bound to the same combination of source address and source port. As long as the
- * source port is different, the source address is actually irrelevant. Binding socketA to ipA:portA and socketB to
- * ipB:portB is always possible if ipA != ipB holds true, even when portA == portB. E.g. socketA belongs to a FTP server
- * program and is bound to 192.168.0.1:21 and socketB belongs to another FTP server program and is bound to 10.0.0.1:21,
- * both bindings will succeed. Keep in mind, though, that a socket may be locally bound to "any address". If a socket is
- * bound to 0.0.0.0:21, it is bound to all existing local addresses at the same time and in that case no other socket
- * can be bound to port 21, regardless which specific IP address it tries to bind to, as 0.0.0.0 conflicts with all
- * existing local IP addresses.
- * 
- * Binding with CLARINET_SO_REUSEADDR always implies exact address reuse unless explicitly unsupported by the platform
- * in which case at least the default behaviour of SO_REUSEADDR as described in BSD is guaranteed. On Windows, Linux, 
- * macOS and any other BSD compatible platform using CLARINET_SO_REUSEADDR allows a socket to reuse the exact same
- * source address and source port of another socket previously bound as long as that other socket also had
- * CLARINET_SO_REUSEADDR enabled. This is accomplished by setting SO_REUSEPORT|SO_REUSEADDR on macOS and Linux when
- * CLARINET_SO_REUSEADDR is enabled. On Windows SO_REUSEADDR is set when CLARINET_SO_REUSEADDR is enabled and
- * SO_EXCLUSIVEADDRUSE is set when CLARINET_SO_REUSEADDR is disabled. Linux < 3.9 do not have SO_REUSEPORT but in this
- * case SO_REUSEADDR works exactly like SO_REUSEPORT on BSD, that is, exact reuse is allowed only if both sockets enable
- * SO_REUSEADDR.
- * 
- * There is no clarinet_udp_connect() because dgram delivery rules may be quite different between platforms. On Unix 
+ * By default, no two sockets with the same protocol can be bound to the same local address and port. This is called a 
+ * bind conflict. Binding socketA to proto/ipA:portA and socketB to proto/ipB:portB is always possible if portA != portB
+ * OR proto/ipA != proto/ipB, where proto is either udp or tcp. E.g. socketA belongs to an FTP server that is bound to 
+ * 192.168.0.1:21 and socketB belongs to another FTP server program bound to 10.0.0.1:21, both bindings will succeed. 
+ * Keep in mind, though, that a socket may be locally bound to "any address" also denoted a wildcard which is 
+ * represented by the address 0.0.0.0 on ipv4 and :: on ipv6. If a socket is bound to 0.0.0.0:21, it is bound to all 
+ * existing local addresses at the same time in ipv4 space in which case no other socket can be bound to port 21 in the 
+ * same address space, regardless of which specific IP address it tries to bind to since the wildcard conflicts with all 
+ * existing local addresses in its space. This is of particular significance when binding to :: with dual stack mode 
+ * enabled because then the ipv6 wildcard :: occupies all addresses in both ipv6 and ipv4 space. See clarinet_udp_open() 
+ * and clarinet_tcp_open() for details.
+ *
+ * There is no clarinet_udp_connect() because datagram delivery rules may be quite different between platforms. On Unix 
  * (including macOS) when a UDP socket is bound to a foreign address by connect() it effectively assumes a 5-tuple 
- * identity so when a dgram arrives the system first selects all sockets associated with the src address of the 
- * packet and then picks the socket with the most specific local address matching the destination address of the 
+ * identity so when a datagram arrives, the system first selects all sockets associated with the src address of the 
+ * packet and then selects the socket with the most specific local address matching the destination address of the 
  * packet. On windows however, UDP associations established with connect() do not affect routing. They only serve as 
  * defaults for send() and recv() so on Windows all UDP sockets have a foreign address *:* and the first entry 
  * on the routing table with a local address that matches the destination address of the arriving packet is picked. This
- * basically prevents UDP servers from ever using connect() and operate with multiple sockets as with TCP. Besides 
- * "connected" UDP sockets by definition prevent upper layers from implementing any support to IP mobility.
+ * basically prevents UDP servers from ever using connect() and operate with multiple sockets as done with TCP. 
  *
  * Note that besides platform support, dual-stack also requires a local IPv6 address (either an explicit one or the 
  * wildcard [::] which is equivalent to CLARINET_IPV6_ANY). The ability to interact with IPv4 addresses requires the use 
@@ -779,10 +771,197 @@ CLARINET_API
 const clarinet_udp_settings 
 clarinet_udp_settings_default;
 
+/**
+ * CLARINET_SO_REUSEADDR can be passed in the flags parameter to control how bind should handle local address/port 
+ * conflicts internally.
+ *
+ * A partial conflict is said to occur when a socket tries to bind to a specific local address despite a pre-existing 
+ * socket bound to a wildcard in the same space. An exact conflict occurs when a socket tries to bind to the EXACT 
+ * same address/port of a pre-existing socket regardless of the address being specific or a wildcard. When a socket is 
+ * allowed to bind despite of a conflict it is said to be reusing the address/port. Note however that not all underlying 
+ * systems provide the same level of support to address/port reuse and a few discrepancies are inevitable. Also note 
+ * that even when disregarding broadcast and multicast, address reuse on UDP sockets have slightly different 
+ * implications than on TCP sockets because there is no TIME_WAIT state involved. 
+ *
+ * For unicast UDP sockets, underlying implementations are known to operate as follows:
+ *
+ *      LINUX < 3.9: The flag SO_REUSEADDR allows exact same address/port reuse but is required in all sockets sharing 
+ *                   address/port including wildcard sockets. Sockets can be from any process. 
+ *     
+ *     LINUX >= 3.9: The flag SO_REUSEPORT behaves exactly like old SO_REUSEADDR but restricts reuse to sockets created 
+ *                   by the same effective UID to prevent hijacking. SO_REUSEADDR is still defined for compatibility
+ *                   but is not required if SO_REUSEPORT si enabled. Kernel provides recv load balancing between sockets 
+ *                   bound to the exact same address/port.
+ *     
+ *       BSD/DARWIN: The flag SO_REUSEADDR allows a socket to bind a specific address/port while another socket holds a 
+ *                   wildcard address on the same port regardless of the wildcard socket having SO_REUSEADDR. It does 
+ *                   not allow exact same address/port reuse. Two wildcard sockets on the same port are considered an 
+ *                   exact conflict. SO_REUSEPORT allows exact same address/port reuse in which case it is required on 
+ *                   all conflicting sockets. When there is a partial conflict some BSD systems still require 
+ *                   SO_REUSEADDR to allow address reuse but on modern systems such as Darwin, SO_REUSEPORT behaves like 
+ *                   SO_REUSEADDR in this case and allows a specific socket to bind on top of a previous wildcard socket 
+ *                   with the same port regardless of the wildcard socket having SO_REUSEPORT itself. In any case only 
+ *                   exact conflicts require all sockets involved to have SO_REUSEPORT. An alternative flag 
+ *                   SO_REUSEPORT_LB can be used on modern systems to provide load balancing like SO_REUSEPORT on Linux.
+ *     
+ *          WINDOWS: The flag SO_REUSEADDR allows exact same address/port reuse if the other socket also has 
+ *                   SO_REUSEADDR defined. This includes exact same and wildcard conflicts. SO_EXCLUSIVEADDRUSE can be 
+ *                   used to disallow reuse address by other sockets. This applies to specific and wildcard sockets. 
+ *                   SO_EXCLUSIVEADDRUSE cannot be used with SO_REUSEADDR in the same socket. A wildcard that specifies 
+ *                   SO_EXCLUSIVEADDRUSE occupies the whole address space but does not disallow reuse by a specifc 
+ *                   addresses socket even if the socket does not have SO_REUSEADDR enabled which can be confusing. The 
+ *                   following table from https://docs.microsoft.com/en-us/windows-hardware/drivers/network/sharing-transport-addresses) 
+ *                   shows all possible conflicts of wildcard and specific sockets and the result depending on what 
+ *                   flags are enabled:
+ *                                                     +-----------------------------------------------------+ 
+ *                                                     |                    FIRST SOCKET                     |
+ *                                                     |---------------+---------------+---------------------|
+ *                                                     |      NONE     |  SO_REUSEADDR | SO_EXCLUSIVEADDRUSE |
+ *                                                     |      W S      |      W S      |        W S          |
+ *                   +--------+------------------------+---------------+---------------+---------------------|
+ *                   |        |                NONE W  |      0 1      |      0 1      |        0 1          |
+ *                   |        |                     S  |      ? 0      |      ? 0      |        0 0          |
+ *                   |        +------------------------+---------------+---------------+---------------------|
+ *                   | SECOND |        SO_REUSEADDR W  |      0 1      |      1 1      |        0 1          |
+ *                   | SOCKET |                     S  |      ? 0      |      1 1      |        0 0          |
+ *                   |        +------------------------+---------------+---------------+---------------------|
+ *                   |        | SO_EXCLUSIVEADDRUSE W  |      0 0      |      0 0      |        0 0          |
+ *                   |        |                     S  |      ? 0      |      ? 0      |        0 0          |
+ *                   +--------+------------------------+---------------+---------------+---------------------|
+ *                          W - wildcard; S - specific;
+ *                          0 - failure; 1 - success; ? - depends on security credentials probably success                         
+ *     
+ *          SOLARIS: there is no SO_REUSEPORT. SO_REUSEADDR only allows partial conflicts (i.e. specific to wildcard) 
+ *                   SO_EXCLBIND is like SO_EXCLUSIVEADDRUSE on Windows and can be used to disallow any reuse of specifc 
+ *                   addresses with the same port as the wildcard already bound.
+ *     
+ *          ANDROID: it has a Linux kernel so should be identical to LINUX
+ *     
+ *              IOS: it (supposedly) has a macOS kernel so should be identical to BSD/DARWIN 
+ * 
+ * For simplicity and minimum divergence between platforms there is no direct mapping between clarinet socket options 
+ * and platform specific flags such as SO_REUSEADDR, SO_REUSEPORT, SO_EXCLUSIVEADDRUSE and SO_EXCLBIND. Instead, 
+ * CLARINET_SO_REUSEADDR translates to different combinations of these internal flags depending on the platform in 
+ * question according to the following table:
+ *
+ *   +-----------------------+---------------+-----------------------------+--------------------------------+-----------------------+--------------+
+ *   | Clarinet              | Linux < 3.9   | Linux >= 3.9                | BSD/Darwin                     | Windows               | Solaris      |
+ *   +-----------------------+---------------+-----------------------------+--------------------------------+-----------------------+--------------+
+ *   | CLARINET_SO_REUSEADDR | SO_REUSEADDR  | SO_REUSEADDR + SO_REUSEPORT | SO_REUSEADDR + SO_REUSEPORT_LB | SO_REUSEADDR          | SO_REUSEADDR |
+ *   +-----------------------+---------------+-----------------------------+--------------------------------+-----------------------+--------------+
+ *   |                       |               |                             |                                | SO_EXCLUSIVEADDRUSE   | SO_EXCLBIND  |
+ *   +-----------------------+---------------+-----------------------------+--------------------------------+-----------------------+--------------+-
+ *
+ * This way all expected results are supported by the majority of the platforms and the complete behaviour of 
+ * CLARINET_SO_REUSEADDR regarding two sockets opened using clarinet_udp_open() can be defined as follows:
+ *
+ *   +-----------------------------------------------------------------+-------------------------------------------------------------+----------------------+-----------------------------+
+ *   | First Socket                                                    | Second Socket                                               | Result               | Divergence                  |
+ *   |-----------------------------------------------------------------+-------------------------------------------------------------+----------------------+-----------------------------|
+ *   | Address            | Flags                                      | Address        | Flags                                      | Expected             |                             |
+ *   |--------------------+--------------------------------------------+----------------+--------------------------------------------+----------------------+-----------------------------|
+ *   |  0 | ipv4 any      |                                            | ipv4 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   |  1 | ipv4 any      |                                            | ipv4 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   |  2 | ipv4 specific |                                            | ipv4 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   |  3 | ipv4 specific |                                            | ipv4 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   |  4 | ipv4 any      |                                            | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE |                             |
+ *   |  5 | ipv4 any      |                                            | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE | BSD/Darwin: CLARINET_ENONE  |
+ *   |  6 | ipv4 specific |                                            | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      | Linux: CLARINET_EADDRINUSE  |
+ *   |  7 | ipv4 specific |                                            | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE |                             |
+ *   |  8 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv4 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   |  9 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv4 specific  |                                            |  CLARINET_EADDRINUSE | Windows: CLARINET_ENONE     |
+ *   | 10 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv4 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 11 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv4 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 12 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 13 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 14 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 15 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 16 | ipv6 any      |                                            | ipv6 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 17 | ipv6 any      |                                            | ipv6 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 18 | ipv6 specific |                                            | ipv6 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 19 | ipv6 specific |                                            | ipv6 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 20 | ipv6 any      |                                            | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE |                             |
+ *   | 21 | ipv6 any      |                                            | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE | BSD/Darwin: CLARINET_ENONE  |
+ *   | 22 | ipv6 specific |                                            | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      | Linux: CLARINET_EADDRINUSE  |        
+ *   | 23 | ipv6 specific |                                            | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE |                             |
+ *   | 24 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv6 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 25 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv6 specific  |                                            |  CLARINET_EADDRINUSE | Windows: CLARINET_ENONE     |
+ *   | 26 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv6 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 27 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv6 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 28 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 29 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 30 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 31 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 32 | ipv6 any      |                                            | ipv4 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 33 | ipv6 any      |                                            | ipv4 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 34 | ipv6 specific |                                            | ipv4 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 35 | ipv6 specific |                                            | ipv4 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 36 | ipv6 any      |                                            | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 37 | ipv6 any      |                                            | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 38 | ipv6 specific |                                            | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 39 | ipv6 specific |                                            | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 40 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv4 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 41 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv4 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 42 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv4 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 43 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv4 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 44 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 45 | ipv6 any      | CLARINET_SO_REUSEADDR                      | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 46 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 47 | ipv6 specific | CLARINET_SO_REUSEADDR                      | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 48 | ipv4 any      |                                            | ipv6 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 49 | ipv4 any      |                                            | ipv6 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 40 | ipv4 specific |                                            | ipv6 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 51 | ipv4 specific |                                            | ipv6 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 52 | ipv4 any      |                                            | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 53 | ipv4 any      |                                            | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 54 | ipv4 specific |                                            | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 55 | ipv4 specific |                                            | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 56 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 57 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 58 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 59 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 60 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 61 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 62 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 63 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 64 | ipv6 any      | CLARINET_SO_IPV6DUAL                       | ipv4 any       |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 65 | ipv6 any      | CLARINET_SO_IPV6DUAL                       | ipv4 specific  |                                            |  CLARINET_EADDRINUSE |                             |
+ *   | 66 | ipv6 specific | CLARINET_SO_IPV6DUAL                       | ipv4 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 67 | ipv6 specific | CLARINET_SO_IPV6DUAL                       | ipv4 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 68 | ipv6 any      | CLARINET_SO_IPV6DUAL                       | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE |                             |
+ *   | 69 | ipv6 any      | CLARINET_SO_IPV6DUAL                       | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_EADDRINUSE | BSD/Darwin: CLARINET_ENONE  |
+ *   | 70 | ipv6 specific | CLARINET_SO_IPV6DUAL                       | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 71 | ipv6 specific | CLARINET_SO_IPV6DUAL                       | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 72 | ipv6 any      | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 any       |                                            |  CLARINET_EADDRINUSE | Windows: CLARINET_ENONE     |
+ *   | 73 | ipv6 any      | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 specific  |                                            |  CLARINET_EADDRINUSE | Windows: CLARINET_ENONE     |
+ *   | 74 | ipv6 specific | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 any       |                                            |  CLARINET_ENONE      |                             |
+ *   | 75 | ipv6 specific | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 specific  |                                            |  CLARINET_ENONE      |                             |
+ *   | 76 | ipv6 any      | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 77 | ipv6 any      | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 78 | ipv6 specific | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 any       | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 79 | ipv6 specific | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR | ipv4 specific  | CLARINET_SO_REUSEADDR                      |  CLARINET_ENONE      |                             |
+ *   | 80 | ipv4 any      |                                            | ipv6 any       | CLARINET_SO_IPV6DUAL                       |  CLARINET_EADDRINUSE | BSD/Darwin: CLARINET_ENONE  |
+ *   | 81 | ipv4 any      |                                            | ipv6 specific  | CLARINET_SO_IPV6DUAL                       |  CLARINET_ENONE      |                             |
+ *   | 82 | ipv4 specific |                                            | ipv6 any       | CLARINET_SO_IPV6DUAL                       |  CLARINET_EADDRINUSE |                             |
+ *   | 83 | ipv4 specific |                                            | ipv6 specific  | CLARINET_SO_IPV6DUAL                       |  CLARINET_ENONE      |                             |
+ *   | 84 | ipv4 any      |                                            | ipv6 any       | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      | Linux: CLARINET_EADDRINUSE  |
+ *   | 85 | ipv4 any      |                                            | ipv6 specific  | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      |                             |
+ *   | 86 | ipv4 specific |                                            | ipv6 any       | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      | Linux: CLARINET_EADDRINUSE  |     
+ *   | 87 | ipv4 specific |                                            | ipv6 specific  | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      |                             |
+ *   | 88 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_IPV6DUAL                       |  CLARINET_EADDRINUSE | BSD/Darwin: CLARINET_ENONE  |
+ *   | 89 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_IPV6DUAL                       |  CLARINET_ENONE      |                             |
+ *   | 90 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_IPV6DUAL                       |  CLARINET_EADDRINUSE |                             |
+ *   | 91 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_IPV6DUAL                       |  CLARINET_ENONE      |                             |
+ *   | 92 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      |                             |
+ *   | 93 | ipv4 any      | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      |                             |
+ *   | 94 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 any       | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      |                             |
+ *   | 95 | ipv4 specific | CLARINET_SO_REUSEADDR                      | ipv6 specific  | CLARINET_SO_IPV6DUAL|CLARINET_SO_REUSEADDR |  CLARINET_ENONE      |                             |
+ *   +--------------------+--------------------------------------------+----------------+--------------------------------------------+----------------------+-----------------------------+
+ */ 
 CLARINET_API 
 int
 clarinet_udp_open(clarinet_udp_socket** spp,
-                  const clarinet_endpoint* restrict endpoint, 
+                  const clarinet_endpoint* restrict local, 
                   const clarinet_udp_settings* restrict settings,
                   uint32_t flags);
 
@@ -878,14 +1057,14 @@ CLARINET_API
 int 
 clarinet_tcp_send(clarinet_tcp_socket* restrict sp,
                   const void* restrict buf,
-                  size_t len, 
+                  size_t buflen, 
                   const clarinet_endpoint* restrict dst);
 
 CLARINET_API 
 int 
 clarinet_tcp_recv(clarinet_tcp_socket* restrict sp,
                   void* restrict buf, 
-                  size_t len, 
+                  size_t buflen, 
                   clarinet_endpoint* restrict src);
 
 CLARINET_API 

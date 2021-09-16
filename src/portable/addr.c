@@ -113,7 +113,7 @@ clarinet_decode_scope_id(uint32_t* scope_id,
             return CLARINET_EINVAL;
 
         uint32_t value = sid * 10;
-        uint32_t inc = (c - '0');
+        uint32_t inc = (uint32_t)(c - '0');
         if (inc > (UINT32_MAX - value))
             return CLARINET_EINVAL;
         
@@ -238,7 +238,7 @@ clarinet_pton6(struct in6_addr* restrict addr,
         if (cp)
         {
             val <<= 4;
-            val |= (cp - xdigits);
+            val = val | (uint32_t)(cp - xdigits);
             if (++seen_xdigits > 4)
                 return CLARINET_EINVAL;
             continue;
@@ -293,10 +293,10 @@ clarinet_pton6(struct in6_addr* restrict addr,
         if (tp == endp)
             return CLARINET_EINVAL;
 
-        const size_t n = tp - colonp;
+        const size_t n = (size_t)(tp - colonp);
         for (i = 1; i <= n; i++)
         {
-            endp[-i] = colonp[n - i]; /* endp[-i] is equivalent to *(endp - i) */
+            *(endp - i) = colonp[n - i];
             colonp[n - i] = 0;
         }
         tp = endp;
@@ -338,6 +338,7 @@ clarinet_addr_ipv4_from_string(clarinet_addr* restrict dst,
 
 
 #if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+static
 int
 clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
                                const char* restrict src,
@@ -375,7 +376,9 @@ clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
     }
 
     /* Parse inet6 address */
-    struct in6_addr addr = {0};
+    struct in6_addr addr;
+    /* macOS doesn't like when we do in6_addr addr = {0} */ 
+    memset(&addr, 0, sizeof(addr));
     int errcode = clarinet_pton6(&addr, src, i);
     if (errcode != CLARINET_ENONE)
         return errcode;

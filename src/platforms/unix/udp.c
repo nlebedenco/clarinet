@@ -47,6 +47,9 @@ clarinet_udp_open(clarinet_udp_socket** spp,
     
     const int ipv6only = ipv6dual ? 0 : 1;
     const int reuseaddrport = (flags & clarinet_socket_option_to_flag(CLARINET_SO_REUSEADDR)) ? 1 : 0;
+    #if defined(SO_EXCLBIND)
+    const int exclbind = (~reuseaddrport) & 1;
+    #endif
     const int ttl = settings->ttl;
     const int sendbuf = (int)settings->send_buffer_size;
     const int recvbuf = (int)settings->recv_buffer_size;
@@ -60,12 +63,14 @@ clarinet_udp_open(clarinet_udp_socket** spp,
          * windows versions since Windows Vista support this option. The same applies to IPV6_UNICAST_HOPS. */
         if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (const char*)&sendbuf, sizeof(sendbuf)) == SOCKET_ERROR
          || setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (const char*)&recvbuf, sizeof(recvbuf)) == SOCKET_ERROR
+         || setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR
     #if defined(SO_REUSEPORT_LB) /* Some BSD systems support a special reuse port mode that promotes load balancing between connections */
          || setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT_LB, (const char*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR
     #elif defined(SO_REUSEPORT)  /* SO_REUSEPORT is only supported on Linux >= 3.9 but also promotes load balancing on UDP - may be present on some patched 2.6 systems (e.g. REHL 2.6.32) */
          || setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR
-    #else
-         || setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR
+    #endif
+    #if defined(SO_EXCLBIND)  /* Solaris supports SO_EXCLBIND similarly to SO_EXCLUSIVEADDRUSE on Windows */
+         || setsockopt(sockfd, SOL_SOCKET, SO_EXCLBIND, (const char*)&exclbind, sizeof(exclbind)) == SOCKET_ERROR
     #endif
          || (ss.ss_family == AF_INET && setsockopt(sockfd, IPPROTO_IP, IP_TTL, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR)
     #if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
@@ -111,19 +116,19 @@ clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
 int
 clarinet_udp_send(clarinet_udp_socket* restrict sp,
                   const void* restrict buf,
-                  size_t len,
+                  size_t buflen,
                   const clarinet_endpoint* restrict dst)
 {
-    return clarinet_socket_send((clarinet_socket*)sp, buf, len, dst);
+    return clarinet_socket_send((clarinet_socket*)sp, buf, buflen, dst);
 }
 
 int
 clarinet_udp_recv(clarinet_udp_socket* restrict sp,
                   void* restrict buf,
-                  size_t len,
+                  size_t buflen,
                   clarinet_endpoint* restrict src)
 {
-    return clarinet_socket_recv((clarinet_socket*)sp, buf, len, src);   
+    return clarinet_socket_recv((clarinet_socket*)sp, buf, buflen, src);   
 }
 
 int

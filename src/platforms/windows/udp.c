@@ -31,7 +31,8 @@ clarinet_udp_open(clarinet_udp_socket** spp,
         return CLARINET_EINVAL;
         
     struct sockaddr_storage ss;
-    const int errcode = clarinet_endpoint_to_sockaddr(&ss, local);
+    socklen_t sslen;
+    const int errcode = clarinet_endpoint_to_sockaddr(&ss, &sslen, local);
     if (errcode != CLARINET_ENONE)
         return errcode;
    
@@ -75,7 +76,7 @@ clarinet_udp_open(clarinet_udp_socket** spp,
          || (ss.ss_family == AF_INET6 && setsockopt(sockfd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (const char*)&ttl, sizeof(ttl)) == SOCKET_ERROR) /* curiously IPV6_HOPLIMIT corresponds to IP_RECV_TTL not IP_TTL */
     #endif         
          || setsocknonblock(sockfd) == SOCKET_ERROR
-         || bind(sockfd, (struct sockaddr*)&ss, sizeof(ss)) == SOCKET_ERROR)
+         || bind(sockfd, (struct sockaddr*)&ss, sslen) == SOCKET_ERROR)
         {
             wsaerr = WSAGetLastError();
             /* WSAEACCESS could only have been returned by bind() if the address is in effect in use by another socket 
@@ -122,19 +123,19 @@ clarinet_udp_get_endpoint(clarinet_udp_socket* restrict sp,
 int
 clarinet_udp_send(clarinet_udp_socket* restrict sp,
                   const void* restrict buf,
-                  size_t len,
+                  size_t buflen,
                   const clarinet_endpoint* restrict dst)
 {
-    return clarinet_socket_send((clarinet_socket*)sp, buf, len, dst);
+    return clarinet_socket_send((clarinet_socket*)sp, buf, buflen, dst);
 }
 
 int
 clarinet_udp_recv(clarinet_udp_socket* restrict sp,
                   void* restrict buf,
-                  size_t len,
+                  size_t buflen,
                   clarinet_endpoint* restrict src)
 {
-    return clarinet_socket_recv((clarinet_socket*)sp, buf, len, src);   
+    return clarinet_socket_recv((clarinet_socket*)sp, buf, buflen, src);   
 }
 
 

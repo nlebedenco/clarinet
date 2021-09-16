@@ -402,6 +402,7 @@ check_required_include_file(limits.h HAVE_LIMITS_H)
 check_include_file(float.h HAVE_FLOAT_H)
 check_include_file(setjmp.h HAVE_SETJMP_H)
 check_include_file(inttypes.h HAVE_INTTYPES_H)
+check_include_file(stdnoreturn.h HAVE_STDNORETURN_H) # this is C11 not C99 header but is fairly common in many modern compilers
 
 # Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
 if(UNIX)

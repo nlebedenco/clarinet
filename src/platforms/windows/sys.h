@@ -39,13 +39,13 @@ clarinet_socket_get_endpoint(clarinet_socket* restrict sp,
 int
 clarinet_socket_send(clarinet_socket* restrict sp,
                      const void* restrict buf,
-                     size_t len,
+                     size_t buflen,
                      const clarinet_endpoint* restrict dst);
 
 int
 clarinet_socket_recv(clarinet_socket* restrict sp,
                      void* restrict buf,
-                     size_t len,
+                     size_t buflen,
                      clarinet_endpoint* restrict src);
 
 /** Helper for setting the socket as non-blocking */
