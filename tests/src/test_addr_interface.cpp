@@ -1,17 +1,13 @@
 #include "test.h"
 #include <vector>
 
-static uint8_t noise = 0;
-
-static void memnoise(void* dst, size_t n)
-{
-    for (size_t i = 0; i < n; ++i)
-        ((uint8_t*)dst)[i] = noise++;
-}
+#if !CLARINET_ENABLE_IPV6
+WARN("IPv6 suport is disabled. Some IPV6 tests may be skipped. ")
+#endif
 
 TEST_CASE("Address Init", "[address]")
 {
-    clarinet_addr src = {0};
+    clarinet_addr src = { 0 };
     REQUIRE(src.family == 0);
     REQUIRE(src.as.ipv4.u.dword[0] == 0);
     REQUIRE(src.as.ipv6.flowinfo == 0);
@@ -27,38 +23,38 @@ TEST_CASE("Address Size", "[address]")
     SECTION("Size")
     {
         REQUIRE(sizeof(clarinet_addr) == 28);
-        REQUIRE(sizeof(((clarinet_addr*)0)->family) == sizeof(uint16_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv4.u.byte[0]) == sizeof(uint8_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv4.u.word[0]) == sizeof(uint16_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv4.u.dword[0]) == sizeof(uint32_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv6.u.byte[0]) == sizeof(uint8_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv6.u.word[0]) == sizeof(uint16_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv6.u.dword[0]) == sizeof(uint32_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv6.flowinfo) == sizeof(uint32_t));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv6.scope_id) == sizeof(uint32_t));
-        REQUIRE(sizeof(struct clarinet_addr_ipv4) == 20);
-        REQUIRE(sizeof(struct clarinet_addr_ipv6) == 24);
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv4) == sizeof(struct clarinet_addr_ipv4));
-        REQUIRE(sizeof(((clarinet_addr*)0)->as.ipv6) == sizeof(struct clarinet_addr_ipv6));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->family) == sizeof(uint16_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.byte[0]) == sizeof(uint8_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.word[0]) == sizeof(uint16_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.dword[0]) == sizeof(uint32_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.byte[0]) == sizeof(uint8_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.word[0]) == sizeof(uint16_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.dword[0]) == sizeof(uint32_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.flowinfo) == sizeof(uint32_t));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.scope_id) == sizeof(uint32_t));
+        REQUIRE(sizeof(struct clarinet_ipv4) == 20);
+        REQUIRE(sizeof(struct clarinet_ipv6) == 24);
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4) == sizeof(struct clarinet_ipv4));
+        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6) == sizeof(struct clarinet_ipv6));
     }
 }
 
 TEST_CASE("Address Max Strlen", "[address]")
 {
-    REQUIRE(CLARINET_ADDR_STRLEN == 57); /* "0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295" */
+    REQUIRE(CLARINET_ADDR_STRLEN == 57); // "0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295"
 }
 
 TEST_CASE("IPv4 Address Any", "[address][ipv4][any]")
 {
-    clarinet_addr actual = clarinet_addr_ipv4_any;
+    clarinet_addr actual = clarinet_addr_any_ipv4;
     REQUIRE(actual.family == CLARINET_AF_INET);
     REQUIRE(actual.as.ipv4.u.dword[0] == 0);
-    REQUIRE((actual.as.ipv4.u.word[0]
-           | actual.as.ipv4.u.word[1]) == 0);
-    REQUIRE((actual.as.ipv4.u.byte[0]
-           | actual.as.ipv4.u.byte[1]
-           | actual.as.ipv4.u.byte[2]
-           | actual.as.ipv4.u.byte[3]) == 0);
+    REQUIRE(actual.as.ipv4.u.word[0] == 0);
+    REQUIRE(actual.as.ipv4.u.word[1] == 0);
+    REQUIRE(actual.as.ipv4.u.byte[0] == 0);
+    REQUIRE(actual.as.ipv4.u.byte[1] == 0);
+    REQUIRE(actual.as.ipv4.u.byte[2] == 0);
+    REQUIRE(actual.as.ipv4.u.byte[3] == 0);
 
 
     SECTION("Check constant CLARINET_ADDR_IPV4_ANY")
@@ -71,14 +67,14 @@ TEST_CASE("IPv4 Address Any", "[address][ipv4][any]")
     SECTION("0.0.0.0 is an ipv4 any")
     {
         REQUIRE(clarinet_addr_is_ipv4(&actual));
-        REQUIRE(clarinet_addr_is_ipv4_any(&actual));
+        REQUIRE(clarinet_addr_is_any_ipv4(&actual));
         REQUIRE(clarinet_addr_is_any(&actual));
     }
 }
 
 TEST_CASE("IPv4 Address Loopback", "[address][ipv4][loopback]")
 {
-    clarinet_addr actual = clarinet_addr_ipv4_loopback;
+    clarinet_addr actual = clarinet_addr_loopback_ipv4;
     REQUIRE(actual.family == CLARINET_AF_INET);
     REQUIRE(actual.as.ipv4.u.byte[0] == 127);
     REQUIRE(actual.as.ipv4.u.byte[1] == 0);
@@ -100,37 +96,37 @@ TEST_CASE("IPv4 Address Loopback", "[address][ipv4][loopback]")
     SECTION("127.0.0.1 is an ipv4 looback")
     {
         REQUIRE(clarinet_addr_is_ipv4(&actual));
-        REQUIRE(clarinet_addr_is_ipv4_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback(&actual));
     }
 
     SECTION("127.0.0.0 is NOT an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 0;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE_FALSE(clarinet_addr_is_loopback(&actual));
     }
 
     SECTION("127.0.0.255 is NOT an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 255;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE_FALSE(clarinet_addr_is_loopback(&actual));
     }
 
-    /* Technically we should assert the whole range 127.0.0.1 to 127.255.255.254 but sampling must suffice. */
+    // Technically we should assert the whole range 127.0.0.1 to 127.255.255.254 but sampling must suffice.
 
     SECTION("127.0.0.2 is an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 2;
-        REQUIRE(clarinet_addr_is_ipv4_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback(&actual));
     }
 
     SECTION("127.0.0.254 is an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 254;
-        REQUIRE(clarinet_addr_is_ipv4_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback(&actual));
     }
 
@@ -139,21 +135,21 @@ TEST_CASE("IPv4 Address Loopback", "[address][ipv4][loopback]")
         actual.as.ipv4.u.byte[1] = 255;
         actual.as.ipv4.u.byte[2] = 255;
         actual.as.ipv4.u.byte[3] = 254;
-        REQUIRE(clarinet_addr_is_ipv4_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback(&actual));
     }
 }
 
 TEST_CASE("IPv4 Address Broadcast", "[address][ipv4][broadcast]")
 {
-    clarinet_addr actual = clarinet_addr_ipv4_broadcast;
+    clarinet_addr actual = clarinet_addr_broadcast_ipv4;
     REQUIRE(actual.family == CLARINET_AF_INET);
     REQUIRE(actual.as.ipv4.u.byte[0] == 255);
     REQUIRE(actual.as.ipv4.u.byte[1] == 255);
     REQUIRE(actual.as.ipv4.u.byte[2] == 255);
     REQUIRE(actual.as.ipv4.u.byte[3] == 255);
 
-    SECTION("Check constant clarinet_addr_ipv4_broadcast")
+    SECTION("Check constant clarinet_addr_broadcast_ipv4")
     {
         clarinet_addr expected = clarinet_addr_none;
         expected.family = CLARINET_AF_INET;
@@ -168,32 +164,32 @@ TEST_CASE("IPv4 Address Broadcast", "[address][ipv4][broadcast]")
     SECTION("255.255.255.255 is an ipv4 broadcast")
     {
         REQUIRE(clarinet_addr_is_ipv4(&actual));
-        REQUIRE(clarinet_addr_is_ipv4_broadcast(&actual));
+        REQUIRE(clarinet_addr_is_broadcast_ipv4(&actual));
         REQUIRE(clarinet_addr_is_broadcast(&actual));
     }
 
     SECTION("255.255.255.0 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 0;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_broadcast(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
     SECTION("255.255.255.127 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 127;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_broadcast(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
     SECTION("255.255.255.2 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 2;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_broadcast(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
     SECTION("255.255.255.127 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 127;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_broadcast(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
     SECTION("::FFFF:255.255.255.255 is NOT an ipv4 broadcast")
@@ -205,33 +201,33 @@ TEST_CASE("IPv4 Address Broadcast", "[address][ipv4][broadcast]")
         actual.as.ipv6.u.byte[13] = 255;
         actual.as.ipv6.u.byte[14] = 255;
         actual.as.ipv6.u.byte[15] = 255;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4_broadcast(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 }
 
 TEST_CASE("IPv4 Mapped Loopback", "[address][ipv6][ipv4][loopback]")
 {
-    clarinet_addr actual = clarinet_addr_ipv4mapped_loopback;
+    clarinet_addr actual = clarinet_addr_loopback_ipv4mapped;
     REQUIRE(actual.family == CLARINET_AF_INET6);
     REQUIRE(actual.as.ipv6.flowinfo == 0);
     REQUIRE(actual.as.ipv6.scope_id == 0);
-    REQUIRE((actual.as.ipv6.u.dword[0]
-           | actual.as.ipv6.u.dword[1]) == 0);
-    REQUIRE((actual.as.ipv6.u.word[0]
-           | actual.as.ipv6.u.word[1]
-           | actual.as.ipv6.u.word[2]
-           | actual.as.ipv6.u.word[3]
-           | actual.as.ipv6.u.word[4]) == 0);
-    REQUIRE((actual.as.ipv6.u.byte[0]
-           | actual.as.ipv6.u.byte[1]
-           | actual.as.ipv6.u.byte[2]
-           | actual.as.ipv6.u.byte[3]
-           | actual.as.ipv6.u.byte[4]
-           | actual.as.ipv6.u.byte[5]
-           | actual.as.ipv6.u.byte[6]
-           | actual.as.ipv6.u.byte[7]
-           | actual.as.ipv6.u.byte[8]
-           | actual.as.ipv6.u.byte[9]) == 0);
+    REQUIRE(actual.as.ipv6.u.dword[0] == 0);
+    REQUIRE(actual.as.ipv6.u.dword[1] == 0);
+    REQUIRE(actual.as.ipv6.u.word[0] == 0);
+    REQUIRE(actual.as.ipv6.u.word[1] == 0);
+    REQUIRE(actual.as.ipv6.u.word[2] == 0);
+    REQUIRE(actual.as.ipv6.u.word[3] == 0);
+    REQUIRE(actual.as.ipv6.u.word[4] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[0] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[1] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[2] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[3] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[4] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[5] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[6] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[7] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[8] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[9] == 0);
 
     REQUIRE(actual.as.ipv6.u.byte[10] == 255);
     REQUIRE(actual.as.ipv6.u.byte[11] == 255);
@@ -240,7 +236,7 @@ TEST_CASE("IPv4 Mapped Loopback", "[address][ipv6][ipv4][loopback]")
     REQUIRE(actual.as.ipv6.u.byte[14] == 0);
     REQUIRE(actual.as.ipv6.u.byte[15] == 1);
 
-    SECTION("Check constant clarinet_addr_ipv4mapped_loopback")
+    SECTION("Check constant clarinet_addr_loopback_ipv4mapped")
     {
         clarinet_addr expected = clarinet_addr_none;
         expected.family = CLARINET_AF_INET6;
@@ -257,26 +253,26 @@ TEST_CASE("IPv4 Mapped Loopback", "[address][ipv6][ipv4][loopback]")
     SECTION("::FFFF:127.0.0.1 is an ipv4 mapped loopback")
     {
         REQUIRE(clarinet_addr_is_ipv4mapped(&actual));
-        REQUIRE(clarinet_addr_is_ipv4mapped_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4mapped(&actual));
         REQUIRE(clarinet_addr_is_loopback(&actual));
     }
 
     SECTION("::FFFF:127.0.0.0 is NOT an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[15] = 0;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4mapped_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 
     SECTION("::FFFF:127.0.0.255 is NOT an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[15] = 255;
-        REQUIRE_FALSE(clarinet_addr_is_ipv4mapped_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 
     SECTION("::FFFF:127.0.0.2 is an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[15] = 2;
-        REQUIRE(clarinet_addr_is_ipv4mapped_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 
     SECTION("::FFFF:127.255.255.254 is an ipv4 mapped loopback")
@@ -284,44 +280,44 @@ TEST_CASE("IPv4 Mapped Loopback", "[address][ipv6][ipv4][loopback]")
         actual.as.ipv6.u.byte[13] = 255;
         actual.as.ipv6.u.byte[14] = 255;
         actual.as.ipv6.u.byte[14] = 254;
-        REQUIRE(clarinet_addr_is_ipv4mapped_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 }
 
 TEST_CASE("IPv6 Address Any", "[address][ipv6][any]")
 {
-    clarinet_addr actual = clarinet_addr_ipv6_any;
+    clarinet_addr actual = clarinet_addr_any_ipv6;
     REQUIRE(actual.family == CLARINET_AF_INET6);
     REQUIRE(actual.as.ipv6.flowinfo == 0);
     REQUIRE(actual.as.ipv6.scope_id == 0);
-    REQUIRE((actual.as.ipv6.u.dword[0]
-           | actual.as.ipv6.u.dword[1]
-           | actual.as.ipv6.u.dword[2]
-           | actual.as.ipv6.u.dword[3]) == 0);
-    REQUIRE((actual.as.ipv6.u.word[0]
-           | actual.as.ipv6.u.word[1]
-           | actual.as.ipv6.u.word[2]
-           | actual.as.ipv6.u.word[3]
-           | actual.as.ipv6.u.word[4]
-           | actual.as.ipv6.u.word[5]
-           | actual.as.ipv6.u.word[6]
-           | actual.as.ipv6.u.word[7]) == 0);
-    REQUIRE((actual.as.ipv6.u.byte[0]
-           | actual.as.ipv6.u.byte[1]
-           | actual.as.ipv6.u.byte[2]
-           | actual.as.ipv6.u.byte[3]
-           | actual.as.ipv6.u.byte[4]
-           | actual.as.ipv6.u.byte[5]
-           | actual.as.ipv6.u.byte[6]
-           | actual.as.ipv6.u.byte[7]
-           | actual.as.ipv6.u.byte[8]
-           | actual.as.ipv6.u.byte[9]
-           | actual.as.ipv6.u.byte[10]
-           | actual.as.ipv6.u.byte[11]
-           | actual.as.ipv6.u.byte[12]
-           | actual.as.ipv6.u.byte[13]
-           | actual.as.ipv6.u.byte[14]
-           | actual.as.ipv6.u.byte[15]) == 0);
+    REQUIRE(actual.as.ipv6.u.dword[0] == 0);
+    REQUIRE(actual.as.ipv6.u.dword[1] == 0);
+    REQUIRE(actual.as.ipv6.u.dword[2] == 0);
+    REQUIRE(actual.as.ipv6.u.dword[3] == 0);
+    REQUIRE(actual.as.ipv6.u.word[0] == 0);
+    REQUIRE(actual.as.ipv6.u.word[1] == 0);
+    REQUIRE(actual.as.ipv6.u.word[2] == 0);
+    REQUIRE(actual.as.ipv6.u.word[3] == 0);
+    REQUIRE(actual.as.ipv6.u.word[4] == 0);
+    REQUIRE(actual.as.ipv6.u.word[5] == 0);
+    REQUIRE(actual.as.ipv6.u.word[6] == 0);
+    REQUIRE(actual.as.ipv6.u.word[7] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[0] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[1] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[2] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[3] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[4] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[5] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[6] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[7] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[8] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[9] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[10] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[11] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[12] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[13] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[14] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[15] == 0);
 
     clarinet_addr expected = clarinet_addr_none;
     expected.family = CLARINET_AF_INET6;
@@ -329,44 +325,44 @@ TEST_CASE("IPv6 Address Any", "[address][ipv6][any]")
     REQUIRE_THAT(memory(&expected, sizeof(expected)), Equals(memory(&actual, sizeof(actual))));
 
     REQUIRE(clarinet_addr_is_ipv6(&actual));
-    REQUIRE(clarinet_addr_is_ipv6_any(&actual));
+    REQUIRE(clarinet_addr_is_any_ipv6(&actual));
     REQUIRE(clarinet_addr_is_any(&actual));
 }
 
 TEST_CASE("IPv6 Address Loopback", "[address][ipv6][loopback]")
 {
-    clarinet_addr actual = clarinet_addr_ipv6_loopback;
+    clarinet_addr actual = clarinet_addr_loopback_ipv6;
     REQUIRE(actual.family == CLARINET_AF_INET6);
     REQUIRE(actual.as.ipv6.flowinfo == 0);
     REQUIRE(actual.as.ipv6.scope_id == 0);
-    REQUIRE((actual.as.ipv6.u.dword[0]
-           | actual.as.ipv6.u.dword[1]
-           | actual.as.ipv6.u.dword[2]) == 0);
-    REQUIRE((actual.as.ipv6.u.word[0]
-           | actual.as.ipv6.u.word[1]
-           | actual.as.ipv6.u.word[2]
-           | actual.as.ipv6.u.word[3]
-           | actual.as.ipv6.u.word[4]
-           | actual.as.ipv6.u.word[5]
-           | actual.as.ipv6.u.word[6]) == 0);
-    REQUIRE((actual.as.ipv6.u.byte[0]
-           | actual.as.ipv6.u.byte[1]
-           | actual.as.ipv6.u.byte[2]
-           | actual.as.ipv6.u.byte[3]
-           | actual.as.ipv6.u.byte[4]
-           | actual.as.ipv6.u.byte[5]
-           | actual.as.ipv6.u.byte[6]
-           | actual.as.ipv6.u.byte[7]
-           | actual.as.ipv6.u.byte[8]
-           | actual.as.ipv6.u.byte[9]
-           | actual.as.ipv6.u.byte[10]
-           | actual.as.ipv6.u.byte[11]
-           | actual.as.ipv6.u.byte[12]
-           | actual.as.ipv6.u.byte[13]
-           | actual.as.ipv6.u.byte[14]) == 0);
+    REQUIRE(actual.as.ipv6.u.dword[0] == 0);
+    REQUIRE(actual.as.ipv6.u.dword[1] == 0);
+    REQUIRE(actual.as.ipv6.u.dword[2] == 0);
+    REQUIRE(actual.as.ipv6.u.word[0] == 0);
+    REQUIRE(actual.as.ipv6.u.word[1] == 0);
+    REQUIRE(actual.as.ipv6.u.word[2] == 0);
+    REQUIRE(actual.as.ipv6.u.word[3] == 0);
+    REQUIRE(actual.as.ipv6.u.word[4] == 0);
+    REQUIRE(actual.as.ipv6.u.word[5] == 0);
+    REQUIRE(actual.as.ipv6.u.word[6] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[0] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[1] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[2] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[3] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[4] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[5] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[6] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[7] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[8] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[9] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[10] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[11] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[12] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[13] == 0);
+    REQUIRE(actual.as.ipv6.u.byte[14] == 0);
     REQUIRE(actual.as.ipv6.u.byte[15] == 1);
 
-    SECTION("Check clarinet_addr_ipv6_loopback constant")
+    SECTION("Check clarinet_addr_loopback_ipv6 constant")
     {
         clarinet_addr expected = clarinet_addr_none;
         expected.family = CLARINET_AF_INET6;
@@ -378,32 +374,32 @@ TEST_CASE("IPv6 Address Loopback", "[address][ipv6][loopback]")
     SECTION("::1 is an ipv6 looback")
     {
         REQUIRE(clarinet_addr_is_ipv6(&actual));
-        REQUIRE(clarinet_addr_is_ipv6_loopback(&actual));
+        REQUIRE(clarinet_addr_is_loopback_ipv6(&actual));
         REQUIRE(clarinet_addr_is_loopback(&actual));
     }
 
     SECTION(":: is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 0;
-        REQUIRE_FALSE(clarinet_addr_is_ipv6_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
     SECTION("::00ff is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 255;
-        REQUIRE_FALSE(clarinet_addr_is_ipv6_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
     SECTION("::2 is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 2;
-        REQUIRE_FALSE(clarinet_addr_is_ipv6_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
     SECTION("::00fe is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 254;
-        REQUIRE_FALSE(clarinet_addr_is_ipv6_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
     SECTION("::ffff:127.0.0.1 is NOT an ipv6 looback")
@@ -414,7 +410,7 @@ TEST_CASE("IPv6 Address Loopback", "[address][ipv6][loopback]")
         actual.as.ipv6.u.byte[13] = 0;
         actual.as.ipv6.u.byte[14] = 0;
         actual.as.ipv6.u.byte[15] = 1;
-        REQUIRE_FALSE(clarinet_addr_is_ipv6_loopback(&actual));
+        REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 }
 
@@ -422,12 +418,15 @@ TEST_CASE("Address Is Equal", "[address]")
 {
     SECTION("Address None (Equal)")
     {
-        /* using two distinct allocations for the same contant on purpose */
+        // using two distinct allocations for the same contant on purpose
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_none, clarinet_addr_none }
-            }));
+            { 0, clarinet_addr_none, clarinet_addr_none }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -436,14 +435,17 @@ TEST_CASE("Address Is Equal", "[address]")
 
     SECTION("Address None (Not Equal)")
     {
-        /* using two distinct allocations for the same contant on purpose */
+        // using two distinct allocations for the same contant on purpose
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_none, clarinet_addr_ipv4_any },
-                { 1, clarinet_addr_none, clarinet_addr_ipv4_loopback },
-                { 2, clarinet_addr_none, clarinet_addr_ipv4_broadcast }
-            }));
+            { 0, clarinet_addr_none, clarinet_addr_any_ipv4 },
+            { 1, clarinet_addr_none, clarinet_addr_loopback_ipv4 },
+            { 2, clarinet_addr_none, clarinet_addr_broadcast_ipv4 }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -455,14 +457,17 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
 {
     SECTION("Constant ipv4 addresses (Equal)")
     {
-        /* using two distinct allocations for the same contant on purpose */
+        // using two distinct allocations for the same contant on purpose
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv4_any, clarinet_addr_ipv4_any },
-                { 1, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4_loopback },
-                { 2, clarinet_addr_ipv4_broadcast, clarinet_addr_ipv4_broadcast },
-            }));
+            { 0, clarinet_addr_any_ipv4,       clarinet_addr_any_ipv4 },
+            { 1, clarinet_addr_loopback_ipv4,  clarinet_addr_loopback_ipv4 },
+            { 2, clarinet_addr_broadcast_ipv4, clarinet_addr_broadcast_ipv4 },
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -473,11 +478,14 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
     {
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv4_any, clarinet_addr_ipv4_loopback },
-                { 1, clarinet_addr_ipv4_any, clarinet_addr_ipv4_broadcast },
-                { 2, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4_broadcast }
-            }));
+            { 0, clarinet_addr_any_ipv4,      clarinet_addr_loopback_ipv4 },
+            { 1, clarinet_addr_any_ipv4,      clarinet_addr_broadcast_ipv4 },
+            { 2, clarinet_addr_loopback_ipv4, clarinet_addr_broadcast_ipv4 }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -509,7 +517,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
     {
         clarinet_addr a;
         memnoise(&a, sizeof(a));
-        a.family = CLARINET_AF_NONE;
+        a.family = CLARINET_AF_UNSPEC;
         a.as.ipv4.u.byte[0] = 0x00;
         a.as.ipv4.u.byte[1] = 0x11;
         a.as.ipv4.u.byte[2] = 0x22;
@@ -531,14 +539,17 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
 {
     SECTION("Constant ipv6 addresses (Equal)")
     {
-        /* using two distinct allocations for the same contant on purpose */
+        // using two distinct allocations for the same contant on purpose
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv6_any, clarinet_addr_ipv6_any },
-                { 1, clarinet_addr_ipv6_loopback, clarinet_addr_ipv6_loopback },
-                { 2, clarinet_addr_ipv4mapped_loopback, clarinet_addr_ipv4mapped_loopback}
-            }));
+            { 0, clarinet_addr_any_ipv6,            clarinet_addr_any_ipv6 },
+            { 1, clarinet_addr_loopback_ipv6,       clarinet_addr_loopback_ipv6 },
+            { 2, clarinet_addr_loopback_ipv4mapped, clarinet_addr_loopback_ipv4mapped}
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -549,19 +560,22 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
     {
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv6_any, clarinet_addr_ipv4_any },
-                { 1, clarinet_addr_ipv6_loopback, clarinet_addr_ipv4_loopback },
-                { 2, clarinet_addr_ipv6_any, clarinet_addr_ipv6_loopback },
-                { 3, clarinet_addr_ipv6_any, clarinet_addr_ipv4mapped_loopback },
-                { 4, clarinet_addr_ipv6_loopback, clarinet_addr_ipv4mapped_loopback }
-            }));
+            { 0, clarinet_addr_any_ipv6,      clarinet_addr_any_ipv4 },
+            { 1, clarinet_addr_loopback_ipv6, clarinet_addr_loopback_ipv4 },
+            { 2, clarinet_addr_any_ipv6,      clarinet_addr_loopback_ipv6 },
+            { 3, clarinet_addr_any_ipv6,      clarinet_addr_loopback_ipv4mapped },
+            { 4, clarinet_addr_loopback_ipv6, clarinet_addr_loopback_ipv4mapped }
+        }));
+        // @formatter:on
 
         FROM(index);
 
         REQUIRE_FALSE(clarinet_addr_is_equal(&a, &b));
     }
-    
+
     SECTION("Custom ipv6 addresses (Equal)")
     {
         clarinet_addr a;
@@ -621,7 +635,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
-            a.family = CLARINET_AF_NONE;
+            a.family = CLARINET_AF_UNSPEC;
             a.as.ipv6.flowinfo = 0xAABBCCDD;
             a.as.ipv6.u.byte[0] = 0x00;
             a.as.ipv6.u.byte[1] = 0x11;
@@ -854,14 +868,17 @@ TEST_CASE("IPv4 Address Is Equivalent", "[address][ipv4]")
 {
     SECTION("Constant ipv4 addresses (Equivalent)")
     {
-        /* using two distinct allocations for the same contant on purpose */
+        // using two distinct allocations for the same contant on purpose
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv4_any, clarinet_addr_ipv4_any },
-                { 1, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4_loopback },
-                { 2, clarinet_addr_ipv4_broadcast, clarinet_addr_ipv4_broadcast }
-            }));
+            { 0, clarinet_addr_any_ipv4,       clarinet_addr_any_ipv4 },
+            { 1, clarinet_addr_loopback_ipv4,  clarinet_addr_loopback_ipv4 },
+            { 2, clarinet_addr_broadcast_ipv4, clarinet_addr_broadcast_ipv4 }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -872,11 +889,14 @@ TEST_CASE("IPv4 Address Is Equivalent", "[address][ipv4]")
     {
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv4_any, clarinet_addr_ipv4_loopback },
-                { 1, clarinet_addr_ipv4_any, clarinet_addr_ipv4_broadcast },
-                { 2, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4_broadcast }
-            }));
+            { 0, clarinet_addr_any_ipv4,      clarinet_addr_loopback_ipv4 },
+            { 1, clarinet_addr_any_ipv4,      clarinet_addr_broadcast_ipv4 },
+            { 2, clarinet_addr_loopback_ipv4, clarinet_addr_broadcast_ipv4 }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -909,15 +929,18 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
 {
     SECTION("Constant ipv6 addresses (Equivalent)")
     {
-        /* using two distinct allocations for the same contant on purpose */
+        // using two distinct allocations for the same contant on purpose
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv6_any, clarinet_addr_ipv6_any },
-                { 1, clarinet_addr_ipv6_loopback, clarinet_addr_ipv6_loopback  },
-                { 2, clarinet_addr_ipv4mapped_loopback, clarinet_addr_ipv4mapped_loopback  },
-                { 3, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4mapped_loopback  }
-            }));
+            { 0, clarinet_addr_any_ipv6,            clarinet_addr_any_ipv6 },
+            { 1, clarinet_addr_loopback_ipv6,       clarinet_addr_loopback_ipv6  },
+            { 2, clarinet_addr_loopback_ipv4mapped, clarinet_addr_loopback_ipv4mapped  },
+            { 3, clarinet_addr_loopback_ipv4,       clarinet_addr_loopback_ipv4mapped  }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -928,11 +951,14 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
     {
         int index;
         clarinet_addr a, b;
+
+        // @formatter:off
         std::tie(index, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv6_any, clarinet_addr_ipv6_loopback },
-                { 1, clarinet_addr_ipv6_any, clarinet_addr_ipv4mapped_loopback },
-                { 2, clarinet_addr_ipv6_loopback, clarinet_addr_ipv4mapped_loopback }
-            }));
+            { 0, clarinet_addr_any_ipv6,      clarinet_addr_loopback_ipv6 },
+            { 1, clarinet_addr_any_ipv6,      clarinet_addr_loopback_ipv4mapped },
+            { 2, clarinet_addr_loopback_ipv6, clarinet_addr_loopback_ipv4mapped }
+        }));
+        // @formatter:on
 
         FROM(index);
 
@@ -1185,13 +1211,15 @@ TEST_CASE("Map to IPv4", "[address][ipv4]")
 {
     SECTION("Valid map to ipv4")
     {
+        // @formatter:off
         const std::vector<std::tuple<int, clarinet_addr, clarinet_addr>> data =
         {
 #if defined(CLARINET_ENABLE_IPV6)
-            { 0, clarinet_addr_ipv4mapped_loopback, clarinet_addr_ipv4_loopback },
+            { 0, clarinet_addr_loopback_ipv4mapped, clarinet_addr_loopback_ipv4 },
 #endif
-            { 1, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4_loopback }
+            { 1, clarinet_addr_loopback_ipv4,       clarinet_addr_loopback_ipv4 }
         };
+        // @formatter:on
 
         int index;
         clarinet_addr src, expected;
@@ -1207,19 +1235,20 @@ TEST_CASE("Map to IPv4", "[address][ipv4]")
 
     SECTION("Invalid map To ipv4")
     {
-        const std::vector<std::tuple<int, clarinet_addr>> data =
-        {
+        // @formatter:off
+        const std::vector<std::tuple<int, clarinet_addr>> data = {
 #if !defined(CLARINET_ENABLE_IPV6)
-            { 0, clarinet_addr_ipv6_loopback },
-            { 1, clarinet_addr_ipv4mapped_loopback },
+            { 0, clarinet_addr_loopback_ipv6       },
+            { 1, clarinet_addr_loopback_ipv4mapped },
 #endif
-            { 2, clarinet_addr_none }
+            { 2, clarinet_addr_none                }
         };
+        // @formatter:on
 
         int index;
         clarinet_addr src;
         std::tie(index, src) = GENERATE_REF(from_range(data));
-        
+
         FROM(index);
 
         clarinet_addr dst;
@@ -1232,33 +1261,37 @@ TEST_CASE("Map to IPv6", "[address][ipv6]")
 {
     SECTION("Valid map to ipv6")
     {
-#if defined(CLARINET_ENABLE_IPV6)
+    #if defined(CLARINET_ENABLE_IPV6)
         int index;
         clarinet_addr src, expected;
+
+        // @formatter:off
         std::tie(index, src, expected) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-                { 0, clarinet_addr_ipv4_loopback, clarinet_addr_ipv4mapped_loopback },
-                { 1, clarinet_addr_ipv6_loopback, clarinet_addr_ipv6_loopback }
-            }));
-        
+            { 0, clarinet_addr_loopback_ipv4, clarinet_addr_loopback_ipv4mapped },
+            { 1, clarinet_addr_loopback_ipv6, clarinet_addr_loopback_ipv6 }
+        }));
+        // @formatter:on
+
         FROM(index);
 
         clarinet_addr dst;
         const int errcode = clarinet_addr_map_to_ipv6(&dst, &src);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(clarinet_addr_is_equal(&dst, &expected));
-#endif
+    #endif
     }
 
     SECTION("Invalid map To ipv6")
     {
-        const std::vector<std::tuple<int, clarinet_addr>> data =
-        {
+        // @formatter:off
+        const std::vector<std::tuple<int, clarinet_addr>> data = {
 #if !defined(CLARINET_ENABLE_IPV6)
-            {1, clarinet_addr_ipv4mapped_loopback },
-            {2, clarinet_addr_ipv6_loopback },
+            {1, clarinet_addr_loopback_ipv4mapped },
+            {2, clarinet_addr_loopback_ipv6 },
 #endif
             {3, clarinet_addr_none }
         };
+        // @formatter:on
 
         int index;
         clarinet_addr src;
@@ -1278,21 +1311,21 @@ TEST_CASE("Address To String", "[address]")
     {
         SECTION("NULL dst")
         {
-            clarinet_addr src = clarinet_addr_ipv4_any;
-            const int errcode = clarinet_addr_to_string(NULL, 0, &src);
+            clarinet_addr src = clarinet_addr_any_ipv4;
+            const int errcode = clarinet_addr_to_string(nullptr, 0, &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
         SECTION("NULL src")
         {
             char dst[CLARINET_ADDR_STRLEN];
-            const int errcode = clarinet_addr_to_string(dst, sizeof(dst), NULL);
+            const int errcode = clarinet_addr_to_string(dst, sizeof(dst), nullptr);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
         SECTION("Not enough space on dst for ipv4")
         {
-            clarinet_addr src = clarinet_addr_ipv4_any;
+            clarinet_addr src = clarinet_addr_any_ipv4;
             char dst[4];
             const int errcode = clarinet_addr_to_string(dst, sizeof(dst), &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1300,7 +1333,7 @@ TEST_CASE("Address To String", "[address]")
 
         SECTION("Not enough space on dst for ipv6")
         {
-            clarinet_addr src = {0};
+            clarinet_addr src = { 0 };
             memnoise(&src, sizeof(src));
             src.family = CLARINET_AF_INET6;
             src.as.ipv6.flowinfo = 0xA0A1A2A3;
@@ -1321,7 +1354,7 @@ TEST_CASE("Address To String", "[address]")
             src.as.ipv6.u.byte[14] = 0xBE;
             src.as.ipv6.u.byte[15] = 0xBF;
             src.as.ipv6.scope_id = 3233923779;
-            char dst[1] = {0};
+            char dst[1] = { 0 };
             memnoise(dst, sizeof(dst));
             const int errcode = clarinet_addr_to_string(dst, sizeof(dst), &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1329,7 +1362,7 @@ TEST_CASE("Address To String", "[address]")
 
         SECTION("Family not supported")
         {
-            clarinet_addr custom_ipv6 = {0};
+            clarinet_addr custom_ipv6 = { 0 };
             memnoise(&custom_ipv6, sizeof(custom_ipv6));
             custom_ipv6.family = CLARINET_AF_INET6;
             custom_ipv6.as.ipv6.flowinfo = 0xA0A1A2A3;
@@ -1352,23 +1385,24 @@ TEST_CASE("Address To String", "[address]")
             custom_ipv6.as.ipv6.scope_id = 3233923779;
 
             clarinet_addr custom_none = custom_ipv6;
-            custom_none.family = CLARINET_AF_NONE;
+            custom_none.family = CLARINET_AF_UNSPEC;
 
-            const std::vector<std::tuple<int, clarinet_addr>> data =
-            {
+            // @formatter:off
+            const std::vector<std::tuple<int, clarinet_addr>> data = {
 #if !defined(CLARINET_ENABLE_IPV6)
                 { 0, custom_ipv6 },
 #endif
                 { 1, custom_none }
             };
+            // @formatter:on
 
             int index;
             clarinet_addr src;
             std::tie(index, src) = GENERATE_REF(from_range(data));
-            
+
             FROM(index);
 
-            char dst[CLARINET_ADDR_STRLEN] = {0};
+            char dst[CLARINET_ADDR_STRLEN] = { 0 };
             memnoise(dst, sizeof(dst));
             const int errcode = clarinet_addr_to_string(dst, sizeof(dst), &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1382,15 +1416,18 @@ TEST_CASE("Address To String", "[address]")
             int index;
             clarinet_addr src;
             const char* expected;
+
+            // @formatter:off
             std::tie(index, src, expected) = GENERATE(table<int, clarinet_addr, const char*>({
-                    { 0, clarinet_addr_ipv4_any, "0.0.0.0" },
-                    { 1, clarinet_addr_ipv4_loopback, "127.0.0.1" },
-                    { 2, clarinet_addr_ipv4_broadcast, "255.255.255.255" }
-                }));
+                { 0, clarinet_addr_any_ipv4,       "0.0.0.0" },
+                { 1, clarinet_addr_loopback_ipv4,  "127.0.0.1" },
+                { 2, clarinet_addr_broadcast_ipv4, "255.255.255.255" }
+            }));
+            // @formatter:on
 
             FROM(index);
 
-            char dst[CLARINET_ADDR_STRLEN] = {0};
+            char dst[CLARINET_ADDR_STRLEN] = { 0 };
             memnoise(dst, sizeof(dst));
             const int n = clarinet_addr_to_string(dst, sizeof(dst), &src);
             REQUIRE(n > 0);
@@ -1402,11 +1439,11 @@ TEST_CASE("Address To String", "[address]")
 
         SECTION("Ipv6 to string")
         {
-#if defined(CLARINET_ENABLE_IPV6)
-            clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_ipv4mapped_loopback;
+    #if defined(CLARINET_ENABLE_IPV6)
+            clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_loopback_ipv4mapped;
             ipv4mapped_with_scope_id.as.ipv6.scope_id = 1234567890;
 
-            clarinet_addr custom_ipv6 = {0};
+            clarinet_addr custom_ipv6 = { 0 };
             memnoise(&custom_ipv6, sizeof(custom_ipv6));
             custom_ipv6.family = CLARINET_AF_INET6;
             custom_ipv6.as.ipv6.flowinfo = 0xA0A1A2A3;
@@ -1427,21 +1464,24 @@ TEST_CASE("Address To String", "[address]")
             custom_ipv6.as.ipv6.u.byte[14] = 0xBE;
             custom_ipv6.as.ipv6.u.byte[15] = 0xBF;
             custom_ipv6.as.ipv6.scope_id = 3233923779;
-            
+
             int index;
             clarinet_addr src;
             const char* expected;
+
+            // @formatter:off
             std::tie(index, src, expected) = GENERATE_REF(table<int, clarinet_addr, const char*>({
-                    {0, clarinet_addr_ipv6_any, "::" },
-                    {1, clarinet_addr_ipv6_loopback, "::1" },
-                    {2, clarinet_addr_ipv4mapped_loopback, "::ffff:127.0.0.1" },
-                    {3, ipv4mapped_with_scope_id, "::ffff:127.0.0.1%1234567890" },
-                    {4, custom_ipv6, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779" }
-                }));
+                {0, clarinet_addr_any_ipv6,            "::" },
+                {1, clarinet_addr_loopback_ipv6,       "::1" },
+                {2, clarinet_addr_loopback_ipv4mapped, "::ffff:127.0.0.1" },
+                {3, ipv4mapped_with_scope_id,          "::ffff:127.0.0.1%1234567890" },
+                {4, custom_ipv6,                       "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779" }
+            }));
+            // @formatter:on
 
             FROM(index);
 
-            char dst[CLARINET_ADDR_STRLEN] = {0};
+            char dst[CLARINET_ADDR_STRLEN] = { 0 };
             memnoise(dst, sizeof(dst));
             const int n = clarinet_addr_to_string(dst, sizeof(dst), &src);
             REQUIRE(n > 0);
@@ -1449,7 +1489,7 @@ TEST_CASE("Address To String", "[address]")
             EXPLAIN("Actual: '%s'", dst);
             REQUIRE((size_t)n == strlen(expected));
             REQUIRE_THAT(std::string(dst), Equals(expected));
-#endif
+    #endif
         }
     }
 }
@@ -1459,20 +1499,20 @@ TEST_CASE("Address From String", "[address]")
     SECTION("NULL dst")
     {
         const char* src = "192.168.0.1";
-        const int errcode = clarinet_addr_from_string(NULL, src, strlen(src));
+        const int errcode = clarinet_addr_from_string(nullptr, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
     SECTION("NULL src")
     {
-        clarinet_addr dst = {0};
-        const int errcode = clarinet_addr_from_string(&dst, NULL, 0);
+        clarinet_addr dst = { 0 };
+        const int errcode = clarinet_addr_from_string(&dst, nullptr, 0);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
     SECTION("Zero srclen")
     {
-        clarinet_addr dst = {0};
+        clarinet_addr dst = { 0 };
         const char* src = "192.168.0.1";
         const int errcode = clarinet_addr_from_string(&dst, src, 0);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1480,7 +1520,7 @@ TEST_CASE("Address From String", "[address]")
 
     SECTION("Insufficient srclen")
     {
-        clarinet_addr dst = {0};
+        clarinet_addr dst = { 0 };
         const char* src = "192.168.0.1";
         const int errcode = clarinet_addr_from_string(&dst, src, strlen(src) >> 1);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1488,27 +1528,26 @@ TEST_CASE("Address From String", "[address]")
 
     SECTION("Invalid addresses")
     {
-        const std::vector<std::tuple<int, const char*>> data =
-        {
-            {  0, "" },
-            {  1, "0" },
-            {  2, "0." },
-            {  3, "0.0" },
-            {  4, "0.0.0" },
-            {  5, "127.0.0.a" },
-            {  6, "255.255.255.255a" },
-            {  7, "255.255.255.ff" },
-            {  8, "10.0.0.-1" },
-            {  9, "ff.ff.ff.ff" },
+        const std::vector<std::tuple<int, const char*>> data = {
+            { 0, "" },
+            { 1, "0" },
+            { 2, "0." },
+            { 3, "0.0" },
+            { 4, "0.0.0" },
+            { 5, "127.0.0.a" },
+            { 6, "255.255.255.255a" },
+            { 7, "255.255.255.ff" },
+            { 8, "10.0.0.-1" },
+            { 9, "ff.ff.ff.ff" },
             { 10, "a0.a1.a2.a3" },
             { 11, "0a.1a.2a.3a" },
-#if !defined(CLARINET_ENABLE_IPV6)
-            { 12, "::ffff:127.0.0.1" }, 
+    #if !defined(CLARINET_ENABLE_IPV6)
+            { 12, "::ffff:127.0.0.1" },
             { 13, "::ffff:127.0.0.1%1234567890" },
             { 14, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf" },
             { 15, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebfK" },
             { 16, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779" },
-#endif
+    #endif
             { 17, ":" },
             { 18, "::%" },
             { 19, "::1%" },
@@ -1519,10 +1558,10 @@ TEST_CASE("Address From String", "[address]")
             { 24, "::1%0x12345" },
             { 25, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%00003233923779" },
             { 26, "10.0.0.1a" },
-            { 27, "127.0.0.001" },   
+            { 27, "127.0.0.001" },
             { 28, "::1%00012345" },
             { 29, "0000:0000:0000:0000:0000:ffff:127.0.0.333" },
-            { 30, "0000:0000:0000:0000:0000:ffff:127.0.0.001"},
+            { 30, "0000:0000:0000:0000:0000:ffff:127.0.0.001" },
             { 31, "0000:0000:0000:0000:0000:ffff:127.0.0.ff" },
             { 32, "0000:0000:0000:0000:0000:ffff:127.0.0.1%0000000000" },
             { 33, "127.0.0.333" },
@@ -1540,7 +1579,7 @@ TEST_CASE("Address From String", "[address]")
 
         FROM(index);
 
-        clarinet_addr dst = {0};
+        clarinet_addr dst = { 0 };
         memnoise(&dst, sizeof(dst));
         const int errcode = clarinet_addr_from_string(&dst, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1548,11 +1587,11 @@ TEST_CASE("Address From String", "[address]")
 
     SECTION("Valid addresses")
     {
-#if defined(CLARINET_ENABLE_IPV6)
-        clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_ipv4mapped_loopback;
+    #if defined(CLARINET_ENABLE_IPV6)
+        clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_loopback_ipv4mapped;
         ipv4mapped_with_scope_id.as.ipv6.scope_id = 1234567890;
 
-        clarinet_addr custom_ipv6 = {0};
+        clarinet_addr custom_ipv6 = { 0 };
         memnoise(&custom_ipv6, sizeof(custom_ipv6));
         custom_ipv6.family = CLARINET_AF_INET6;
         custom_ipv6.as.ipv6.flowinfo = 0;
@@ -1574,48 +1613,48 @@ TEST_CASE("Address From String", "[address]")
         custom_ipv6.as.ipv6.u.byte[15] = 0xBF;
         custom_ipv6.as.ipv6.scope_id = 3233923779;
 
-        /* flowinfo is not compared */
+        // flowinfo is not compared
         clarinet_addr custom_ipv6_with_flowinfo = custom_ipv6;
         custom_ipv6_with_flowinfo.as.ipv6.flowinfo = 0xFF;
-        
-        /* leading zeros ignored */
+
+        // leading zeros ignored
         clarinet_addr custom_ipv6_with_short_scope_id = custom_ipv6;
         custom_ipv6_with_short_scope_id.as.ipv6.scope_id = 12345;
-        
-        clarinet_addr custom_ipv6_f = clarinet_addr_ipv6_any;
+
+        clarinet_addr custom_ipv6_f = clarinet_addr_any_ipv6;
         custom_ipv6_f.as.ipv6.u.byte[15] = 0x0F;
-        
-        clarinet_addr custom_ipv6_feef_1886 = clarinet_addr_ipv6_any;
+
+        clarinet_addr custom_ipv6_feef_1886 = clarinet_addr_any_ipv6;
         custom_ipv6_feef_1886.as.ipv6.u.byte[12] = 0xFE;
         custom_ipv6_feef_1886.as.ipv6.u.byte[13] = 0xEF;
         custom_ipv6_feef_1886.as.ipv6.u.byte[14] = 0x18;
         custom_ipv6_feef_1886.as.ipv6.u.byte[15] = 0x86;
-              
-        clarinet_addr custom_ipv6_ffff_127_0_0_10 = clarinet_addr_ipv4mapped_loopback;
-        custom_ipv6_ffff_127_0_0_10.as.ipv6.u.byte[15] = 10;
-       
-#endif
 
-        const std::vector<std::tuple<int, const char*, const char*, clarinet_addr>> data =
-        {
-            {  0, "0.0.0.0",                                            "0.0.0.0",                                            clarinet_addr_ipv4_any },
-            {  1, "127.0.0.1",                                          "127.0.0.1",                                          clarinet_addr_ipv4_loopback },
-            {  2, "255.255.255.255",                                    "255.255.255.255",                                    clarinet_addr_ipv4_broadcast },
-#if defined(CLARINET_ENABLE_IPV6)                           
-            {  3, "::",                                                 "::",                                                 clarinet_addr_ipv6_any },
-            {  4, "0000:0000:0000:0000:0000:0000:0000:0000",            "::",                                                 clarinet_addr_ipv6_any },
-            {  5, "::1",                                                "::1",                                                clarinet_addr_ipv6_loopback },
-            {  6, "::ffff:127.0.0.1",                                   "::ffff:127.0.0.1",                                   clarinet_addr_ipv4mapped_loopback },
-            {  7, "0000:0000:0000:0000:0000:ffff:127.0.0.1%0",          "::ffff:127.0.0.1",                                   clarinet_addr_ipv4mapped_loopback },
-            {  8, "::ffff:127.0.0.1%1234567890",                        "::ffff:127.0.0.1%1234567890",                        ipv4mapped_with_scope_id },
-            {  9, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", custom_ipv6 },
-            { 10, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", custom_ipv6_with_flowinfo },
-            { 11, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%12345",      "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%12345",      custom_ipv6_with_short_scope_id },
-            { 12, "::F",                                                "::f",                                                custom_ipv6_f },
-            { 13, "::FEEF:1886",                                        "::254.239.24.134",                                   custom_ipv6_feef_1886 }, /* CHECK: shouldn't ::FEEF:1886 be reconstructed as ::feef:1886 instead of ::254.239.24.134 ? */
-            { 14, "0000:0000:0000:0000:0000:ffff:127.0.0.10",           "::ffff:127.0.0.10",                                  custom_ipv6_ffff_127_0_0_10},
+        clarinet_addr custom_ipv6_ffff_127_0_0_10 = clarinet_addr_loopback_ipv4mapped;
+        custom_ipv6_ffff_127_0_0_10.as.ipv6.u.byte[15] = 10;
+
+    #endif
+        // @formatter:off
+        const std::vector<std::tuple<int, const char*, const char*, clarinet_addr>> data = {
+            {  0, "0.0.0.0",                                            "0.0.0.0",                                            clarinet_addr_any_ipv4            },
+            {  1, "127.0.0.1",                                          "127.0.0.1",                                          clarinet_addr_loopback_ipv4       },
+            {  2, "255.255.255.255",                                    "255.255.255.255",                                    clarinet_addr_broadcast_ipv4      },
+#if defined(CLARINET_ENABLE_IPV6)
+            {  3, "::",                                                 "::",                                                 clarinet_addr_any_ipv6            },
+            {  4, "0000:0000:0000:0000:0000:0000:0000:0000",            "::",                                                 clarinet_addr_any_ipv6            },
+            {  5, "::1",                                                "::1",                                                clarinet_addr_loopback_ipv6       },
+            {  6, "::ffff:127.0.0.1",                                   "::ffff:127.0.0.1",                                   clarinet_addr_loopback_ipv4mapped },
+            {  7, "0000:0000:0000:0000:0000:ffff:127.0.0.1%0",          "::ffff:127.0.0.1",                                   clarinet_addr_loopback_ipv4mapped },
+            {  8, "::ffff:127.0.0.1%1234567890",                        "::ffff:127.0.0.1%1234567890",                        ipv4mapped_with_scope_id          },
+            {  9, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", custom_ipv6                       },
+            { 10, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779", custom_ipv6_with_flowinfo         },
+            { 11, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%12345",      "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%12345",      custom_ipv6_with_short_scope_id   },
+            { 12, "::F",                                                "::f",                                                custom_ipv6_f                     },
+            { 13, "::FEEF:1886",                                        "::254.239.24.134",                                   custom_ipv6_feef_1886             }, // CHECK: shouldn't ::FEEF:1886 be reconstructed as ::feef:1886 instead of ::254.239.24.134 ?
+            { 14, "0000:0000:0000:0000:0000:ffff:127.0.0.10",           "::ffff:127.0.0.10",                                  custom_ipv6_ffff_127_0_0_10       },
 #endif
         };
+        // @formatter:on
 
         int index;
         const char* src;
@@ -1625,18 +1664,18 @@ TEST_CASE("Address From String", "[address]")
 
         FROM(index);
 
-        clarinet_addr dst = {0};
+        clarinet_addr dst = { 0 };
         memnoise(&dst, sizeof(dst));
         const int errcode = clarinet_addr_from_string(&dst, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(clarinet_addr_is_equal(&dst, &expected));
 
-        char s[CLARINET_ADDR_STRLEN] = {0};
+        char s[CLARINET_ADDR_STRLEN] = { 0 };
         memnoise(&s, sizeof(s));
         const int n = clarinet_addr_to_string(s, sizeof(s), &dst);
         REQUIRE(n > 0);
         EXPLAIN("Expected: %s", reconstruction);
-        EXPLAIN("Actual: %s", s);       
+        EXPLAIN("Actual: %s", s);
         REQUIRE((size_t)n == strlen(reconstruction));
         REQUIRE_THAT(std::string(s), Equals(reconstruction));
     }
@@ -1646,13 +1685,13 @@ TEST_CASE("Endpoint Size", "[endpoint]")
 {
 
     REQUIRE(sizeof(clarinet_endpoint) == 32);
-    REQUIRE(sizeof(((clarinet_endpoint*)0)->addr) == sizeof(clarinet_addr));
-    REQUIRE(sizeof(((clarinet_endpoint*)0)->port) == sizeof(uint16_t));
+    REQUIRE(sizeof(((clarinet_endpoint*)nullptr)->addr) == sizeof(clarinet_addr));
+    REQUIRE(sizeof(((clarinet_endpoint*)nullptr)->port) == sizeof(uint16_t));
 }
 
 TEST_CASE("Endpoint Max Strlen", "[endpoint]")
 {
-    REQUIRE(CLARINET_ENDPOINT_STRLEN == 65); /* "[0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295]:65535" */
+    REQUIRE(CLARINET_ENDPOINT_STRLEN == 65); // "[0000:0000:0000:0000:0000:ffff:255.255.255.255%4294967295]:65535"
 }
 
 TEST_CASE("Endpoint To String", "[endpoint]")
@@ -1661,21 +1700,21 @@ TEST_CASE("Endpoint To String", "[endpoint]")
     {
         SECTION("NULL dst")
         {
-            clarinet_endpoint src = {clarinet_addr_ipv4_any, 0};
-            const int errcode = clarinet_endpoint_to_string(NULL, 0, &src);
+            clarinet_endpoint src = { clarinet_addr_any_ipv4, 0 };
+            const int errcode = clarinet_endpoint_to_string(nullptr, 0, &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
         SECTION("NULL src")
         {
             char dst[CLARINET_ENDPOINT_STRLEN];
-            const int errcode = clarinet_endpoint_to_string(dst, sizeof(dst), NULL);
+            const int errcode = clarinet_endpoint_to_string(dst, sizeof(dst), nullptr);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
         SECTION("Not enough space on dst for ipv4")
         {
-            clarinet_endpoint src = {clarinet_addr_ipv4_any, 0};
+            clarinet_endpoint src = { clarinet_addr_any_ipv4, 0 };
             char dst[4];
             const int errcode = clarinet_endpoint_to_string(dst, sizeof(dst), &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1683,7 +1722,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
 
         SECTION("Not enough space on dst for ipv6")
         {
-            clarinet_endpoint src = {{0}};
+            clarinet_endpoint src = { { 0 } };
             memnoise(&src, sizeof(src));
             src.addr.family = CLARINET_AF_INET6;
             src.addr.as.ipv6.flowinfo = 0xA0A1A2A3;
@@ -1705,7 +1744,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             src.addr.as.ipv6.u.byte[15] = 0xBF;
             src.addr.as.ipv6.scope_id = 3233923779;
 
-            char dst[1] = {0};
+            char dst[1] = { 0 };
             memnoise(dst, sizeof(dst));
             const int errcode = clarinet_endpoint_to_string(dst, sizeof(dst), &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1713,7 +1752,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
 
         SECTION("Family not supported")
         {
-            clarinet_endpoint custom_ipv6 = {{0}};
+            clarinet_endpoint custom_ipv6 = { { 0 } };
             memnoise(&custom_ipv6, sizeof(custom_ipv6));
             custom_ipv6.addr.family = CLARINET_AF_INET6;
             custom_ipv6.addr.as.ipv6.flowinfo = 0xA0A1A2A3;
@@ -1736,13 +1775,12 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             custom_ipv6.addr.as.ipv6.scope_id = 3233923779;
 
             clarinet_endpoint custom_none = custom_ipv6;
-            custom_none.addr.family = CLARINET_AF_NONE;
+            custom_none.addr.family = CLARINET_AF_UNSPEC;
 
-            const std::vector<std::tuple<int, clarinet_endpoint>> data =
-            {
-#if !defined(CLARINET_ENABLE_IPV6)
+            const std::vector<std::tuple<int, clarinet_endpoint>> data = {
+    #if !defined(CLARINET_ENABLE_IPV6)
                 { 0, custom_ipv6 },
-#endif
+    #endif
                 { 1, custom_none }
             };
 
@@ -1752,7 +1790,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
 
             FROM(index);
 
-            char dst[CLARINET_ENDPOINT_STRLEN] = {0};
+            char dst[CLARINET_ENDPOINT_STRLEN] = { 0 };
             memnoise(dst, sizeof(dst));
             const int errcode = clarinet_endpoint_to_string(dst, sizeof(dst), &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1766,18 +1804,21 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             int index;
             clarinet_endpoint src;
             const char* expected;
+
+            // @formatter:off
             std::tie(index, src, expected) = GENERATE(table<int, clarinet_endpoint, const char*>({
-                    { 0, { clarinet_addr_ipv4_any, 0 }, "0.0.0.0:0" },
-                    { 1, { clarinet_addr_ipv4_loopback, 0 }, "127.0.0.1:0" },
-                    { 2, { clarinet_addr_ipv4_broadcast, 0 }, "255.255.255.255:0" },
-                    { 3, { clarinet_addr_ipv4_any, 65535 }, "0.0.0.0:65535" },
-                    { 4, { clarinet_addr_ipv4_loopback, 65535 }, "127.0.0.1:65535" },
-                    { 5, { clarinet_addr_ipv4_broadcast, 65535 }, "255.255.255.255:65535" }
-                }));
+                { 0, {clarinet_addr_any_ipv4,           0 }, "0.0.0.0:0"             },
+                { 1, {clarinet_addr_loopback_ipv4,      0 }, "127.0.0.1:0"           },
+                { 2, {clarinet_addr_broadcast_ipv4,     0 }, "255.255.255.255:0"     },
+                { 3, {clarinet_addr_any_ipv4,       65535 }, "0.0.0.0:65535"         },
+                { 4, {clarinet_addr_loopback_ipv4,  65535 }, "127.0.0.1:65535"       },
+                { 5, {clarinet_addr_broadcast_ipv4, 65535 }, "255.255.255.255:65535" },
+            }));
+            // @formatter:on
 
             FROM(index);
 
-            char dst[CLARINET_ENDPOINT_STRLEN] = {0};
+            char dst[CLARINET_ENDPOINT_STRLEN] = { 0 };
             memnoise(dst, sizeof(dst));
             const int n = clarinet_endpoint_to_string(dst, sizeof(dst), &src);
             REQUIRE(n > 0);
@@ -1789,11 +1830,11 @@ TEST_CASE("Endpoint To String", "[endpoint]")
 
         SECTION("IPV6 to string")
         {
-#if defined(CLARINET_ENABLE_IPV6)
-            clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_ipv4mapped_loopback;
+    #if defined(CLARINET_ENABLE_IPV6)
+            clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_loopback_ipv4mapped;
             ipv4mapped_with_scope_id.as.ipv6.scope_id = 1234567890;
 
-            clarinet_addr custom_ipv6 = {0};
+            clarinet_addr custom_ipv6 = { 0 };
             memnoise(&custom_ipv6, sizeof(custom_ipv6));
             custom_ipv6.family = CLARINET_AF_INET6;
             custom_ipv6.as.ipv6.flowinfo = 0xA0A1A2A3;
@@ -1818,22 +1859,25 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             int index;
             clarinet_endpoint src;
             const char* expected;
+
+            // @formatter:off
             std::tie(index, src, expected) = GENERATE_REF(table<int, clarinet_endpoint, const char*>({
-                    { 0, { clarinet_addr_ipv6_any,                   0 }, "[::]:0" },
-                    { 1, { clarinet_addr_ipv6_loopback,              0 }, "[::1]:0" },
-                    { 2, { clarinet_addr_ipv4mapped_loopback,        0 }, "[::ffff:127.0.0.1]:0" },
-                    { 3, { ipv4mapped_with_scope_id,                 0 }, "[::ffff:127.0.0.1%1234567890]:0" },
-                    { 4, { custom_ipv6,                              0 }, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:0" },
-                    { 5, { clarinet_addr_ipv6_any,               65535 }, "[::]:65535" },
-                    { 6, { clarinet_addr_ipv6_loopback,          65535 }, "[::1]:65535" },
-                    { 7, { clarinet_addr_ipv4mapped_loopback,    65535 }, "[::ffff:127.0.0.1]:65535" },
-                    { 8, { ipv4mapped_with_scope_id,             65535 }, "[::ffff:127.0.0.1%1234567890]:65535" },
-                    { 9, { custom_ipv6,                          65535 }, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:65535" }
-                }));
+                { 0, {clarinet_addr_any_ipv6,                0 }, "[::]:0" },
+                { 1, {clarinet_addr_loopback_ipv6,           0 }, "[::1]:0" },
+                { 2, {clarinet_addr_loopback_ipv4mapped,     0 }, "[::ffff:127.0.0.1]:0" },
+                { 3, {ipv4mapped_with_scope_id,              0 }, "[::ffff:127.0.0.1%1234567890]:0" },
+                { 4, {custom_ipv6,                           0 }, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:0" },
+                { 5, {clarinet_addr_any_ipv6,            65535 }, "[::]:65535" },
+                { 6, {clarinet_addr_loopback_ipv6,       65535 }, "[::1]:65535" },
+                { 7, {clarinet_addr_loopback_ipv4mapped, 65535 }, "[::ffff:127.0.0.1]:65535" },
+                { 8, {ipv4mapped_with_scope_id,          65535 }, "[::ffff:127.0.0.1%1234567890]:65535" },
+                { 9, {custom_ipv6,                       65535 }, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:65535" }
+            }));
+            // @formatter:on
 
             FROM(index);
 
-            char dst[CLARINET_ENDPOINT_STRLEN] = {0};
+            char dst[CLARINET_ENDPOINT_STRLEN] = { 0 };
             memnoise(dst, sizeof(dst));
             const int n = clarinet_endpoint_to_string(dst, sizeof(dst), &src);
             REQUIRE(n > 0);
@@ -1841,30 +1885,30 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             EXPLAIN("Actual: '%s'", dst);
             REQUIRE((size_t)n == strlen(expected));
             REQUIRE_THAT(std::string(dst), Equals(expected));
-#endif
+    #endif
         }
     }
 }
-    
+
 TEST_CASE("Endpoint From string", "[endpoint]")
 {
     SECTION("NULL dst")
     {
         const char* src = "192.168.0.1:0";
-        const int errcode = clarinet_endpoint_from_string(NULL, src, strlen(src));
+        const int errcode = clarinet_endpoint_from_string(nullptr, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
     SECTION("NULL src")
     {
-        clarinet_endpoint dst = {{0}};
-        const int errcode = clarinet_endpoint_from_string(&dst, NULL, 0);
+        clarinet_endpoint dst = { { 0 } };
+        const int errcode = clarinet_endpoint_from_string(&dst, nullptr, 0);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
     SECTION("Zero srclen")
     {
-        clarinet_endpoint dst = {{0}};
+        clarinet_endpoint dst = { { 0 } };
         const char* src = "192.168.0.1:0";
         const int errcode = clarinet_endpoint_from_string(&dst, src, 0);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1872,7 +1916,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
 
     SECTION("Insufficient srclen")
     {
-        clarinet_endpoint dst = {{0}};
+        clarinet_endpoint dst = { { 0 } };
         const char* src = "192.168.0.1:0";
         const int errcode = clarinet_endpoint_from_string(&dst, src, strlen(src) >> 1);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1880,18 +1924,17 @@ TEST_CASE("Endpoint From string", "[endpoint]")
 
     SECTION("Invalid endpoints")
     {
-        const std::vector<std::tuple<int, const char*>> data =
-        {
-            {  0, "" },
-            {  1, "0" },
-            {  2, "0." },
-            {  3, "0.0" },
-            {  4, "0.0.0" },
-            {  5, "0.0.0.0" },
-            {  6, "0.0.0.0:" },
-            {  7, "0.0.0.0::13" },
-            {  8, "127.0.0.1" },
-            {  9, "127.0.0.001" },
+        const std::vector<std::tuple<int, const char*>> data = {
+            { 0, "" },
+            { 1, "0" },
+            { 2, "0." },
+            { 3, "0.0" },
+            { 4, "0.0.0" },
+            { 5, "0.0.0.0" },
+            { 6, "0.0.0.0:" },
+            { 7, "0.0.0.0::13" },
+            { 8, "127.0.0.1" },
+            { 9, "127.0.0.001" },
             { 10, "127.0.0.1:" },
             { 11, "127.0.0.1::9" },
             { 12, "127.0.0.1:0x1234" },
@@ -1907,12 +1950,12 @@ TEST_CASE("Endpoint From string", "[endpoint]")
             { 22, "ff.ff.ff.ff:1234" },
             { 23, "a0.a1.a2.a3:1234" },
             { 24, "0a.1a.2a.3a:1234" },
-#if !defined(CLARINET_ENABLE_IPV6)
+    #if !defined(CLARINET_ENABLE_IPV6)
             { 25, "[::ffff:127.0.0.1]:1234" },
             { 26, "[::ffff:127.0.0.1%1234567890]:1234" },
             { 27, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf]:1234" },
             { 28, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:1234" },
-#endif
+    #endif
             { 29, "[::ffff:127.0.0.1]" },
             { 30, "[::ffff:127.0.0.1%1234567890]" },
             { 31, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf]" },
@@ -1926,7 +1969,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
             { 39, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf" },
             { 40, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779:" },
             { 41, "::ffff:127.0.0.1:1234" },
-            { 42, "::ffff:127.0.0.1%1234567890:1234"  },
+            { 42, "::ffff:127.0.0.1%1234567890:1234" },
             { 43, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf:1234" },
             { 44, "b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779:1234" },
             { 45, ":" },
@@ -1971,7 +2014,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
 
         FROM(index);
 
-        clarinet_endpoint dst = {{0}};
+        clarinet_endpoint dst = { { 0 } };
         memnoise(&dst, sizeof(dst));
         const int errcode = clarinet_endpoint_from_string(&dst, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
@@ -1979,14 +2022,14 @@ TEST_CASE("Endpoint From string", "[endpoint]")
 
     SECTION("Valid endpoints")
     {
-#if defined(CLARINET_ENABLE_IPV6)
-        clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_ipv4mapped_loopback;
+    #if defined(CLARINET_ENABLE_IPV6)
+        clarinet_addr ipv4mapped_with_scope_id = clarinet_addr_loopback_ipv4mapped;
         ipv4mapped_with_scope_id.as.ipv6.scope_id = 1234567890;
 
-        clarinet_addr ipv4mapped_with_short_scope_id = clarinet_addr_ipv4mapped_loopback;
+        clarinet_addr ipv4mapped_with_short_scope_id = clarinet_addr_loopback_ipv4mapped;
         ipv4mapped_with_short_scope_id.as.ipv6.scope_id = 12345;
-        
-        clarinet_addr custom_ipv6 = {0};
+
+        clarinet_addr custom_ipv6 = { 0 };
         memnoise(&custom_ipv6, sizeof(custom_ipv6));
         custom_ipv6.family = CLARINET_AF_INET6;
         custom_ipv6.as.ipv6.flowinfo = 0;
@@ -2008,26 +2051,26 @@ TEST_CASE("Endpoint From string", "[endpoint]")
         custom_ipv6.as.ipv6.u.byte[15] = 0xBF;
         custom_ipv6.as.ipv6.scope_id = 3233923779;
 
-        /* flowinfo is not compared */
+        // flowinfo is not compared
         clarinet_addr custom_ipv6_with_flowinfo = custom_ipv6;
         custom_ipv6_with_flowinfo.as.ipv6.flowinfo = 0xFF;
-#endif
+    #endif
 
-        const std::vector<std::tuple<int, const char*, const char*, clarinet_endpoint>> data =
-        {
-            {  0, "0.0.0.0:0",                                                  "0.0.0.0:0",                                                  { clarinet_addr_ipv4_any,                0 } },
-            {  1, "0.0.0.0:1234",                                               "0.0.0.0:1234",                                               { clarinet_addr_ipv4_any,             1234 } },
-            {  2, "127.0.0.1:0",                                                "127.0.0.1:0",                                                { clarinet_addr_ipv4_loopback,           0 } },
-            {  3, "127.0.0.1:65535",                                            "127.0.0.1:65535",                                            { clarinet_addr_ipv4_loopback,       65535 } },
-            {  4, "255.255.255.255:9",                                          "255.255.255.255:9",                                          { clarinet_addr_ipv4_broadcast,          9 } },
-#if defined(CLARINET_ENABLE_IPV6)                                                                                                            
-            {  5, "[::]:0",                                                     "[::]:0",                                                     { clarinet_addr_ipv6_any,                0 } },
-            {  6, "[::]:1234",                                                  "[::]:1234",                                                  { clarinet_addr_ipv6_any,             1234 } },
-            {  7, "[::1]:0",                                                    "[::1]:0",                                                    { clarinet_addr_ipv6_loopback,           0 } },
-            {  8, "[::1]:65535",                                                "[::1]:65535",                                                { clarinet_addr_ipv6_loopback,       65535 } },
-            { 19, "[::ffff:127.0.0.1]:0",                                       "[::ffff:127.0.0.1]:0",                                       { clarinet_addr_ipv4mapped_loopback,     0 } },
-            { 20, "[0000:0000:0000:0000:0000:ffff:127.0.0.1%0]:0",              "[::ffff:127.0.0.1]:0",                                       { clarinet_addr_ipv4mapped_loopback,     0 } },
-            { 21, "[::ffff:127.0.0.1]:65535",                                   "[::ffff:127.0.0.1]:65535",                                   { clarinet_addr_ipv4mapped_loopback, 65535 } },
+        // @formatter:off
+        const std::vector<std::tuple<int, const char*, const char*, clarinet_endpoint>> data = {
+            {  0, "0.0.0.0:0",                                                  "0.0.0.0:0",                                                  { clarinet_addr_any_ipv4,                0 } },
+            {  1, "0.0.0.0:1234",                                               "0.0.0.0:1234",                                               { clarinet_addr_any_ipv4,             1234 } },
+            {  2, "127.0.0.1:0",                                                "127.0.0.1:0",                                                { clarinet_addr_loopback_ipv4,           0 } },
+            {  3, "127.0.0.1:65535",                                            "127.0.0.1:65535",                                            { clarinet_addr_loopback_ipv4,       65535 } },
+            {  4, "255.255.255.255:9",                                          "255.255.255.255:9",                                          { clarinet_addr_broadcast_ipv4,          9 } },
+#if defined(CLARINET_ENABLE_IPV6)
+            {  5, "[::]:0",                                                     "[::]:0",                                                     { clarinet_addr_any_ipv6,                0 } },
+            {  6, "[::]:1234",                                                  "[::]:1234",                                                  { clarinet_addr_any_ipv6,             1234 } },
+            {  7, "[::1]:0",                                                    "[::1]:0",                                                    { clarinet_addr_loopback_ipv6,           0 } },
+            {  8, "[::1]:65535",                                                "[::1]:65535",                                                { clarinet_addr_loopback_ipv6,       65535 } },
+            { 19, "[::ffff:127.0.0.1]:0",                                       "[::ffff:127.0.0.1]:0",                                       { clarinet_addr_loopback_ipv4mapped,     0 } },
+            { 20, "[0000:0000:0000:0000:0000:ffff:127.0.0.1%0]:0",              "[::ffff:127.0.0.1]:0",                                       { clarinet_addr_loopback_ipv4mapped,     0 } },
+            { 21, "[::ffff:127.0.0.1]:65535",                                   "[::ffff:127.0.0.1]:65535",                                   { clarinet_addr_loopback_ipv4mapped, 65535 } },
             { 22, "[::ffff:127.0.0.1%12345]:8",                                 "[::ffff:127.0.0.1%12345]:8",                                 { ipv4mapped_with_short_scope_id,        8 } },
             { 23, "[::ffff:127.0.0.1%1234567890]:65535",                        "[::ffff:127.0.0.1%1234567890]:65535",                        { ipv4mapped_with_scope_id,          65535 } },
             { 24, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:0",     "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:0",     { custom_ipv6,                           0 } },
@@ -2035,6 +2078,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
             { 26, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:65535", "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:65535", { custom_ipv6_with_flowinfo,         65535 } },
 #endif
         };
+        // @formatter:on
 
         int index;
         const char* src;
@@ -2044,18 +2088,18 @@ TEST_CASE("Endpoint From string", "[endpoint]")
 
         FROM(index);
 
-        clarinet_endpoint dst = {{0}};
+        clarinet_endpoint dst = { { 0 } };
         memnoise(&dst, sizeof(dst));
         const int errcode = clarinet_endpoint_from_string(&dst, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         REQUIRE(clarinet_endpoint_is_equal(&dst, &expected));
 
-        char s[CLARINET_ENDPOINT_STRLEN] = {0};
+        char s[CLARINET_ENDPOINT_STRLEN] = { 0 };
         memnoise(&s, sizeof(s));
         const int n = clarinet_endpoint_to_string(s, sizeof(s), &dst);
         REQUIRE(n > 0);
         EXPLAIN("Expected: %s", reconstruction);
-        EXPLAIN("Actual: %s", s);       
+        EXPLAIN("Actual: %s", s);
         REQUIRE((size_t)n == strlen(reconstruction));
         REQUIRE_THAT(std::string(s), Equals(reconstruction));
     }

@@ -238,6 +238,7 @@ rebuild if the executable is out-of-date.
 
 ## TODO
 
+- Export a conscise .editorconfig
 - Add feature to enable/disable ipv6 scope id: CLARINET_ENABLE_IPV6_SCOPE_ID/CLARINET_FEATURE_IPV6_SCOPE_ID dependent on 
   HAVE_SOCKADDR_IN6_SCOPE_ID. Adjust functions and tests accordingly.
 - Support IPv4 broadcast and IPv4/IPv6 multicast in the udp interface

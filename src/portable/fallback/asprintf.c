@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#if defined(_WIN32)
-
-#if !HAVE_GNU_ASPRINTF
+#if defined(_WIN32) && !HAVE_GNU_ASPRINTF
 int
-asprintf(char **strp, const char *format, ...)
+asprintf(char **strp,
+         const char *format,
+         ...)
 {
     va_list args;
     int ret;
@@ -20,9 +20,11 @@ asprintf(char **strp, const char *format, ...)
 }
 #endif
 
-#if !HAVE_GNU_VASPRINTF
+#if defined(_WIN32) && !HAVE_GNU_VASPRINTF
 int
-vasprintf(char **strp, const char *format, va_list args)
+vasprintf(char **strp,
+          const char *format,
+          va_list args)
 {
     int len;
     size_t str_size;
@@ -30,41 +32,42 @@ vasprintf(char **strp, const char *format, va_list args)
     int ret;
 
     len = _vscprintf(format, args);
-    if (len < 0) 
+    if (len < 0)
     {
         *strp = NULL;
         return (-1);
     }
-    
+
     str_size = len + 1;
     str = malloc(str_size);
-    if (str == NULL) 
+    if (str == NULL)
     {
         *strp = NULL;
         return (-1);
     }
-    
+
     ret = vsnprintf(str, str_size, format, args);
-    if (ret < 0) 
+    if (ret < 0)
     {
         free(str);
         *strp = NULL;
         return (-1);
     }
-    
-    *strp = str;           
-    /* 
+
+    *strp = str;
+    /*
      * vsnprintf() shouldn't truncate the string, as we have allocated a buffer large enough to hold the string,
-     * so its return value should be the number of characters printed. 
+     * so its return value should be the number of characters printed.
      */
     return (ret);
 }
 #endif
 
-#else /* BSD, Linux, macOS, iOS, Android, PS4, PS5 */   
-#if !HAVE_GNU_ASPRINTF
+#if !defined(_WIN32) && !HAVE_GNU_ASPRINTF
 int
-asprintf(char **strp, const char *format, ...)
+asprintf(char **strp,
+         const char *format,
+         ...)
 {
     va_list args;
     int ret;
@@ -75,9 +78,12 @@ asprintf(char **strp, const char *format, ...)
     return (ret);
 }
 #endif
-#if !HAVE_GNU_VASPRINTF
+
+#if !defined(_WIN32) && !HAVE_GNU_VASPRINTF
 int
-vasprintf(char **strp, const char *format, va_list args)
+vasprintf(char **strp,
+          const char *format,
+          va_list args)
 {
     char buf;
     int len;
@@ -140,5 +146,4 @@ vasprintf(char **strp, const char *format, va_list args)
      */            
     return (ret);
 }
-#endif
 #endif

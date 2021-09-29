@@ -12,12 +12,9 @@ struct clarinet_tcp_socket
     clarinet_socket base;
 };
 
-const clarinet_tcp_settings 
-clarinet_tcp_settings_default = { 8192, 8192, 64 };
-
-int 
+int
 clarinet_tcp_listen(clarinet_tcp_socket** spp,
-                    const clarinet_endpoint* restrict local, 
+                    const clarinet_endpoint* restrict local,
                     const clarinet_tcp_settings* restrict settings,
                     uint32_t flags)
 {
@@ -25,14 +22,14 @@ clarinet_tcp_listen(clarinet_tcp_socket** spp,
     CLARINET_IGNORE(local);
     CLARINET_IGNORE(settings);
     CLARINET_IGNORE(flags);
-    
-    return CLARINET_ENOSYS;
+
+    return CLARINET_ENOTIMPL;
 }
 
-int 
+int
 clarinet_tcp_connect(clarinet_tcp_socket** spp,
-                     const clarinet_endpoint* restrict local, 
-                     const clarinet_endpoint* restrict remote, 
+                     const clarinet_endpoint* restrict local,
+                     const clarinet_endpoint* restrict remote,
                      const clarinet_udp_settings* restrict settings,
                      uint32_t flags)
 {
@@ -40,12 +37,13 @@ clarinet_tcp_connect(clarinet_tcp_socket** spp,
     CLARINET_IGNORE(local);
     CLARINET_IGNORE(remote);
     CLARINET_IGNORE(settings);
-    CLARINET_IGNORE(flags);    
-    return CLARINET_ENOSYS;
+    CLARINET_IGNORE(flags);
+
+    return CLARINET_ENOTIMPL;
 }
 
 
-int 
+int
 clarinet_tcp_close(clarinet_tcp_socket** spp)
 {
     return clarinet_socket_close((clarinet_socket**)spp, 0);

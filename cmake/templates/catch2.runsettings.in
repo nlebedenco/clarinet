@@ -2,5 +2,6 @@
 <RunSettings>
 	<Catch2Adapter>
 		<FilenameFilter>^test_</FilenameFilter>
+		<TestCaseTimeout>5000</TestCaseTimeout>
 	</Catch2Adapter>
 </RunSettings>

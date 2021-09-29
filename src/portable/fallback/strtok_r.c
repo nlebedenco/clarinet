@@ -35,29 +35,30 @@
 
 #include "portability.h"
 
-#if !HAVE_STRTOK_R
+#if !HAVE_STRTOK_R && !defined(_WIN32)
 
-#if !defined(_WIN32)
-char *
-strtok_r(char *s, const char *delim, char **last)
+char*
+strtok_r(char* s,
+         const char* delim,
+         char** last)
 {
-    char *spanp, *tok;
+    char* spanp, * tok;
     int c, sc;
 
     if (s == NULL && (s = *last) == NULL)
         return (NULL);
 
     /* Skip (span) leading delimiters (s += strspn(s, delim), sort of). */
-cont:
+    cont:
     c = *s++;
-    for (spanp = (char *)delim; (sc = *spanp++) != 0;) 
+    for (spanp = (char*)delim; (sc = *spanp++) != 0;)
     {
         if (c == sc)
             goto cont;
     }
 
-    if (c == 0) /* no non-delimiter characters */ 
-    {		
+    if (c == 0) /* no non-delimiter characters */
+    {
         *last = NULL;
         return (NULL);
     }
@@ -66,13 +67,13 @@ cont:
      * Scan token (scan for delimiters: s += strcspn(s, delim), sort of). Note that delim must have one NUL; 
      * we stop if we see that, too. 
      */
-    for (;;) 
+    for (;;)
     {
         c = *s++;
-        spanp = (char *)delim;
-        do 
+        spanp = (char*)delim;
+        do
         {
-            if ((sc = *spanp++) == c) 
+            if ((sc = *spanp++) == c)
             {
                 if (c == 0)
                     s = NULL;
@@ -81,10 +82,10 @@ cont:
                 *last = s;
                 return (tok);
             }
-        } while (sc != 0);
+        }
+        while (sc != 0);
     }
     /* NOTREACHED */
 }
-#endif
 
 #endif

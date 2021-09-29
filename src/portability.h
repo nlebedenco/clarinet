@@ -1,6 +1,6 @@
 #pragma once
 #ifndef PORTABILITY_H
-#define    PORTABILITY_H
+#define PORTABILITY_H
 
 /***********************************************************************************************************************
  * Configuration and portability definitions.
@@ -17,18 +17,18 @@
  ***********************************************************************************************************************/
 
 #if HAVE_CONFIG_H
-#include "config.h"
+    #include "config.h"
 #endif
 
-#if (HAVE_GNU_ASPRINTF || HAVE_GNU_VASPRINTF) 
-#define _GNU_SOURCE
+#if (HAVE_GNU_ASPRINTF || HAVE_GNU_VASPRINTF)
+    #define _GNU_SOURCE
 #endif
 
 /* Intellisense doesn't like the restrict keyword */
 #ifdef __INTELLISENSE__
-#ifndef restrict
-#define restrict
-#endif
+    #ifndef restrict
+        #define restrict
+    #endif
 #endif
 
 /* Define a macro to force inline for internal use. */
@@ -52,7 +52,7 @@
 #if defined(HAVE_STDRETURN_H)
     #include <stdnoreturn.h>
     #define CLARINET_NORETURN noreturn
-#else    
+#else
     #if defined(_MSC_VER)
         #define CLARINET_NORETURN __declspec(noreturn)
     #elif defined(__GNUC__)
@@ -79,9 +79,12 @@
     #if defined(_MSC_VER) || defined(__MINGW32__)
         #define strlcat(dst, src, dstsize)                 strncat_s((dst), (dstsize), (src), _TRUNCATE)
     #else
-        size_t strlcat(char* restrict dst, 
-                       const char* restrict src, 
-                       size_t dstsize);
+
+size_t
+strlcat(char* restrict dst,
+        const char* restrict src,
+        size_t dstsize);
+
     #endif
 #endif /* HAVE_STRLCAT */
 
@@ -93,9 +96,12 @@
     #if defined(_MSC_VER) || defined(__MINGW32__)
         #define strlcpy(dst, src, dstsize)              strncpy_s((dst), (dstsize), (src), _TRUNCATE)
     #else
-        size_t strlcpy(char* restrict dst, 
-                       const char* restrict src, 
-                       size_t dstsize);
+
+size_t
+strlcpy(char* restrict dst,
+        const char* restrict src,
+        size_t dstsize);
+
     #endif
 #endif /* HAVE_STRLCPY */
 
@@ -103,7 +109,7 @@
     #if defined(_WIN32)
         #define strtok_r(str, delim, saveptr)            strtok_s(str, delim, saveptr)
     #else
-        char* strtok_r(char *str, const char *delim, char **saveptr);
+char* strtok_r(char *str, const char *delim, char **saveptr);
     #endif
 #endif /* HAVE_STRTOK_R */
 
@@ -119,19 +125,21 @@
 /* We want asprintf(), for some cases where we use it to construct dynamically-allocated variable-length strings. It's 
  * present on some, but not all, platforms. */
 #if !HAVE_GNU_ASPRINTF
-    int asprintf(char** restrict strp, 
-                 const char* restrict fmt, ...);
+int asprintf(char** restrict strp,
+             const char* restrict fmt, ...);
 #endif
 
 #if !HAVE_GNU_VASPRINTF
-    int vasprintf(char** restrict strp, 
-                  const char* restrict fmt, 
-                  va_list ap);
+int vasprintf(char** restrict strp,
+              const char* restrict fmt,
+              va_list ap);
 #endif
 
 /* Fallbacks for un*x systems that don't define timer macros */
 #if !defined(_WIN32)
+
     #include <sys/time.h>
+
     #ifndef timeradd
         #define timeradd(a, b, result)                       \
           do {                                               \
@@ -163,20 +171,27 @@
     #if HAVE_STRERROR_R && HAVE_POSIX_STRERROR_R
         #define strerror_s(buf, buflen, errnum)         strerror_r(errnum, buf, buflen)
     #elif HAVE_STRERROR_R && HAVE_GNU_STRERROR_R
-        int strerror_s(char* buf, size_t buflen, int errnum);       
+
+int
+strerror_s(char* buf,
+           size_t buflen,
+           int errnum);
+
     #else /* if there is no safe alternative for strerror_s define as if it returned an error itself */
         #include <errno.h>
         #define strerror_c(buf, buflen, errnum)         (ENOSYS)
-    #endif    
+    #endif
 #endif
 
 
 #if HAVE_FFS
     #if HAVE_FFS_IN_STRINGS_H
+
         #include "strings.h"
+
     #endif
-#else 
-    int ffs(int i);
+#else
+int ffs(int i);
 #endif
 
 /* Include stdlib.h to check for min/max as this is normally where they are defined. */
@@ -184,30 +199,32 @@
 
 /* Define max if not defined. */
 #ifndef max
-#define max(a,b) (((a) > (b)) ? (a) : (b))
+    #define max(a, b) (((a) > (b)) ? (a) : (b))
 #endif
 
 /* Define min if not defined. */
 #ifndef min
-#define min(a,b) (((a) < (b)) ? (a) : (b))
+    #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
 /* Include socket headers. */
 #if defined(_WIN32)
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h> 
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <windows.h>
 typedef ADDRESS_FAMILY sa_family_t;
 #else /* BSD, Linux, macOS, iOS, Android, PS4, PS5 */
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#ifndef INVALID_SOCKET
-#define INVALID_SOCKET (~0)
-#endif
-#ifndef SOCKET_ERROR
-#define SOCKET_ERROR (-1)
-#endif
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+
+    #ifndef INVALID_SOCKET
+        #define INVALID_SOCKET (~0)
+    #endif
+    #ifndef SOCKET_ERROR
+        #define SOCKET_ERROR (-1)
+    #endif
 #endif
 
 /* Fallback socklen_t */
@@ -223,9 +240,9 @@ struct sockaddr_storage
     {
         struct 
         {
-            #if HAVE_STRUCT_SOCKADDR_SA_LEN
+#if HAVE_STRUCT_SOCKADDR_SA_LEN
             uint8_t ss_len;
-            #endif  
+#endif
             sa_family_t ss_family;
         };
 #if HAVE_SOCKADDR_IN6_SIN6_ADDR

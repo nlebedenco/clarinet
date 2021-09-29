@@ -7,15 +7,17 @@
 
 /**
  * An strerror_s implementation based on GNU strerror_r.
- */ 
-int 
-strerror_s(char* buf, size_t buflen, int errnum)
+ */
+int
+strerror_s(char* buf,
+           size_t buflen,
+           int errnum)
 {
-    char s[256] = {0};
-	const char* r = strerror_r(errnum, s, sizeof(s));
-	const size_t n = strlen(r);
+    char s[256] = { 0 };
+    const char* r = strerror_r(errnum, s, sizeof(s));
+    const size_t n = strlen(r);
     int errcode;
-    size_t size;     
+    size_t size;
     if (buflen > n)
     {
         errcode = 0;
@@ -29,4 +31,5 @@ strerror_s(char* buf, size_t buflen, int errnum)
     strlcpy(buf, r, size);
     return errcode;
 }
+
 #endif

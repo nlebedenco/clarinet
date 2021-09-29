@@ -46,7 +46,8 @@ set (CMAKE_HELPER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/helpers)
 # Set name of folder used to group predefined targets in the Visual Studio solution
 set(CMAKE_PREDEFINED_TARGETS_FOLDER "CMakePredefinedTargets")
 
-# Make VisualStudio put ALL_BUILD, INSTALL and ZERO_CHECK projects in a separate solution folder.
+# Put ALL_BUILD, INSTALL and ZERO_CHECK projects in a separate solution folder in VisualStudio.
+# This will not affect other IDEs such as Xcode and CLion
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER ${CMAKE_PREDEFINED_TARGETS_FOLDER})
 
@@ -76,8 +77,8 @@ project(clarinet
     HOMEPAGE_URL ""
 )
 
-# Require out-of-source builds. Technically the if(EXISTS ...) will return false if the file exists but is not 
-# accessible by the user but in this case there is a good chance the directory is not writable either so something is 
+# Require out-of-source builds. Technically the if(EXISTS ...) will return false if the file exists but is not
+# accessible by the user but in this case there is a good chance the directory is not writable either so something is
 # already wrong.
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" CMAKE_LISTS_FILE)
 if(EXISTS "${CMAKE_LISTS_FILE}")
@@ -105,21 +106,21 @@ string(REGEX REPLACE "^.(.*)" "${FIRST_LETTER}\\1" PROJECT_NAME_CAPITALIZED "${P
 # Define system variables
 include(DefineSystemVariables)
 
-# Define a project system name (lower case CMAKE_SYSTEM_NAME). This must go after including DefineSystemVariables 
+# Define a project system name (lower case CMAKE_SYSTEM_NAME). This must go after including DefineSystemVariables
 # because CMAKE_SYSTEM_NAME might have been adjusted there (e.g. for cross-compilation).
 string(TOLOWER ${CMAKE_SYSTEM_NAME} PROJECT_SYSTEM_NAME)
 
 # Define a project system family for sources that are shared among SOME sytems but not all. Otherwise such sources would
 # have to be copied in multiple platforms/${PROJECT_SYSTEM_NAME} folders. Note that in some cases both
-# ${PROJECT_SYSTEM_NAME} and ${PROJECT_SYSTEM_FAMILY} may have the same value (e.g. windows). For now we only really 
-# care about windows vs unix because all windows versions use winsock and all the unix systems we support (Linux and 
+# ${PROJECT_SYSTEM_NAME} and ${PROJECT_SYSTEM_FAMILY} may have the same value (e.g. windows). For now we only really
+# care about windows vs unix because all windows versions use winsock and all the unix systems we support (Linux and
 # macOS) use BSD sockets but it's possible for a derivative system to require its own family definition if it needs
 # to use an alternative socket library.
 if (WIN32)
     set(PROJECT_SYSTEM_FAMILY windows)
-elseif(UNIX)    
+elseif(UNIX)
     set(PROJECT_SYSTEM_FAMILY unix)
-else()    
+else()
     set(PROJECT_SYSTEM_FAMILY undefined)
 endif()
 
@@ -154,15 +155,27 @@ option(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT          "Use static runtime"    
 option(${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION   "Use stack protection if supported by the compiler" ON)
 option(${PROJECT_NAME_UPPERCASE}_USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" OFF)
 
-# Defaults to build testing only if this is the top cmake project. 
-# The reason for this is that if someone else includes this package, and they use BUILD_TESTING, they probably do not 
-# our tests to build. In the rare case that they really do want to enable testing on both packages, they can force 
+option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." FALSE)
+if (${FORCE_COLORED_OUTPUT})
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options (-fdiagnostics-color=always)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        add_compile_options (-fcolor-diagnostics)
+        if (CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC") # clang-cl
+            add_compile_options (-fansi-escape-codes)
+        endif()
+    endif ()
+endif ()
+
+# Defaults to build testing only if this is the top cmake project.
+# The reason for this is that if someone else includes this package, and they use BUILD_TESTING, they probably do not
+# our tests to build. In the rare case that they really do want to enable testing on both packages, they can force
 # a cache override for this option.
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set(DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING ON)
 else()
     set(DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING OFF)
-endif()    
+endif()
 option(${PROJECT_NAME_UPPERCASE}_BUILD_TESTING "Build ${PROJECT_NAME} tests" ${DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING})
 
 # Automatically used by cmake to change the default for add_library()
@@ -181,27 +194,27 @@ macro(check_required_include_file _file _variable)
 endmacro()
 
 # For checking if a compiler flag works and add to the target if it does.
-# Note that since GCC 4.4, and as explained in the GCC manual: when an unrecognized warning option is requested 
-# (-Wunknown-warning), GCC emits a diagnostic stating that the option is not recognized. However, if the -Wno- form is 
-# used, the behavior is slightly different: no diagnostic is produced for -Wno-unknown-warning unless other diagnostics 
-# are being produced. This allows the use of new -Wno- options with old compilers, but if something goes wrong, the 
+# Note that since GCC 4.4, and as explained in the GCC manual: when an unrecognized warning option is requested
+# (-Wunknown-warning), GCC emits a diagnostic stating that the option is not recognized. However, if the -Wno- form is
+# used, the behavior is slightly different: no diagnostic is produced for -Wno-unknown-warning unless other diagnostics
+# are being produced. This allows the use of new -Wno- options with old compilers, but if something goes wrong, the
 # compiler warns that an unrecognized option is present. (See PR28322 for the history of this change)
-# This might break configure tests that check for -Wno-foo options. The solution is to either test for the positive form 
+# This might break configure tests that check for -Wno-foo options. The solution is to either test for the positive form
 # (-Wfoo) or test using a testcase that triggers some other warning.
 macro(target_compile_option _target _scope _option)
     string(REGEX REPLACE "^-" "" _option_variable ${_option})
-    string(REGEX REPLACE "[=|-]" "_" _temp_option_variable ${_option_variable})    
+    string(REGEX REPLACE "[=|-]" "_" _temp_option_variable ${_option_variable})
     string(TOUPPER WITH_${_temp_option_variable} _uppercase_option_variable)
     # Adjust negative warning options so GCC can issue some type of diagnostic when not supported.
     string(REGEX REPLACE "-Wno-" "-W" _safe_option ${_option})
     get_target_property(_lang ${_target} LINKER_LANGUAGE)
     if (_lang STREQUAL "C")
         check_c_compiler_flag("${_safe_option}" ${_lang}_${_uppercase_option_variable})
-    elseif (_lang STREQUAL "CXX")    
+    elseif (_lang STREQUAL "CXX")
         check_cxx_compiler_flag("${_safe_option}" ${_lang}_${_uppercase_option_variable})
     else()
         message(FATAL_ERROR "Target LINKER_LANGUAGE is undefined")
-    endif()    
+    endif()
     if(${${_lang}_${_uppercase_option_variable}})
         target_compile_options(${_target} ${_scope} ${_option})
     endif()
@@ -299,7 +312,7 @@ endmacro()
 
 macro(target_compile_warnings _target)
     if(HAVE_DEVEL)
-        # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so 
+        # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so
         # we check for clang and treat that differently.
         if(MSVC AND NOT CLANG)
             # Enable all warnings first
@@ -407,7 +420,7 @@ check_include_file(stdnoreturn.h HAVE_STDNORETURN_H) # this is C11 not C99 heade
 # Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
 if(UNIX)
     check_required_include_file(unistd.h HAVE_UNISTD_H)
-    check_required_include_file(errno.h HAVE_ERRNO_H)        
+    check_required_include_file(errno.h HAVE_ERRNO_H)
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
     check_include_file(sys/stat.h HAVE_SYS_STAT_H)
     check_include_file(sys/socket.h HAVE_SYS_SOCKET_H)
@@ -428,13 +441,13 @@ check_c_source_compiles("int main(void) { int i = 17; return __atomic_load_n(&i,
                         HAVE___ATOMIC_LOAD_N)
 check_c_source_compiles("int main(void) { int i; __atomic_store_n(&i, 17, __ATOMIC_RELAXED); return 0; }"
                         HAVE___ATOMIC_STORE_N)
-                       
+
 # Check for safe strerror functions defined in C11, GNU and POSIX.
 check_function_exists(strerror_s HAVE_STRERROR_S)
 check_function_exists(strerror_r HAVE_STRERROR_R)
 if(HAVE_STRERROR_R)
     # We have strerror_r; if we define _GNU_SOURCE, is it a POSIX-compliant strerror_r() or a GNU strerror_r()?
-    # On Linux an XSI-compliant version of strerror_r() is provided only if 
+    # On Linux an XSI-compliant version of strerror_r() is provided only if
     # (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
     # On macOS 12 (El Capitan) and up strerror_r si POSIX-compliant.
     file(READ ${CMAKE_HELPER_PATH}/check_strerror_r.c C_SOURCE_STRERROR_R)
@@ -466,33 +479,32 @@ if(NOT WIN32)
     check_function_exists(strlcat HAVE_STRLCAT)
     if (NOT HAVE_STRLCAT)
         cmake_push_check_state()
-            # Some systems might have it through libbsd but we don't want to force a dependency.
+            # Some systems might have it in a bsd header but we don't want to force a dependency on libbsd here.
             set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
             check_symbol_exists(strlcat "bsd/string.h" HAVE_STRLCAT)
             if (HAVE_STRLCAT)
                 set(HAVE_STRLCAT_IN_BSD_STRING_H TRUE)
-            endif()    
+            endif()
         cmake_pop_check_state()
     endif()
-    
+
     check_function_exists(strlcpy HAVE_STRLCPY)
     if (NOT HAVE_STRLCPY)
         cmake_push_check_state()
-            # Some systems might have it through libbsd but we don't want to force a dependency.
-            # installed which might not be.
+            # Some systems might have it in a bsd header but we don't want to force a dependency on libbsd here.
             set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
             check_symbol_exists(strlcpy "bsd/string.h" HAVE_STRLCPY)
             if (HAVE_STRLCPY)
                 set(HAVE_STRLCPY_IN_BSD_STRING_H TRUE)
-            endif()    
+            endif()
         cmake_pop_check_state()
     endif()
-    
-    check_function_exists(strtok_r HAVE_STRTOK_R)   
+
+    check_function_exists(strtok_r HAVE_STRTOK_R)
     check_function_exists(vsyslog HAVE_VSYSLOG)
     check_function_exists(fcntl HAVE_FCNTL)
     check_function_exists(poll HAVE_POLL)
-    
+
     # Check if we have ffs() and if it is declared in <strings.h>
     check_function_exists(ffs HAVE_FFS)
     if(HAVE_FFS)
@@ -682,10 +694,10 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6)
 endif()
 
 if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND ${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL)
-    if(WIN32) 
+    if(WIN32)
         # Windows Vista and later should support IPv6 dual stack so if IPv6 itself is supported we are good.
         set(HAVE_IPV6DUAL TRUE)
-    else() #UN*X    
+    else() #UN*X
         file(READ ${CMAKE_HELPER_PATH}/check_ipv6_dualstack.c C_SOURCE_IPV6_DUALSTACK)
         cmake_push_check_state()
             if(HAVE_SOCKLEN_T)
@@ -758,7 +770,7 @@ target_sources(${PROJECT_NAME}
         src/protocols/tls.c
 )
 
-# Add portable sources. 
+# Add portable sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
         src/portable/addr.h
@@ -771,7 +783,7 @@ target_sources(${PROJECT_NAME}
         src/portable/fallback/ffs.c
 )
 
-# Add system family sources. 
+# Add system family sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
         src/platforms/${PROJECT_SYSTEM_FAMILY}/sys.h
@@ -780,23 +792,31 @@ target_sources(${PROJECT_NAME}
         src/platforms/${PROJECT_SYSTEM_FAMILY}/tcp.c
 )
 
-# Add system specific sources. 
+# Add system specific sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
         # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.h
         # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.c
 )
 
-# Set project version for platforms add that information to the binary
-# Hide symbols and inline functions (i.e. -fvisibility=hidden and -fvisibility-inlines-hidden)
-# Set up public header
-# Enable position independent code (i.e. -fPIC) if building shared lib.
+# Hide symbols only if building shared libs so gdb can be of any use */
+if (BUILD_SHARED_LIBS)
+    set(${PROJECT_NAME_UPPERCASE}_VISIBILITY_PRESET hidden)
+else()
+    set(${PROJECT_NAME_UPPERCASE}_VISIBILITY_PRESET default)
+endif()
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
+    # Set linker language for proper linker param checks
     LINKER_LANGUAGE C
+    # Set project version for platforms that can add this information in the binary
     VERSION ${PROJECT_VERSION}
-    C_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN ON
+    # Symbol visibility follows policy CMP0063 and is applicable to static libs as well so we only hide all symbols if
+    # using MSVC or building without debug info because gdb is severely limited when all symbols are hidden.
+    C_VISIBILITY_PRESET ${${PROJECT_NAME_UPPERCASE}_VISIBILITY_PRESET}
+    # Set up public header
     PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h
+    # Enable position independent code (i.e. -fPIC) if building a shared lib.
     POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
 
@@ -882,9 +902,9 @@ else()
 endif()
 
 # Defining this macro on LINUX causes some lightweight checks to be performed to detect some buffer overflow errors when
-# employing various string and memory manipulation functions (for example, memcpy(3), memset(3), stpcpy(3), strcpy(3), 
-# strncpy(3), strcat(3), strncat(3), sprintf(3), snprintf(3), vsprintf(3), vsnprintf(3), gets(3), and wide character 
-# variants thereof). 
+# employing various string and memory manipulation functions (for example, memcpy(3), memset(3), stpcpy(3), strcpy(3),
+# strncpy(3), strcat(3), strncat(3), sprintf(3), snprintf(3), vsprintf(3), vsnprintf(3), gets(3), and wide character
+# variants thereof).
 if(LINUX)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
@@ -988,7 +1008,7 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
         string(REPLACE "${SYSTEM_VERSION_MAJOR}." "" SYSTEM_MINOR_AND_PATCH_VERSION ${CMAKE_SYSTEM_VERSION})
         string(REGEX MATCH "^([0-9]+)" SYSTEM_VERSION_MINOR "${SYSTEM_MINOR_AND_PATCH_VERSION}")
         if(SYSTEM_VERSION_MINOR LESS 4)
-            # Prior to Intel support.  Build for 32-bit PowerPC and 64-bit PowerPC, with 32-bit PowerPC first.  
+            # Prior to Intel support.  Build for 32-bit PowerPC and 64-bit PowerPC, with 32-bit PowerPC first.
             # (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64")
         elseif(SYSTEM_VERSION_MINOR LESS 7)
@@ -1001,17 +1021,17 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
         endif()
     elseif(SYSTEM_VERSION_MAJOR EQUAL 9)
-        # Leopard.  Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86, and x86-64, with 32-bit PowerPC first. 
+        # Leopard.  Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86, and x86-64, with 32-bit PowerPC first.
         # (That's what Apple does.)
         set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
     elseif(SYSTEM_VERSION_MAJOR EQUAL 10)
-        # Snow Leopard.  Build for x86-64, 32-bit x86, and 32-bit PowerPC, with x86-64 first.  (That's what Apple does, 
-        # even though Snow Leopard doesn't run on PPC, so PPC libclarinet runs under Rosetta, and Rosetta doesn't 
+        # Snow Leopard.  Build for x86-64, 32-bit x86, and 32-bit PowerPC, with x86-64 first.  (That's what Apple does,
+        # even though Snow Leopard doesn't run on PPC, so PPC libclarinet runs under Rosetta, and Rosetta doesn't
         # support BPF ioctls, so PPC programs can't do live captures.)
         set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386;ppc")
     else()
-        # Post-Snow Leopard.  Build for x86-64 and 32-bit x86, with x86-64 first. (That's what Apple does) 
-        # Update if and when Apple drops support for 32-bit x86 code and if and when Apple adds ARM-based Macs. 
+        # Post-Snow Leopard.  Build for x86-64 and 32-bit x86, with x86-64 first. (That's what Apple does)
+        # Update if and when Apple drops support for 32-bit x86 code and if and when Apple adds ARM-based Macs.
         # TODO: what about iOS, tvOS, watchOS ?
         # Check whether we're building with MbedTLS. If so, don't bother trying to build fat.
         if(HAVE_MBEDTLS)
@@ -1201,7 +1221,7 @@ if (${PROJECT_NAME_UPPERCASE}_BUILD_TESTING AND BUILD_TESTING)
     set(HAVE_UNIT_TESTS ON)
 else()
     set(HAVE_UNIT_TESTS OFF)
-endif()    
+endif()
 message(STATUS "Unit testing is ${HAVE_UNIT_TESTS}")
 if(HAVE_UNIT_TESTS)
     add_subdirectory(tests)

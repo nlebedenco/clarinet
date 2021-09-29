@@ -15,13 +15,16 @@ macro(target_test _target)
     target_sources(${_target}
         PRIVATE 
             src/test.h
+            src/test.cpp
     )
 
-    # For now all tests are in CXX this must be reviewed if the test framework changes
+    # Set folder
+    # Set linker for cmd line param support tests - for now all tests are in CXX this must be reviewed if the test framework changes
     set_target_properties(${_target} PROPERTIES
+        FOLDER "${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}"
         LINKER_LANGUAGE CXX
     )
-    
+
     target_compile_features(${_target}
         PRIVATE
             cxx_std_11
@@ -84,11 +87,11 @@ macro(target_test _target)
             ${PROJECT_NAME}
             Catch2::Catch2WithMain
     )
-   
-    set_target_properties(${_target} PROPERTIES FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER})
 
     # Register catch2 tests defined in target
-    catch_discover_tests(${_target})
+    catch_discover_tests(${_target}
+        PROPERTIES TIMEOUT 5
+    )
 endmacro()
 
 
@@ -113,6 +116,6 @@ include(Catch)
 file(GLOB cmakeTestFiles ${CMAKE_CURRENT_SOURCE_DIR}/cmake/*.cmake)
 list(SORT cmakeTestFiles COMPARE NATURAL CASE INSENSITIVE ORDER ASCENDING)
 foreach(cmakeTestFile ${cmakeTestFiles})
-    message("Including ${cmakeTestFile}")
+    message(STATUS "Including test: ${cmakeTestFile}")
     include(${cmakeTestFile})
 endforeach()

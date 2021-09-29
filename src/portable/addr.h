@@ -10,12 +10,12 @@
  * to methods such as bind(2) and sendto(2) (e.g. macOS) and will not accept sizeof(struct sockaddr_storage) despite ss_family being all that is needed to imply size. As a convenience
  * if  dstlen is not null it will be assigned the size of the corresponding sockaddr struct used.
  */
-int 
+int
 clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
                               socklen_t* restrict dstlen, /* optional */
                               const clarinet_endpoint* restrict src);
 
-int 
+int
 clarinet_endpoint_from_sockaddr(clarinet_endpoint* restrict dst,
                                 const struct sockaddr_storage* restrict src);
 
