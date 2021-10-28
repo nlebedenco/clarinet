@@ -1,3 +1,24 @@
+##
+# NOTES:
+#
+# - Don't add custom test targets in this script. Instead, create a cmake file in tests/cmake defining target_test
+# and target_sources. All tests should be in c++ and source files should be placed in tests/src.
+#
+# - All submodules used are initialized if empty (see cmake/AddSubmodule.cmake for details) but are not automatically
+# updated in every build. In this respect, submodules are not different than any other file under source control.
+#
+# - Output binaries are placed under <BUILD_DIR>/<CONFIG>. Note that, on Windows, shared libraries are placed in the
+# executables folder (RUNTIME_OUTPUT_DIRECTORY) not in the libraries folder (LIBRARY_OUTPUT_DIRECTORY).
+#
+# - Default installation path is set to <BUILD_DIR>/install instead of the system path for convenience and safety. If
+# you are trying to have CMake actually install files use -DCMAKE_INSTALL_PREFIX=<prefix> to state your intent.
+#
+# - External projects that need to be built using libtool (configure+make) can produce confusing output specially if
+# intertwined with parallel builds. Currently, CMake does not allow us to force a target to be non-parallel. In fact,
+# parallelization depends more on the the generator used so if you need to add a target that uses libtool, make sure it
+# is always the first to build and nothing can be started in parallel by making it a (direct or indirect) dependency to
+# all other targets.
+#
 cmake_minimum_required(VERSION 3.18)
 
 # For project version variables
@@ -63,7 +84,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 
-
 ########################################################################################################################
 #   Project
 ########################################################################################################################
@@ -96,6 +116,10 @@ get_directory_property(PROJECT_HAS_PARENT PARENT_DIRECTORY)
 if(NOT PROJECT_HAS_PARENT)
     message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
 endif()
+
+# Define API prefixes
+set(PROJECT_API_PREFIX ${PROJECT_NAME})
+string(TOUPPER ${PROJECT_API_PREFIX} PROJECT_MACRO_PREFIX)
 
 # Define an upper case and capitalized project names.
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE)
@@ -134,26 +158,28 @@ endif(WIN32)
 ########################################################################################################################
 #   Options
 ########################################################################################################################
-
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILE     "Enable Profile"   OFF)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_LOG         "Enable Log"        ON)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6        "Enable IPv6"       ON)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_UDP         "Enable UDP"        ON)
-option(${PROJECT_NAME_UPPERCASE}_ENABLE_TCP         "Enable TCP"        ON)
-
 include(CMakeDependentOption)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL  "Enable IPv6 Dual Stack"  ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6"  OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS      "Enable DTLS"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC      "Enable DTLC"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTP      "Enable UDTP"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC"  OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_UDTPS     "Enable UDTPS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENET      "Enable ENET"             ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_UDP"   OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_ENETS     "Enable ENETS"            ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS"  OFF)
-CMAKE_DEPENDENT_OPTION(${PROJECT_NAME_UPPERCASE}_ENABLE_TLS       "Enable TLS"              ON  "${PROJECT_NAME_UPPERCASE}_ENABLE_TCP"   OFF)
 
-option(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT          "Use static runtime"                                OFF)
-option(${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION   "Use stack protection if supported by the compiler" ON)
-option(${PROJECT_NAME_UPPERCASE}_USE_SPECTRE_MITIGATION "Use spectre mitigation if support by the compiler" OFF)
+set(PROJECT_ENABLE_PROFILE          ${PROJECT_MACRO_PREFIX}_ENABLE_PROFILE)
+set(PROJECT_ENABLE_LOG              ${PROJECT_MACRO_PREFIX}_ENABLE_LOG)
+set(PROJECT_ENABLE_IPV6             ${PROJECT_MACRO_PREFIX}_ENABLE_IPV6)
+set(PROJECT_ENABLE_IPV6DUAL         ${PROJECT_MACRO_PREFIX}_ENABLE_IPV6DUAL)
+
+set(PROJECT_USE_STATIC_RT           ${PROJECT_MACRO_PREFIX}_USE_STATIC_RT)
+set(PROJECT_USE_STACK_PROTECTION    ${PROJECT_MACRO_PREFIX}_USE_STACK_PROTECTION)
+set(PROJECT_USE_SPECTRE_MITIGATION  ${PROJECT_MACRO_PREFIX}_USE_SPECTRE_MITIGATION)
+
+set(PROJECT_BUILD_TESTING           ${PROJECT_MACRO_PREFIX}_BUILD_TESTING)
+
+option(${PROJECT_ENABLE_PROFILE}                    "Enable Profile"                    OFF)
+option(${PROJECT_ENABLE_LOG}                        "Enable Log"                        ON)
+option(${PROJECT_ENABLE_IPV6}                       "Enable IPv6"                       ON)
+
+CMAKE_DEPENDENT_OPTION(${PROJECT_ENABLE_IPV6DUAL}   "Enable Dual Stack for IPv6"        ON  "${PROJECT_ENABLE_IPV6}"  OFF)
+
+option(${PROJECT_USE_STATIC_RT}                     "Use static runtime"                OFF)
+option(${PROJECT_USE_STACK_PROTECTION}              "Use stack protection"              ON)
+option(${PROJECT_USE_SPECTRE_MITIGATION}            "Use spectre mitigation"            OFF)
 
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." FALSE)
 if (${FORCE_COLORED_OUTPUT})
@@ -172,11 +198,12 @@ endif ()
 # our tests to build. In the rare case that they really do want to enable testing on both packages, they can force
 # a cache override for this option.
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    set(DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING ON)
+    set(DEFAULT_${PROJECT_BUILD_TESTING} ON)
 else()
-    set(DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING OFF)
+    set(DEFAULT_${PROJECT_BUILD_TESTING} OFF)
 endif()
-option(${PROJECT_NAME_UPPERCASE}_BUILD_TESTING "Build ${PROJECT_NAME} tests" ${DEFAULT_${PROJECT_NAME_UPPERCASE}_BUILD_TESTING})
+
+option(${PROJECT_BUILD_TESTING} "Build ${PROJECT_NAME} tests" ${DEFAULT_${PROJECT_BUILD_TESTING}})
 
 # Automatically used by cmake to change the default for add_library()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static" OFF)
@@ -222,7 +249,7 @@ endmacro()
 
 # Profiler support.
 macro(target_profiler _target)
-    if(${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILE)
+    if(${PROJECT_ENABLE_PROFILE})
         if(MSVC) # including MSVC/CL (clang-cl)
             target_link_options(${_target} PRIVATE /PROFILE)
         else()
@@ -234,7 +261,7 @@ endmacro()
 
 # Static link to the system runtime library.
 macro(target_static_runtime _target)
-    if(${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT)
+    if(${PROJECT_USE_STATIC_RT})
         if(MSVC) # including MSVC/CL (clang-cl)
             set_property(TARGET ${_target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         else()
@@ -245,7 +272,7 @@ endmacro()
 
 # Runtime stack protection.
 macro(target_stack_protection _target)
-    if(${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION)
+    if(${PROJECT_USE_STACK_PROTECTION})
         if(MSVC) # including MSVC/CL (clang-cl)
             target_compile_options(${_target} PRIVATE /GS)
         else()
@@ -272,7 +299,7 @@ endmacro()
 
 # Runtime spectre mitigation
 macro(target_spectre_mitigation _target)
-    if(${PROJECT_NAME_UPPERCASE}_USE_SPECTRE_MITIGATION)
+    if(${PROJECT_USE_SPECTRE_MITIGATION})
         if(MSVC) # including MSVC/CL (clang-cl)
             check_c_compiler_flag(/guard:cf WITH_GUARD_CF)
             if(WITH_GUARD_CF)
@@ -386,6 +413,9 @@ include(CheckTypeSize)
 include(CheckLibraryExists)
 include(CheckCSourceRuns)
 
+# Report verbose mode
+message(STATUS "Verbose makefile is ${CMAKE_VERBOSE_MAKEFILE}")
+
 # Store libraries discovered by the tests.
 set(PRIVATE_LINK_LIBRARIES "")
 
@@ -399,7 +429,7 @@ elseif(EXISTS ${CMAKE_BINARY_DIR}/.devel)
     set(HAVE_DEVEL YES)
 endif()
 if (HAVE_DEVEL)
-    message(CHECK_PASS "found ${${PROJECT_NAME_UPPERCASE}_DEVEL_FILE}")
+    message(CHECK_PASS "found ${DEVEL_FILE}")
 else()
     message(CHECK_FAIL "not found")
 endif()
@@ -422,6 +452,7 @@ if(UNIX)
     check_required_include_file(unistd.h HAVE_UNISTD_H)
     check_required_include_file(errno.h HAVE_ERRNO_H)
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
+    check_include_file(sys/types.h HAVE_SYS_TYPES_H)
     check_include_file(sys/stat.h HAVE_SYS_STAT_H)
     check_include_file(sys/socket.h HAVE_SYS_SOCKET_H)
     check_include_file(sys/select.h HAVE_SYS_SELECT_H)
@@ -430,7 +461,11 @@ if(UNIX)
 
     # Check if EAGAIN has the same value as EWOULDBLOCK
     file(READ ${CMAKE_HELPER_PATH}/check_eagain.c C_SOURCE_EAGAIN)
-    check_c_source_runs("${C_SOURCE_EAGAIN}" HAVE_EAGAIN_SAME_AS_EWOULDBLOCK)
+    check_c_source_runs("${C_SOURCE_EAGAIN}" HAVE_EAGAIN_EQUAL_TO_EWOULDBLOCK)
+
+    # Check if ENOTSUP has the same value as EOPNOTSUPP
+    file(READ ${CMAKE_HELPER_PATH}/check_enotsup.c C_SOURCE_ENOTSUP)
+    check_c_source_runs("${C_SOURCE_ENOTSUP}" HAVE_ENOTSUP_EQUAL_TO_EOPNOTSUPP)
 endif()
 
 # Check for __atomic_load_n() and __atomic_store_n() builtins.
@@ -442,66 +477,8 @@ check_c_source_compiles("int main(void) { int i = 17; return __atomic_load_n(&i,
 check_c_source_compiles("int main(void) { int i; __atomic_store_n(&i, 17, __ATOMIC_RELAXED); return 0; }"
                         HAVE___ATOMIC_STORE_N)
 
-# Check for safe strerror functions defined in C11, GNU and POSIX.
-check_function_exists(strerror_s HAVE_STRERROR_S)
-check_function_exists(strerror_r HAVE_STRERROR_R)
-if(HAVE_STRERROR_R)
-    # We have strerror_r; if we define _GNU_SOURCE, is it a POSIX-compliant strerror_r() or a GNU strerror_r()?
-    # On Linux an XSI-compliant version of strerror_r() is provided only if
-    # (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
-    # On macOS 12 (El Capitan) and up strerror_r si POSIX-compliant.
-    file(READ ${CMAKE_HELPER_PATH}/check_strerror_r.c C_SOURCE_STRERROR_R)
-    check_c_source_compiles("${C_SOURCE_STRERROR_R}" HAVE_GNU_STRERROR_R)
-    if(NOT HAVE_GNU_STRERROR_R)
-        set(HAVE_POSIX_STRERROR_R YES)
-    endif(NOT HAVE_GNU_STRERROR_R)
-endif()
-
-# Make sure we have vsnprintf() and snprintf(); we require them. We use check_symbol_exists(), as they aren't
-# necessarily external functions - in Visual Studio, for example, they're inline functions calling a common external
-# function.
-check_symbol_exists(vsnprintf "stdio.h" HAVE_VSNPRINTF)
-if(NOT HAVE_VSNPRINTF)
-    message(FATAL_ERROR "vsnprintf() is required but was not found")
-endif()
-check_symbol_exists(snprintf "stdio.h" HAVE_SNPRINTF)
-if(NOT HAVE_SNPRINTF)
-    message(FATAL_ERROR "snprintf() is required but was not found")
-endif()
-
 # Check Un*x only functions
 if(NOT WIN32)
-    file(READ ${CMAKE_HELPER_PATH}/check_asprintf.c C_SOURCE_ASPRINTF)
-    check_c_source_compiles("${C_SOURCE_ASPRINTF}" HAVE_GNU_ASPRINTF)
-    file(READ ${CMAKE_HELPER_PATH}/check_vasprintf.c C_SOURCE_VASPRINTF)
-    check_c_source_compiles("${C_SOURCE_VASPRINTF}" HAVE_GNU_VASPRINTF)
-
-    check_function_exists(strlcat HAVE_STRLCAT)
-    if (NOT HAVE_STRLCAT)
-        cmake_push_check_state()
-            # Some systems might have it in a bsd header but we don't want to force a dependency on libbsd here.
-            set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-            check_symbol_exists(strlcat "bsd/string.h" HAVE_STRLCAT)
-            if (HAVE_STRLCAT)
-                set(HAVE_STRLCAT_IN_BSD_STRING_H TRUE)
-            endif()
-        cmake_pop_check_state()
-    endif()
-
-    check_function_exists(strlcpy HAVE_STRLCPY)
-    if (NOT HAVE_STRLCPY)
-        cmake_push_check_state()
-            # Some systems might have it in a bsd header but we don't want to force a dependency on libbsd here.
-            set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-            check_symbol_exists(strlcpy "bsd/string.h" HAVE_STRLCPY)
-            if (HAVE_STRLCPY)
-                set(HAVE_STRLCPY_IN_BSD_STRING_H TRUE)
-            endif()
-        cmake_pop_check_state()
-    endif()
-
-    check_function_exists(strtok_r HAVE_STRTOK_R)
-    check_function_exists(vsyslog HAVE_VSYSLOG)
     check_function_exists(fcntl HAVE_FCNTL)
     check_function_exists(poll HAVE_POLL)
 
@@ -628,7 +605,7 @@ if(WIN32)
     else()
         message(FATAL_ERROR "timeGetTime is required, but was not found")
     endif()
-else()
+elseif(UNIX)
     # Check for clock_gettime in librt. Note that Linux/Android behaviour is different than iOS (and possibly macOS).
     # To get elapsed realtime (including any time that the system is suspended)
     #   iOS : CLOCK_MONOTONIC
@@ -674,7 +651,7 @@ if(NOT WIN32)
 endif()
 
 # Check for IPv6 support by checking if sockaddr_in6 exists and has sin6_addr.
-if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6)
+if(${PROJECT_ENABLE_IPV6})
     if(WIN32)
         check_struct_has_member("struct sockaddr_in6" sin6_addr ws2tcpip.h
                           HAVE_SOCKADDR_IN6_SIN6_ADDR)
@@ -688,12 +665,12 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6)
     endif()
     if(NOT HAVE_SOCKADDR_IN6_SIN6_ADDR)
         message(STATUS "struct sockaddr_in6 not available, disabling IPv6 support")
-        set(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 OFF CACHE BOOL "Enable IPv6" FORCE)
-        set(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL OFF CACHE BOOL "Enable IPv6 Dual Stack" FORCE)
+        set(${PROJECT_ENABLE_IPV6} OFF CACHE BOOL "Enable IPv6" FORCE)
+        set(${PROJECT_ENABLE_IPV6DUAL} OFF CACHE BOOL "Enable Dual Stack for IPv6" FORCE)
     endif()
 endif()
 
-if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND ${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL)
+if(${PROJECT_ENABLE_IPV6} AND ${PROJECT_ENABLE_IPV6DUAL})
     if(WIN32)
         # Windows Vista and later should support IPv6 dual stack so if IPv6 itself is supported we are good.
         set(HAVE_IPV6DUAL TRUE)
@@ -708,11 +685,11 @@ if(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6 AND ${PROJECT_NAME_UPPERCASE}_ENABLE_IP
     endif()
     if (NOT HAVE_IPV6DUAL)
         message(STATUS "IPv6 Dual Stack is not available, disabling IPv6 Dual Stack support")
-        set(${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL OFF CACHE BOOL "Enable IPv6 Dual Stack" FORCE)
+        set(${PROJECT_ENABLE_IPV6DUAL} OFF CACHE BOOL "Enable Dual Stack for IPv6" FORCE)
     endif()
 endif()
 
-# Check Pthreads.
+# Check pthreads.
 # We might need it, because some libraries we use might use them, but we don't necessarily depend on them.
 # That's only on UN*X; on Windows, if they use threads, we assume they're native Windows threads.
 if(NOT WIN32)
@@ -759,37 +736,26 @@ target_sources(${PROJECT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h>
         $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>
     PRIVATE
-        src/portability.h
         src/${PROJECT_NAME}.c
         src/protocols/dtlc.c
         src/protocols/dtls.c
-        src/protocols/udtp.c
-        src/protocols/udtps.c
-        src/protocols/enet.c
-        src/protocols/enets.c
-        src/protocols/tls.c
 )
 
-# Add portable sources.
+# Add compatible sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
-        src/portable/addr.h
-        src/portable/addr.c
-        src/portable/fallback/asprintf.c
-        src/portable/fallback/strlcat.c
-        src/portable/fallback/strlcpy.c
-        src/portable/fallback/strtok_r.c
-        src/portable/fallback/strerror_s.c
-        src/portable/fallback/ffs.c
+        src/compat/compat.h
+        src/compat/error.h
+        src/compat/error.c
+        src/compat/addr.h
+        src/compat/addr.c
+        src/compat/fallback/ffs.c
 )
 
 # Add system family sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
-        src/platforms/${PROJECT_SYSTEM_FAMILY}/sys.h
-        src/platforms/${PROJECT_SYSTEM_FAMILY}/sys.c
-        src/platforms/${PROJECT_SYSTEM_FAMILY}/udp.c
-        src/platforms/${PROJECT_SYSTEM_FAMILY}/tcp.c
+        src/platforms/${PROJECT_SYSTEM_FAMILY}/socket.c
 )
 
 # Add system specific sources.
@@ -799,11 +765,26 @@ target_sources(${PROJECT_NAME}
         # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.c
 )
 
-# Hide symbols only if building shared libs so gdb can be of any use */
 if (BUILD_SHARED_LIBS)
-    set(${PROJECT_NAME_UPPERCASE}_VISIBILITY_PRESET hidden)
+    # Set EXPORT/IMPORT macros for the header
+    target_compile_definitions(uv
+        INTERFACE
+            ${PROJECT_MACRO_PREFIX}_IMPORT
+        PRIVATE
+            ${PROJECT_MACRO_PREFIX}_EXPORT
+    )
+    # Add DLL resource file. Only applies to Windows.
+    if (WIN32)
+        target_sources(${PROJECT_NAME}
+            PRIVATE
+                ${${PROJECT_NAME}_SOURCE_DIR}/src/platforms/${PROJECT_SYSTEM_FAMILY}/${PROJECT_NAME}.rc
+        )
+    endif()
+    # Hide symbols only if building shared libs so gdb can be of any use
+    set(${PROJECT_MACRO_PREFIX}_VISIBILITY_PRESET hidden)
 else()
-    set(${PROJECT_NAME_UPPERCASE}_VISIBILITY_PRESET default)
+    # Don't hide symbols if not building a shared lib so gdb can be of any use
+    set(${PROJECT_MACRO_PREFIX}_VISIBILITY_PRESET default)
 endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -813,19 +794,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     VERSION ${PROJECT_VERSION}
     # Symbol visibility follows policy CMP0063 and is applicable to static libs as well so we only hide all symbols if
     # using MSVC or building without debug info because gdb is severely limited when all symbols are hidden.
-    C_VISIBILITY_PRESET ${${PROJECT_NAME_UPPERCASE}_VISIBILITY_PRESET}
+    C_VISIBILITY_PRESET ${${PROJECT_MACRO_PREFIX}_VISIBILITY_PRESET}
     # Set up public header
     PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h
     # Enable position independent code (i.e. -fPIC) if building a shared lib.
     POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
-
-# Add DLL resource file on Windows
-if (WIN32)
-    if (BUILD_SHARED_LIBS)
-        target_sources(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_SOURCE_DIR}/src/${PROJECT_NAME}.rc)
-    endif()
-endif()
 
 # Main target requires C99
 target_compile_features(${PROJECT_NAME}
@@ -843,12 +817,16 @@ if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
 endif()
 
-# Link private libraries
-list(REMOVE_DUPLICATES PRIVATE_LINK_LIBRARIES)
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        ${PRIVATE_LINK_LIBRARIES}
-)
+# Make sure to disable strict aliasing rules, trapping math and math errno. We use "restrict" when aliasing is not
+# appropriate and only rely on NaN/Inf propagation.
+if(NOT MSVC)
+    target_compile_options(${PROJECT_NAME}
+        PRIVATE
+            -fno-strict-aliasing
+            -fno-trapping-math
+            -fno-math-errno
+    )
+endif()
 
 # Set output name
 if(WIN32)
@@ -887,20 +865,6 @@ target_compile_definitions(${PROJECT_NAME}
         HAVE_CONFIG_H=1
 )
 
-# Export a symbol to indicate that we're building the library, rather than a program using the library, and thus that
-# we're supposed to export symbols defined in our public header files.
-if (BUILD_SHARED_LIBS)
-    target_compile_definitions(${PROJECT_NAME}
-        PRIVATE
-            ${PROJECT_NAME_UPPERCASE}_EXPORT
-    )
-else()
-    target_compile_definitions(${PROJECT_NAME}
-        PUBLIC
-            ${PROJECT_NAME_UPPERCASE}_STATIC_LIB
-    )
-endif()
-
 # Defining this macro on LINUX causes some lightweight checks to be performed to detect some buffer overflow errors when
 # employing various string and memory manipulation functions (for example, memcpy(3), memset(3), stpcpy(3), strcpy(3),
 # strncpy(3), strcat(3), strncat(3), sprintf(3), snprintf(3), vsprintf(3), vsnprintf(3), gets(3), and wide character
@@ -926,29 +890,30 @@ if(MINGW)
 endif()
 
 # Report target library type
-message(STATUS "BUILD_SHARED_LIBS is ${BUILD_SHARED_LIBS}")
 if (BUILD_SHARED_LIBS)
-    message(STATUS "(building ${PROJECT_NAME} as a shared lib)")
+    message(STATUS "BUILD_SHARED_LIBS is ${BUILD_SHARED_LIBS} (building ${PROJECT_NAME} as a shared lib)")
 else()
-    message(STATUS "(building ${PROJECT_NAME} as a static lib)")
+    message(STATUS "BUILD_SHARED_LIBS is ${BUILD_SHARED_LIBS} (building ${PROJECT_NAME} as a static lib)")
 endif()
 
 # Setup profiler instrumentation
-message(STATUS "Profiler instrumentation is ${${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILE}")
+message(STATUS "Profiler instrumentation is ${${PROJECT_ENABLE_PROFILE}}")
 target_profiler(${PROJECT_NAME})
 
 # Setup system runtime linkage
-message(STATUS "Static runtime is ${${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT}")
+message(STATUS "Static runtime is ${${PROJECT_USE_STATIC_RT}}")
 if(BUILD_SHARED_LIBS)
     target_static_runtime(${PROJECT_NAME})
 else()
-    message(STATUS "Ignoring option ${PROJECT_NAME_UPPERCASE}_USE_STATIC_RT for target ${PROJECT_NAME} (irrelevant when BUILD_SHARED_LIBS is OFF).")
+    message(STATUS "Ignoring option ${PROJECT_USE_STATIC_RT} for target ${PROJECT_NAME} (irrelevant when BUILD_SHARED_LIBS is OFF).")
 endif ()
 
-message(STATUS "Stack protection is ${${PROJECT_NAME_UPPERCASE}_USE_STACK_PROTECTION}")
+# Setup stack protection
+message(STATUS "Stack protection is ${${PROJECT_USE_STACK_PROTECTION}}")
 target_stack_protection(${PROJECT_NAME})
 
-message(STATUS "Spectre mitigation is ${${PROJECT_NAME_UPPERCASE}_USE_SPECTRE_MITIGATION}")
+# Setup spectre mitigation
+message(STATUS "Spectre mitigation is ${${PROJECT_USE_SPECTRE_MITIGATION}}")
 target_spectre_mitigation(${PROJECT_NAME})
 
 # Setup compiler warnings
@@ -962,36 +927,34 @@ target_compile_warnings(${PROJECT_NAME})
 ########################################################################################################################
 #   Submodules
 ########################################################################################################################
+# Include support to add git submodules as either subdirectories or external projects
+include(AddSubmodule)
 
-# Include support to add git submodules
-include(AddGitSubmodule)
+message(CHECK_START "Adding MbedTLS")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
-# MbedTLS
-if(${PROJECT_NAME_UPPERCASE}_ENABLE_TLS OR ${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS)
-    message(CHECK_START "Adding MbedTLS")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    set(MBEDTLS_PROJECT_NAME "mbed TLS")
-    set(CMAKE_PROJECT_${MBEDTLS_PROJECT_NAME}_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/MbedTLSIncludeBefore.cmake)
-    # Use MbedTLS static libs only
-    set(USE_STATIC_MBEDTLS_LIBRARY ON) # CACHE BOOL "Build mbed TLS static library." FORCE)
-    set(USE_SHARED_MBEDTLS_LIBRARY OFF) # CACHE BOOL "Build mbed TLS shared library." FORCE)
-    # Disable MbedTLS programs and testing
-    set(ENABLE_PROGRAMS OFF) # CACHE BOOL "Build mbed TLS programs." FORCE)
-    set(ENABLE_TESTING OFF) # CACHE BOOL "Build mbed TLS tests." FORCE)
-    set(LINK_WITH_PTHREAD OFF) # CACHE BOOL "Explicitly link mbed TLS library to pthread." FORCE)
-    set(LINK_WITH_TRUSTED_STORAGE OFF) # CACHE BOOL "Explicitly link mbed TLS library to trusted_storage." FORCE)
-    # Add submodule
-    add_git_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mbedtls)
-    set(HAVE_MBEDTLS YES)
-    target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-            mbedtls
-            mbedx509
-            mbedcrypto
-    )
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-    message(CHECK_PASS "done")
-endif()
+set(MBEDTLS_PROJECT_NAME "mbed TLS")
+set(CMAKE_PROJECT_${MBEDTLS_PROJECT_NAME}_INCLUDE_BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/MbedTLSIncludeBefore.cmake)
+# Use MbedTLS static libs only
+set(USE_STATIC_MBEDTLS_LIBRARY ON) # CACHE BOOL "Build mbed TLS static library." FORCE)
+set(USE_SHARED_MBEDTLS_LIBRARY OFF) # CACHE BOOL "Build mbed TLS shared library." FORCE)
+# Disable MbedTLS programs and testing
+set(ENABLE_PROGRAMS OFF) # CACHE BOOL "Build mbed TLS programs." FORCE)
+set(ENABLE_TESTING OFF) # CACHE BOOL "Build mbed TLS tests." FORCE)
+set(LINK_WITH_PTHREAD OFF) # CACHE BOOL "Explicitly link mbed TLS library to pthread." FORCE)
+set(LINK_WITH_TRUSTED_STORAGE OFF) # CACHE BOOL "Explicitly link mbed TLS library to trusted_storage." FORCE)
+# Add submodule
+add_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mbedtls)
+set(HAVE_MBEDTLS YES)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        mbedtls
+        mbedx509
+        mbedcrypto
+)
+
+list(POP_BACK CMAKE_MESSAGE_INDENT)
+message(CHECK_PASS "done")
 
 # On macOS, build target for the appropriate architectures, if CMAKE_OSX_ARCHITECTURES isn't set (if it is, let that
 # control the architectures for which to build it).
@@ -1017,7 +980,7 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386")
         else()
             # With Intel support including x86-64 support. Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86,
-            # and x86-64, with 32-bit PowerPC first. (I'm guessing that's what Apple does.)
+            # and x86-6add_dependencie4, with 32-bit PowerPC first. (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
         endif()
     elseif(SYSTEM_VERSION_MAJOR EQUAL 9)
@@ -1038,7 +1001,7 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
           set(X86_32_BIT_SUPPORTED NO)
           set(OSX_LIBRARY_ARCHITECTURES "x86_64")
           message(STATUS "Assuming MbedTLS libraries are 64-bit only therefore not compiling for 32-bit x86")
-        else(HAVE_MBEDTLS)
+        else()
           # Now, check whether we *can* build for i386.
           cmake_push_check_state()
           set(CMAKE_REQUIRED_FLAGS "-arch i386")
@@ -1046,7 +1009,7 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
           cmake_pop_check_state()
           if(X86_32_BIT_SUPPORTED)
               set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386")
-          else(X86_32_BIT_SUPPORTED)
+          else()
               set(OSX_LIBRARY_ARCHITECTURES "x86_64")
               # We can't build fat; suggest that the user install the /usr/include headers if they want to build fat.
               if(SYSTEM_VERSION_MAJOR LESS 18)
@@ -1055,11 +1018,23 @@ if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
               else()
                   message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools and, after that, installing the /usr/include headers from the /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg package")
               endif()
-          endif(X86_32_BIT_SUPPORTED)
-        endif(HAVE_MBEDTLS)
+          endif()
+        endif()
     endif()
     set_target_properties(${LIBRARY_NAME} PROPERTIES OSX_ARCHITECTURES "${OSX_LIBRARY_ARCHITECTURES}")
 endif()
+
+########################################################################################################################
+# Extra target options
+########################################################################################################################
+# Link private libraries. All libraries are PRIVATE because none of these libraries are part of the public API. If
+# target is a shared lib it already carries information on dependencies by itself. If the target is a static lib, CMake
+# treats PRIVATE as PUBLIC and the libraries will all be passed to the linker accordingly.
+list(REMOVE_DUPLICATES PRIVATE_LINK_LIBRARIES)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        ${PRIVATE_LINK_LIBRARIES}
+)
 
 # Extra compiler options for targets to request -Werror or its equivalent if required.
 # The CMake variable name cannot be CFLAGS because that is already used for a different purpose in CMake.
@@ -1080,8 +1055,9 @@ if (APPLE)
     set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
 endif()
 
-# Save configuration
+# Generate config.h
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
+# Generate catch2 settings for Visual Studio's test adapter
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/catch2.runsettings.in ${CMAKE_CURRENT_BINARY_DIR}/.runsettings)
 endif()
@@ -1090,22 +1066,13 @@ endif()
 # Report Features
 ########################################################################################################################
 
-message(STATUS "Configured features")
+message(STATUS "Optional features")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
-message(STATUS "Profile is ${${PROJECT_NAME_UPPERCASE}_ENABLE_PROFILE}")
-message(STATUS "Log is ${${PROJECT_NAME_UPPERCASE}_ENABLE_LOG}")
-message(STATUS "IPv6 is ${${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6}")
-message(STATUS "IPv6 Dual Stack is ${${PROJECT_NAME_UPPERCASE}_ENABLE_IPV6DUAL}")
-message(STATUS "UDP is ${${PROJECT_NAME_UPPERCASE}_ENABLE_UDP}")
-message(STATUS "DTLC is ${${PROJECT_NAME_UPPERCASE}_ENABLE_DTLC}")
-message(STATUS "DTLS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_DTLS}")
-message(STATUS "UDTP is ${${PROJECT_NAME_UPPERCASE}_ENABLE_UDTP}")
-message(STATUS "UDTPS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_UDTPS}")
-message(STATUS "ENET is ${${PROJECT_NAME_UPPERCASE}_ENABLE_ENET}")
-message(STATUS "ENETS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_ENETS}")
-message(STATUS "TCP is ${${PROJECT_NAME_UPPERCASE}_ENABLE_TCP}")
-message(STATUS "TLS is ${${PROJECT_NAME_UPPERCASE}_ENABLE_TLS}")
+message(STATUS "Profile is ${${PROJECT_ENABLE_PROFILE}}")
+message(STATUS "Log is ${${PROJECT_ENABLE_LOG}}")
+message(STATUS "IPv6 is ${${PROJECT_ENABLE_IPV6}}")
+message(STATUS "IPv6 Dual Stack is ${${PROJECT_ENABLE_IPV6DUAL}}")
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 
 
@@ -1173,9 +1140,9 @@ configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/templates/config.c
 )
 
 # Create pkg-config file
-set (PKG_CONFIG_STATIC_DEFINE "")
-if (NOT BUILD_SHARED_LIBS)
-    set (PKG_CONFIG_STATIC_DEFINE "-D${PROJECT_NAME_UPPERCASE}_STATIC")
+set (PKG_CONFIG_DEFINES "")
+if (BUILD_SHARED_LIBS)
+    set (PKG_CONFIG_DEFINES "-D${PROJECT_MACRO_PREFIX}_IMPORT")
 endif()
 set(PKG_CONFIG_LINK_LIBRARIES "")
 get_target_property(PKG_CONFIG_LINK_LIBRARIES ${PROJECT_NAME} INTERFACE_LINK_LIBRARIES)
@@ -1217,12 +1184,35 @@ export(PACKAGE ${PROJECT_NAME_CAPITALIZED})
 #   Tests
 ########################################################################################################################
 include(CTest)
-if (${PROJECT_NAME_UPPERCASE}_BUILD_TESTING AND BUILD_TESTING)
+if (${PROJECT_BUILD_TESTING} AND BUILD_TESTING)
     set(HAVE_UNIT_TESTS ON)
 else()
     set(HAVE_UNIT_TESTS OFF)
 endif()
 message(STATUS "Unit testing is ${HAVE_UNIT_TESTS}")
 if(HAVE_UNIT_TESTS)
+    # Add Catch2
+    message(CHECK_START "Adding Catch2")
+    list(APPEND CMAKE_MESSAGE_INDENT "  ")
+    set(catch2_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/catch2)
+    add_submodule(${catch2_SOURCE_DIR})
+    set(catch2_FOLDER ${${PROJECT_MACRO_PREFIX}_TESTS_FOLDER}/Dependencies)
+    set_target_properties(Catch2 PROPERTIES FOLDER ${catch2_FOLDER})
+    set_target_properties(Catch2WithMain PROPERTIES FOLDER ${catch2_FOLDER})
+    list(POP_BACK CMAKE_MESSAGE_INDENT)
+    message(CHECK_PASS "done")
+
+    # Add libuv
+    message(CHECK_START "Adding libuv")
+    list(APPEND CMAKE_MESSAGE_INDENT "  ")
+    set(libuv_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/libuv)
+    add_submodule(${libuv_SOURCE_DIR})
+    set(libuv_FOLDER ${${PROJECT_MACRO_PREFIX}_TESTS_FOLDER}/Dependencies)
+    set_target_properties(uv PROPERTIES FOLDER ${libuv_FOLDER})
+    set_target_properties(uv_a PROPERTIES FOLDER ${libuv_FOLDER})
+    list(POP_BACK CMAKE_MESSAGE_INDENT)
+    message(CHECK_PASS "done")
+
+    # Add tests
     add_subdirectory(tests)
 endif()

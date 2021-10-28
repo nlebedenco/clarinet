@@ -1,4 +1,5 @@
-#include "portable/addr.h"
+#include "compat/addr.h"
+#include "compat/error.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -6,6 +7,20 @@
 #include <ctype.h>
 #include <assert.h>
 
+CLARINET_INLINE
+uint32_t
+clarinet_proto_from_ipproto(int proto)
+{
+    switch (proto)
+    {
+        case IPPROTO_UDP:
+            return CLARINET_PROTO_UDP;
+        case IPPROTO_TCP:
+            return CLARINET_PROTO_TCP;
+        default:
+            return CLARINET_PROTO_NONE;
+    }
+}
 
 CLARINET_STATIC_INLINE
 void
@@ -15,7 +30,15 @@ clarinet_addr_ipv4_to_inet(struct in_addr* restrict dst,
     memcpy(dst, src, min(sizeof(struct in_addr), sizeof(union clarinet_ipv4_octets)));
 }
 
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+CLARINET_STATIC_INLINE
+void
+clarinet_addr_ipv4_from_inet(union clarinet_ipv4_octets* restrict dst,
+                             const struct in_addr* restrict src)
+{
+    memcpy(dst, src, min(sizeof(struct in_addr), sizeof(union clarinet_ipv4_octets)));
+}
+
+#if CLARINET_ENABLE_IPV6
 
 CLARINET_STATIC_INLINE
 void
@@ -25,18 +48,6 @@ clarinet_addr_ipv6_to_inet6(struct in6_addr* restrict dst,
     memcpy(dst, src, min(sizeof(struct in6_addr), sizeof(union clarinet_ipv6_octets)));
 }
 
-#endif
-
-CLARINET_STATIC_INLINE
-void
-clarinet_addr_ipv4_from_inet(union clarinet_ipv4_octets* restrict dst,
-                             const struct in_addr* restrict src)
-{
-    memcpy(dst, src, min(sizeof(struct in_addr), sizeof(union clarinet_ipv4_octets)));
-}
-
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
-
 CLARINET_STATIC_INLINE
 void
 clarinet_addr_ipv6_from_inet6(union clarinet_ipv6_octets* restrict dst,
@@ -45,14 +56,14 @@ clarinet_addr_ipv6_from_inet6(union clarinet_ipv6_octets* restrict dst,
     memcpy(dst, src, min(sizeof(struct in6_addr), sizeof(union clarinet_ipv6_octets)));
 }
 
-#endif
+#endif /* CLARINET_ENABLE_IPV6 */
 
 static
 int
 clarinet_decode_port(const char* restrict src,
                      size_t len)
 {
-    assert(src != NULL);
+    assert(src);
     assert(len > 0);
 
     size_t i = 0;
@@ -90,8 +101,8 @@ clarinet_decode_scope_id(uint32_t* scope_id,
                          const char* restrict src,
                          size_t len)
 {
-    assert(scope_id != NULL);
-    assert(src != NULL);
+    if (!scope_id || !src)
+        return CLARINET_EINVAL;
 
     size_t i = 0;
     uint32_t sid = 0;
@@ -129,29 +140,31 @@ clarinet_decode_scope_id(uint32_t* scope_id,
 }
 
 
-/* Using inet_ntop as the portable solution for converting address to string.
- * Not relying RtlIpv4AddressToStringEx/RtlIpv6AddressToStringEx on Windows to avoid a dependency on ntdll.lib and not
- * using using WSAStringToAddress/WSAAddressToString because all WSA functions require WSAStartup to be called first and
- * dynamically load the winsock dll but we want to do that only if/when a socket is actually created as opposed to a
- * simple address-string conversion.
- *
- * Using a custom solution for string to address. The problem with inet_pton is consistency across platforms. For
- * example, "127.0.0.001" is invalid on Windows and Linux but valid on macOS. "::FFFF:127.0.0.001" is valid on Windows
- * and invalid on Linux and macOS. Besides there is the complication that the scope_id is on macOS is parsed but can be
- * an iface name and is encoded as part of the address while on Linux and Windows the scope id must be parsed separately.
- *
- */
-
 #define INADDRSZ 4
 
+/**
+ * Using inet_ntop as the portable solution for converting address to string.
+ * Not relying RtlIpv4AddressToStringEx/RtlIpv6AddressToStringEx on Windows to avoid a dependency on ntdll.lib and not
+ * using WSAStringToAddress/WSAAddressToString because all WSA functions require WSAStartup to be called first and
+ * dynamically load the winsock dll but we want to do that only if/when a socket is actually created as opposed to a
+ * simple address-string conversion.
+ */
+#define clarinet_ntop(family, addr, dst, dstlen)  inet_ntop(family, addr, dst, dstlen)
+
+/**
+ * Using a custom solution for string to address. The problem with inet_pton is consistency across platforms. For
+ * example, "127.0.0.001" is invalid on Windows and Linux but valid on macOS. "::FFFF:127.0.0.001" is valid on Windows
+ * and invalid on Linux and macOS. Besides, there is the complication that the scope_id is on macOS is parsed but can be
+ * an iface name and is encoded as part of the address while on Linux and Windows the scope id must be parsed separately.
+ */
 static
 int
 clarinet_pton4(struct in_addr* restrict addr,
                const char* restrict src,
                size_t srclen)
 {
-    assert(addr != NULL);
-    assert(src != NULL);
+    assert(addr);
+    assert(src);
 
     uint8_t* addrptr = (uint8_t*)addr;
     size_t i = 0;
@@ -199,9 +212,9 @@ clarinet_pton4(struct in_addr* restrict addr,
     return CLARINET_ENONE;
 }
 
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+#if CLARINET_ENABLE_IPV6
 
-    #define IN6ADDRSZ 16
+#define IN6ADDRSZ 16
 
 static
 int
@@ -209,8 +222,8 @@ clarinet_pton6(struct in6_addr* restrict addr,
                const char* restrict src,
                size_t srclen)
 {
-    assert(addr != NULL);
-    assert(src != NULL);
+    assert(addr);
+    assert(src);
     assert(srclen >= 2);
 
     static const char xdigits_l[] = "0123456789abcdef";
@@ -313,7 +326,7 @@ clarinet_pton6(struct in6_addr* restrict addr,
     return CLARINET_ENONE;
 }
 
-#endif
+#endif /* CLARINET_ENABLE_IPV6 */
 
 
 static
@@ -323,8 +336,8 @@ clarinet_addr_ipv4_from_string(clarinet_addr* restrict dst,
                                size_t srclen)
 {
     /* Not validating parameters to avoid redundat checks. Caller must ensure dst and src are not null. */
-    assert(dst != NULL);
-    assert(src != NULL);
+    assert(dst);
+    assert(src);
 
     if (srclen < 7) /* minimum ipv4 is 0.0.0.0 */
         return CLARINET_EINVAL;
@@ -342,7 +355,7 @@ clarinet_addr_ipv4_from_string(clarinet_addr* restrict dst,
 }
 
 
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+#if CLARINET_ENABLE_IPV6
 
 static
 int
@@ -351,8 +364,8 @@ clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
                                size_t srclen)
 {
     /* Not validating parameters to avoid redundat checks. Caller must ensure dst and src are not null. */
-    assert(dst != NULL);
-    assert(src != NULL);
+    assert(dst);
+    assert(src);
 
     if (srclen < 2) /* minimum ipv6 is :: */
         return CLARINET_EINVAL;
@@ -396,7 +409,7 @@ clarinet_addr_ipv6_from_string(clarinet_addr* restrict dst,
     return CLARINET_ENONE;
 }
 
-#endif
+#endif /* CLARINET_ENABLE_IPV6 */
 
 int
 clarinet_addr_to_string(char* restrict dst,
@@ -409,7 +422,7 @@ clarinet_addr_to_string(char* restrict dst,
         {
             struct in_addr addr;
             clarinet_addr_ipv4_to_inet(&addr, &src->as.ipv4.u);
-            if (inet_ntop(AF_INET, &addr, dst, (socklen_t)dstlen))
+            if (clarinet_ntop(AF_INET, &addr, dst, (socklen_t)dstlen))
             {
                 const size_t limit = dstlen - 1;
                 const size_t n = strnlen(dst, limit);
@@ -418,20 +431,20 @@ clarinet_addr_to_string(char* restrict dst,
                 return (int)n;
             }
         }
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+            #if CLARINET_ENABLE_IPV6
         else if (clarinet_addr_is_ipv6(src))
         {
             if (dstlen >= 11) /* must have enough space to reserve for scope_id (%4294967295) */
             {
                 struct in6_addr addr;
                 clarinet_addr_ipv6_to_inet6(&addr, &src->as.ipv6.u);
-    #if defined(_WIN32)
-                /* on windows inet_ntop expects a size_t length not a socklen_t */
+                #if defined(_WIN32)
+                /* On Windows clarinet_ntop() expects a size_t length not a socklen_t */
                 const size_t sublen = dstlen - 11;
-    #else
+                #else
                 const socklen_t sublen = (socklen_t)(dstlen - 11);
-    #endif
-                if (inet_ntop(AF_INET6, &addr, dst, sublen))
+                #endif /* defined(_WIN32) */
+                if (clarinet_ntop(AF_INET6, &addr, dst, sublen))
                 {
                     const uint32_t scope_id = src->as.ipv6.scope_id;
                     if (scope_id == 0)
@@ -458,7 +471,11 @@ clarinet_addr_to_string(char* restrict dst,
                 }
             }
         }
-#endif
+            #endif /* CLARINET_ENABLE_IPV6 */
+        else
+        {
+            return CLARINET_EAFNOSUPPORT;
+        }
     }
 
     return CLARINET_EINVAL;
@@ -473,10 +490,10 @@ clarinet_addr_from_string(clarinet_addr* restrict dst,
     {
         /* There is no way of knowing if src is an ipv4 or ipv6 upfront so we must try one conversion then the other. */
         int errcode = clarinet_addr_ipv4_from_string(dst, src, srclen);
-    #if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+        #if CLARINET_ENABLE_IPV6
         if (errcode != CLARINET_ENONE)
             errcode = clarinet_addr_ipv6_from_string(dst, src, srclen);
-    #endif
+        #endif /* CLARINET_ENABLE_IPV6 */
         return errcode;
     }
 
@@ -508,16 +525,17 @@ clarinet_endpoint_to_string(char* restrict dst,
         if (dstlen > reserved)   /* must have enough space to reserve for port (:65535 or []:65535) */
         {
             int n = clarinet_addr_to_string(dst + offset, dstlen - reserved, &src->addr);
+            if (n < 0)
+                return n;
+
             if (n > 0)
             {
-    #if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
                 if (clarinet_addr_is_ipv6(&src->addr))
                 {
                     dst[0] = '[';
                     dst[offset + n] = ']';
                     n += offset + 1;
                 }
-    #endif
 
                 if ((size_t)n < dstlen)
                 {
@@ -580,8 +598,9 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
 
             return errcode;
         }
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
-        else if (first == '[' && isdigit(last)) /* either ipv6 or invalid */
+
+        #if CLARINET_ENABLE_IPV6
+        if (first == '[' && isdigit(last)) /* either ipv6 or invalid */
         {
             size_t i = 1;     /* consume '[' */
             while (i < srclen) /* consume the address part until a ']' is found */
@@ -619,7 +638,7 @@ clarinet_endpoint_from_string(clarinet_endpoint* restrict dst,
 
             return errcode;
         }
-#endif
+        #endif /* CLARINET_ENABLE_IPV6 */
     }
 
     return CLARINET_EINVAL;
@@ -641,8 +660,7 @@ clarinet_make_ipv4(uint8_t a,
 }
 
 clarinet_addr
-clarinet_make_ipv6(uint32_t flow_info,
-                   uint16_t a,
+clarinet_make_ipv6(uint16_t a,
                    uint16_t b,
                    uint16_t c,
                    uint16_t d,
@@ -654,7 +672,6 @@ clarinet_make_ipv6(uint32_t flow_info,
 {
     clarinet_addr r = { 0 };
     r.family = CLARINET_AF_INET6;
-    r.as.ipv6.flowinfo = flow_info;
     r.as.ipv6.u.word[0] = htons(a);
     r.as.ipv6.u.word[1] = htons(b);
     r.as.ipv6.u.word[2] = htons(c);
@@ -668,7 +685,7 @@ clarinet_make_ipv6(uint32_t flow_info,
 }
 
 clarinet_endpoint
-clarinet_make_endpoint(const clarinet_addr addr,
+clarinet_make_endpoint(clarinet_addr addr,
                        uint16_t port)
 {
     clarinet_endpoint r = { addr, port };
@@ -688,37 +705,39 @@ clarinet_endpoint_to_sockaddr(struct sockaddr_storage* restrict dst,
             memset(dst, 0, sizeof(struct sockaddr_in));
             if (dstlen)
                 *dstlen = sizeof(struct sockaddr_in);
-    #if HAVE_STRUCT_SOCKADDR_SA_LEN
+            #if HAVE_STRUCT_SOCKADDR_SA_LEN
             addr->sin_len = sizeof(struct sockaddr_in);
-    #endif
+            #endif /* HAVE_STRUCT_SOCKADDR_SA_LEN */
             addr->sin_family = AF_INET;
             addr->sin_port = src->port;
             clarinet_addr_ipv4_to_inet(&addr->sin_addr, &src->addr.as.ipv4.u);
 
             return CLARINET_ENONE;
         }
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+            #if CLARINET_ENABLE_IPV6
         else if (clarinet_addr_is_ipv6(&src->addr))
         {
             struct sockaddr_in6* addr = (struct sockaddr_in6*)dst;
             memset(dst, 0, sizeof(struct sockaddr_in6));
             if (dstlen)
                 *dstlen = sizeof(struct sockaddr_in6);
-
-    #if HAVE_STRUCT_SOCKADDR_SA_LEN
+            #if HAVE_STRUCT_SOCKADDR_SA_LEN
             addr->sin6_len = sizeof(struct sockaddr_in6);
-    #endif
+            #endif /* HAVE_STRUCT_SOCKADDR_SA_LEN */
             addr->sin6_family = AF_INET6;
             addr->sin6_port = src->port;
             addr->sin6_flowinfo = src->addr.as.ipv6.flowinfo;
             clarinet_addr_ipv6_to_inet6(&addr->sin6_addr, &src->addr.as.ipv6.u);
-    #if HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
+            #if HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
             addr->sin6_scope_id = src->addr.as.ipv6.scope_id;
-    #endif
-
+            #endif /* HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID */
             return CLARINET_ENONE;
         }
-#endif
+            #endif /* CLARINET_ENABLE_IPV6 */
+        else
+        {
+            return CLARINET_EAFNOSUPPORT;
+        }
     }
 
     return CLARINET_EINVAL;
@@ -741,7 +760,7 @@ clarinet_endpoint_from_sockaddr(clarinet_endpoint* restrict dst,
 
             return CLARINET_ENONE;
         }
-#if CLARINET_ENABLE_IPV6 && HAVE_SOCKADDR_IN6_SIN6_ADDR
+            #if CLARINET_ENABLE_IPV6
         else if (src->ss_family == AF_INET6)
         {
             struct sockaddr_in6* addr = (struct sockaddr_in6*)src;
@@ -750,14 +769,17 @@ clarinet_endpoint_from_sockaddr(clarinet_endpoint* restrict dst,
             dst->addr.family = CLARINET_AF_INET6;
             dst->addr.as.ipv6.flowinfo = addr->sin6_flowinfo;
             clarinet_addr_ipv6_from_inet6(&dst->addr.as.ipv6.u, &addr->sin6_addr);
-    #if HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
+            #if HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
             dst->addr.as.ipv6.scope_id = addr->sin6_scope_id;
-    #endif
+            #endif /* HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID */
             dst->port = addr->sin6_port;
-
             return CLARINET_ENONE;
         }
-#endif
+            #endif /* CLARINET_ENABLE_IPV6 */
+        else
+        {
+            return CLARINET_EAFNOSUPPORT;
+        }
     }
 
     return CLARINET_EINVAL;

@@ -1,22 +1,96 @@
-#include "portability.h"
+#include "compat/compat.h"
 #include "clarinet/clarinet.h"
 
-#include <stdlib.h>
 #include <string.h>
 
-/* @formatter:off */
+/* region Error Codes */
 
-const clarinet_addr clarinet_addr_none                      = { 0 };
-const clarinet_addr clarinet_addr_any_ipv4                  = {CLARINET_AF_INET, 0, {{0, {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }, 0 } } };
-const clarinet_addr clarinet_addr_loopback_ipv4             = {CLARINET_AF_INET, 0, {{0, {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 1 } }, 0 } } };
-const clarinet_addr clarinet_addr_broadcast_ipv4            = {CLARINET_AF_INET, 0, {{0, {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255 } }, 0 } } };
+#define CLARINET_DECLARE_ENUM_NAME(e, v, s) case (e): return #e;
+#define CLARINET_DECLARE_ENUM_DESC(e, v, s) case (e): return (s);
 
-const clarinet_addr clarinet_addr_any_ipv6                  = {CLARINET_AF_INET6, 0, {{0, {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }, 0 } } };
-const clarinet_addr clarinet_addr_loopback_ipv6             = {CLARINET_AF_INET6, 0, {{0, {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } }, 0 } } };
-const clarinet_addr clarinet_addr_loopback_ipv4mapped       = {CLARINET_AF_INET6, 0, {{0, {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127, 0, 0, 1 } }, 0 } } };
+const char*
+clarinet_error_name(int err)
+{
+    if (err > 0)
+        return "(invalid)";
 
-const clarinet_udp_settings clarinet_udp_settings_default   = { 0, 0, 64 };
-const clarinet_udp_settings clarinet_tcp_settings_default   = { 0, 0, 64 };
+    switch (err)
+    {
+        CLARINET_ERRORS(CLARINET_DECLARE_ENUM_NAME)
+        default:
+            return "(undefined)";
+    }
+}
+
+const char*
+clarinet_error_description(int err)
+{
+    if (err > 0)
+        return "Invalid error code";
+
+    switch (err)
+    {
+        CLARINET_ERRORS(CLARINET_DECLARE_ENUM_DESC)
+        default:
+            return "Undefined error code";
+    }
+}
+
+/* endregion */
+
+/* region Family Codes */
+
+const char*
+clarinet_family_name(int family)
+{
+    switch (family)
+    {
+        CLARINET_FAMILIES(CLARINET_DECLARE_ENUM_NAME)
+        default:
+            return "(invalid)";
+    }
+}
+
+const char*
+clarinet_family_description(int family)
+{
+    switch (family)
+    {
+        CLARINET_FAMILIES(CLARINET_DECLARE_ENUM_DESC)
+        default:
+            return "Invalid protocol code";
+    }
+}
+
+/* endregion */
+
+/* region Protocol Codes */
+
+const char*
+clarinet_proto_name(int proto)
+{
+    switch (proto)
+    {
+        CLARINET_PROTOS(CLARINET_DECLARE_ENUM_NAME)
+        default:
+            return "(invalid)";
+    }
+}
+
+const char*
+clarinet_proto_description(int proto)
+{
+    switch (proto)
+    {
+        CLARINET_PROTOS(CLARINET_DECLARE_ENUM_DESC)
+        default:
+            return "Invalid protocol code";
+    }
+}
+
+/* endregion */
+
+/* region Metadata */
 
 /* @formatter:on */
 
@@ -31,7 +105,9 @@ clarinet_get_semver(void)
 const char*
 clarinet_get_version(void)
 {
-    return (CLARINET_XSTR(CONFIG_VERSION_MAJOR)"."CLARINET_XSTR(CONFIG_VERSION_MINOR)"."CLARINET_XSTR(CONFIG_VERSION_PATCH));
+    return CLARINET_XSTR(CONFIG_VERSION_MAJOR)
+           "." CLARINET_XSTR(CONFIG_VERSION_MINOR)
+           "." CLARINET_XSTR(CONFIG_VERSION_PATCH);
 }
 
 const char*
@@ -46,177 +122,53 @@ clarinet_get_description(void)
     return CONFIG_DESCRIPTION;
 }
 
-uint32_t
-clarinet_get_protocols(void)
-{
-    /* CLARINET_PROTO_SOCK represents the network layer abstraction provided by the system and is always enabled. */
-    uint32_t protocols = CLARINET_PROTO_SOCK;
-
-#if CLARINET_ENABLE_UDP
-    protocols |= CLARINET_PROTO_UDP;
-#endif
-
-#if CLARINET_ENABLE_DTLC
-    protocols |= CLARINET_PROTO_DTLC;
-#endif
-
-#if CLARINET_ENABLE_DTLS
-    protocols |= CLARINET_PROTO_DTLS;
-#endif
-
-#if CLARINET_ENABLE_UDTP
-    protocols |= CLARINET_PROTO_UDTP;
-#endif
-
-#if CLARINET_ENABLE_UDTPS
-    protocols |= CLARINET_PROTO_UDTPS;
-#endif
-
-#if CLARINET_ENABLE_ENET
-    protocols |= CLARINET_PROTO_ENET;
-#endif
-
-#if CLARINET_ENABLE_ENETS
-    protocols |= CLARINET_PROTO_ENETS;
-#endif
-
-#if CLARINET_ENABLE_TCP
-    protocols |= CLARINET_PROTO_TCP;
-#endif
-
-#if CLARINET_ENABLE_TLS
-    protocols |= CLARINET_PROTO_TLS;
-#endif
-
-    return protocols;
-}
-
-uint32_t
+int
 clarinet_get_features(void)
 {
-    uint32_t features = CLARINET_FEATURE_NONE;
+    int features = CLARINET_FEATURE_NONE;
 
-#if !defined(NDEBUG)
+    #if !defined(NDEBUG)
     features |= CLARINET_FEATURE_DEBUG;
-#endif
+    #endif
 
-#if CLARINET_ENABLE_PROFILER
+    #if CLARINET_ENABLE_PROFILER
     features |= CLARINET_FEATURE_PROFILER;
-#endif
+    #endif
 
-#if CLARINET_ENABLE_LOG
+    #if CLARINET_ENABLE_LOG
     features |= CLARINET_FEATURE_LOG;
-#endif
+    #endif
 
-#if CLARINET_ENABLE_IPV6
+    #if CLARINET_ENABLE_IPV6
     features |= CLARINET_FEATURE_IPV6;
-#endif
+    #endif
 
-#if CLARINET_ENABLE_IPV6DUAL
+    #if CLARINET_ENABLE_IPV6DUAL
     features |= CLARINET_FEATURE_IPV6DUAL;
-#endif
+    #endif
 
     return features;
 }
 
-#define CLARINET_DECLARE_ENUM_NAME(e, s) case e: return #e;
-#define CLARINET_DECLARE_ENUM_STR(e, s) case e: return s;
+/* endregion */
 
-const char*
-clarinet_error_name(int err)
-{
-    if (err > 0)
-        return "(out of range)";
+/* region Address Manipulation */
 
-    switch (err)
-    {
-        CLARINET_DECLARE_ENUM_NAME(CLARINET_ENONE, 0)
-        CLARINET_DECLARE_ENUM_NAME(CLARINET_EDEFAULT, INT_MIN)
-        CLARINET_ERRORS(CLARINET_DECLARE_ENUM_NAME)
-        default:
-            return "(undefined)";
-    }
-}
+/* @formatter:off */
 
-const char*
-clarinet_error_str(int err)
-{
-    if (err > 0)
-        return "Not an error";
+const clarinet_addr clarinet_addr_none                      = { 0 };
+const clarinet_addr clarinet_addr_any_ipv4                  = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
+const clarinet_addr clarinet_addr_any_ipv6                  = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   0 } }, 0 } } };
+const clarinet_addr clarinet_addr_loopback_ipv4             = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 127,   0,   0,   1 } }, 0 } } };
+const clarinet_addr clarinet_addr_loopback_ipv6             = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0,   0,   0,   1 } }, 0 } } };
+const clarinet_addr clarinet_addr_loopback_ipv4mapped       = { CLARINET_AF_INET6, 0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127,   0,   0,   1 } }, 0 } } };
+const clarinet_addr clarinet_addr_broadcast_ipv4            = { CLARINET_AF_INET,  0, { { 0, { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0,   0, 255, 255, 255, 255 } }, 0 } } };
 
-    switch (err)
-    {
-        CLARINET_DECLARE_ENUM_STR(CLARINET_ENONE, "Success")
-        CLARINET_DECLARE_ENUM_STR(CLARINET_EDEFAULT, "Operation failed")
-        CLARINET_ERRORS(CLARINET_DECLARE_ENUM_STR)
-        default:
-            return "Undefined error";
-    }
-}
-
-static
-void*
-clarinet_default_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-static
-void
-clarinet_default_free(void* ptr)
-{
-    free(ptr);
-}
-
-static
-CLARINET_NORETURN
-void
-clarinet_default_nomem(void)
-{
-    abort();
-}
-
-static clarinet_allocator clarinet_allocator_static = {
-    clarinet_default_malloc,
-    clarinet_default_free,
-    clarinet_default_nomem
-};
+/* @formatter:on */
 
 int
-clarinet_set_allocator(const clarinet_allocator* allocator)
-{
-    if (!allocator->malloc || !allocator->free)
-        return CLARINET_EINVAL;
-
-    clarinet_allocator_static.malloc = allocator->malloc;
-    clarinet_allocator_static.free = allocator->free;
-    clarinet_allocator_static.nomem = allocator->nomem ? allocator->nomem : abort;
-
-    return CLARINET_ENONE;
-}
-
-void*
-clarinet_malloc(size_t size)
-{
-    void* ptr = clarinet_allocator_static.malloc(size);
-
-    if (!ptr)
-        clarinet_allocator_static.nomem();
-
-    return ptr;
-}
-
-
-void
-clarinet_free(void* ptr)
-{
-    clarinet_allocator_static.free(ptr);
-}
-
-
-int
-clarinet_addr_map_to_ipv4(clarinet_addr* restrict dst,
-                          const clarinet_addr* restrict src)
+clarinet_addr_convert_to_ipv4(clarinet_addr* restrict dst,
+                              const clarinet_addr* restrict src)
 {
     if (dst && src)
     {
@@ -226,27 +178,32 @@ clarinet_addr_map_to_ipv4(clarinet_addr* restrict dst,
             return CLARINET_ENONE;
         }
 
-#if CLARINET_ENABLE_IPV6
+        #if CLARINET_ENABLE_IPV6
+        if (!clarinet_addr_is_ipv6(src))
+            return CLARINET_EAFNOSUPPORT;
+
         if (clarinet_addr_is_ipv4mapped(src))
         {
             memset(dst, 0, sizeof(clarinet_addr));
             dst->family = CLARINET_AF_INET;
-            dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
+            dst->as.ipv4.u.dword = src->as.ipv4.u.dword;
             return CLARINET_ENONE;
         }
-#endif
+        #else
+        return CLARINET_EAFNOSUPPORT;
+        #endif
     }
 
     return CLARINET_EINVAL;
 }
 
 int
-clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
-                          const clarinet_addr* restrict src)
+clarinet_addr_convert_to_ipv6(clarinet_addr* restrict dst,
+                              const clarinet_addr* restrict src)
 {
     if (dst && src)
     {
-#if CLARINET_ENABLE_IPV6
+        #if CLARINET_ENABLE_IPV6
         if (clarinet_addr_is_ipv6(src))
         {
             memcpy(dst, src, sizeof(clarinet_addr));
@@ -258,11 +215,15 @@ clarinet_addr_map_to_ipv6(clarinet_addr* restrict dst,
             memset(dst, 0, sizeof(clarinet_addr));
             dst->family = CLARINET_AF_INET6;
             dst->as.ipv6.u.word[5] = 0xFFFF;
-            dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
+            dst->as.ipv4.u.dword = src->as.ipv4.u.dword;
             return CLARINET_ENONE;
         }
-#endif
+        #else
+        return CLARINET_EAFNOSUPPORT;
+        #endif
     }
 
     return CLARINET_EINVAL;
 }
+
+/* endregion */

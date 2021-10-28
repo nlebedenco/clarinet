@@ -1,11 +1,11 @@
 #pragma once
-#ifndef CLARINET_TESTS_TEST_H
-#define CLARINET_TESTS_TEST_H
+#ifndef TESTS_TEST_H
+#define TESTS_TEST_H
 
 #include "clarinet/clarinet.h"
 
 #if defined(HAVE_CONFIG_H)
-    #include "config.h"
+#include "config.h"
 #endif
 
 #include <cstdarg>
@@ -20,23 +20,92 @@
 #include <iostream>
 #include <type_traits>
 #include <ctime>
-
 #include <functional>
 #include <utility>
+#include <chrono>
+#include <thread>
+#include <numeric>
 
 #include "catch2/catch_all.hpp"
 
-#define FROM(i)                 INFO(format("FROM %s: %d", (#i), (i)))
-#define EXPLAIN(fmt, ...)       INFO(format(fmt, __VA_ARGS__))
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedMacroInspection"
+#endif
 
-#include <chrono>
-#include <thread>
+#define SAMPLES(v)              do { if ((v).empty()) { WARN("No data to test."); return; } } while(0)
+#define EXPLAIN(fmt, ...)       INFO(format(fmt, __VA_ARGS__))
+#define FROM(i)                 EXPLAIN("FROM %s: %s", (#i), to_string(i).c_str())
 
 #define suspend(x) std::this_thread::sleep_for(std::chrono::milliseconds(x))
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic pop
+#endif
+
+std::string
+to_string(enum clarinet_error value);
+
+std::string
+to_string(enum clarinet_family value);
+
+std::string
+to_string(enum clarinet_proto value);
+
+using namespace Catch::Generators;
+using std::to_string;
+
+template <typename Container>
+GeneratorWrapper<typename Container::value_type>
+from_samples(Container const& cnt,
+             std::function<bool(const typename Container::value_type&)> predicate)
+{
+    WARN("Using filtered data.");
+    return filter(predicate, from_range(cnt));
+}
+
+template <typename Container>
+GeneratorWrapper<typename Container::value_type>
+from_samples(Container const& cnt,
+             int sample)
+{
+    WARN("Using filtered data.");
+    return filter([sample](const typename Container::value_type& item)
+        {
+            return std::get<0>(item) == sample;
+        },
+        from_range(cnt));
+}
+
+template <typename Container>
+GeneratorWrapper<typename Container::value_type>
+from_samples(Container const& cnt,
+             std::vector<int> const& samples)
+{
+    WARN("Using filtered data.");
+    return filter([&samples](const typename Container::value_type& item)
+        {
+            return std::find(samples.cbegin(), samples.cend(), std::get<0>(item)) != samples.cend();
+        },
+        from_range(cnt));
+}
+
+template <typename Container>
+GeneratorWrapper<typename Container::value_type>
+from_samples(Container const& cnt)
+{
+    return from_range(cnt);
+}
 
 void
 memnoise(void* dst,
          size_t n);
+
+// clang can't see format() is used inside macros and warns
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
 
 static inline
 std::string
@@ -62,9 +131,11 @@ format(const char* fmt,
 
         throw std::runtime_error("Invalid format string");
     }
-
-    // NEVER REACHED
 }
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 struct not_copyable
 {
@@ -81,6 +152,19 @@ struct not_copyable
     not_copyable(not_copyable&&) = default;
 };
 
+struct autoload: public not_copyable
+{
+    autoload() noexcept;
+
+    ~autoload();
+};
+
+struct starter: public not_copyable
+{
+    explicit
+    starter(std::function<void()> const& callback) noexcept;
+};
+
 class finalizer: public not_copyable
 {
 private:
@@ -92,6 +176,7 @@ public:
     dismiss(finalizer& g);
 
     template <class Func>
+    explicit
     finalizer(Func const& _cleanup)
         : cleanup(_cleanup)
     {
@@ -130,7 +215,7 @@ private:
 
 };
 
-/* This is so that printing ranges out of segment<T> when REQUIRE_THAT fails can print something other than '?' */
+// This is so that printing ranges out of segment<T> when REQUIRE_THAT fails can print something other than '?'
 template <typename T,
     typename = typename std::enable_if<!std::is_same<T, char>::type>>
 std::ostream&
@@ -200,6 +285,12 @@ Equals(const T& range)
     return EqualsRangeMatcher<T>{ range };
 }
 
+// clang can't see that this function is only used for implicit casting */
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
+
 static inline
 StringEqualsMatcher
 Equals(const char* range)
@@ -207,20 +298,69 @@ Equals(const char* range)
     return Equals(std::string(range));
 }
 
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
+// CLion can't see that is_ordinal is only used as a metaprogramming template type */
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedStructInspection"
+#endif
+
 template <typename T>
 struct is_ordinal: std::integral_constant<bool, std::is_integral<T>::value || std::is_enum<T>::value>
 {
 };
 
-template <typename T, typename = typename std::enable_if<is_ordinal<T>::value>::type>
-struct HexadecimalFormatter
-{
-    T value;
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic pop
+#endif
 
-    explicit HexadecimalFormatter(const T& _value): value(_value)
+/* region Formatter */
+
+template <typename ArgType, typename ValueType,
+    typename = typename std::enable_if<is_ordinal<ArgType>::value>::type>
+struct Formatter
+{
+    ValueType value;
+
+    explicit Formatter(const ArgType& _value)
+        : value((ValueType)_value)
+    {
+    }
+
+protected:
+
+    typedef Formatter<ValueType, ArgType> base;
+};
+
+template <typename V, typename T>
+std::string
+to_string(const Formatter<V, T>& f)
+{
+    return to_string(f.value);
+}
+
+/* endregion */
+
+/* region HexadecimalFormatter */
+
+template <typename T>
+struct HexadecimalFormatter: public Formatter<T, T>
+{
+    typedef Formatter<T, T> base;
+
+    explicit
+    HexadecimalFormatter(const T& _value): base(_value)
     {
     }
 };
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+#endif
 
 template <typename T>
 HexadecimalFormatter<T>
@@ -228,6 +368,11 @@ Hex(const T& value)
 {
     return HexadecimalFormatter<T>(value);
 }
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic pop
+#endif
+
 
 template <typename T, typename U>
 inline bool
@@ -253,15 +398,20 @@ operator<<(std::ostream& os,
     return os << "0x" << std::hex << std::setw((sizeof(T) * 2)) << std::setfill('0') << value.value;
 }
 
-template <typename T, typename = typename std::enable_if<is_ordinal<T>::value>::type>
-struct ErrorFormatter
-{
-    enum clarinet_error value;
+/* endregion */
 
-    explicit ErrorFormatter(const T& _value): value((clarinet_error)_value)
-    {
-    }
+/* region Error Formatter */
+
+template <typename T, typename V = clarinet_error>
+struct ErrorFormatter: public Formatter<T, V>
+{
+    using Formatter<T, V>::Formatter;
 };
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+#endif
 
 template <typename T>
 ErrorFormatter<T>
@@ -269,6 +419,10 @@ Error(const T& value)
 {
     return ErrorFormatter<T>(value);
 }
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic pop
+#endif
 
 template <typename T, typename U>
 inline bool
@@ -366,14 +520,278 @@ operator<=(const ErrorFormatter<T>& lhs,
     return lhs == rhs || lhs < rhs;
 }
 
+template <typename T>
+std::ostream&
+operator<<(std::ostream& os,
+           const ErrorFormatter<T>& f)
+{
+    return f.value <= 0 ? os << to_string(f.value) : os << f.value;
+}
+
+
+/* endregion */
+
+/* region Protocol Formatter */
+
+template <typename T, typename V = clarinet_proto>
+struct ProtocolFormatter: public Formatter<T, V>
+{
+    using Formatter<T, V>::Formatter;
+};
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+#endif
+
+template <typename T>
+ProtocolFormatter<T>
+Protocol(const T& value)
+{
+    return ProtocolFormatter<T>(value);
+}
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic pop
+#endif
+
+template <typename T, typename U>
+inline bool
+operator==(const ProtocolFormatter<T>& lhs,
+           const ProtocolFormatter<U>& rhs)
+{
+    return (int64_t)lhs.value == (int64_t)(rhs.value);
+}
+
+template <typename T, typename U>
+inline bool
+operator==(const T& lhs,
+           const ProtocolFormatter<U>& rhs)
+{
+    return ProtocolFormatter<T>(lhs) == rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator==(const ProtocolFormatter<T>& lhs,
+           const U& rhs)
+{
+    return lhs == ProtocolFormatter<U>(rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator!=(const ProtocolFormatter<T>& lhs,
+           const ProtocolFormatter<U>& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator!=(const T& lhs,
+           const ProtocolFormatter<U>& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator!=(const ProtocolFormatter<T>& lhs,
+           const U& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator<(const ProtocolFormatter<T>& lhs,
+          const ProtocolFormatter<U>& rhs)
+{
+    return (int64_t)lhs.value < (int64_t)(rhs.value);
+}
+
+template <typename T, typename U>
+inline bool
+operator<(const T& lhs,
+          const ProtocolFormatter<U>& rhs)
+{
+    return ProtocolFormatter<T>(lhs) < rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator<(const ProtocolFormatter<T>& lhs,
+          const U& rhs)
+{
+    return lhs < ProtocolFormatter<U>(rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator<=(const ProtocolFormatter<T>& lhs,
+           const ProtocolFormatter<U>& rhs)
+{
+    return lhs == rhs || lhs < rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator<=(const T& lhs,
+           const ProtocolFormatter<U>& rhs)
+{
+    return lhs == rhs || lhs < rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator<=(const ProtocolFormatter<T>& lhs,
+           const U& rhs)
+{
+    return lhs == rhs || lhs < rhs;
+}
+
 
 template <typename T>
 std::ostream&
 operator<<(std::ostream& os,
-           const ErrorFormatter<T>& value)
+           const ProtocolFormatter<T>& f)
 {
-    return value.value <= 0 ? os << clarinet_error_name(value.value) : os << value.value;
+    return f.value <= 0 ? os << to_string(f.value) : os << f.value;
+}
+
+/*endregion */
+
+/* region Famliy Formatter */
+
+template <typename T, typename V = clarinet_family>
+struct FamilyFormatter: public Formatter<T, V>
+{
+    using Formatter<T, V>::Formatter;
+};
+
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+#endif
+
+template <typename T>
+FamilyFormatter<T>
+Family(const T& value)
+{
+    return FamilyFormatter<T>(value);
+}
+
+#if defined(__JETBRAINS_IDE__)
+#pragma clang diagnostic pop
+#endif
+
+template <typename T, typename U>
+inline bool
+operator==(const FamilyFormatter<T>& lhs,
+           const FamilyFormatter<U>& rhs)
+{
+    return (int64_t)lhs.value == (int64_t)(rhs.value);
+}
+
+template <typename T, typename U>
+inline bool
+operator==(const T& lhs,
+           const FamilyFormatter<U>& rhs)
+{
+    return FamilyFormatter<T>(lhs) == rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator==(const FamilyFormatter<T>& lhs,
+           const U& rhs)
+{
+    return lhs == FamilyFormatter<U>(rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator!=(const FamilyFormatter<T>& lhs,
+           const FamilyFormatter<U>& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator!=(const T& lhs,
+           const FamilyFormatter<U>& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator!=(const FamilyFormatter<T>& lhs,
+           const U& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator<(const FamilyFormatter<T>& lhs,
+          const FamilyFormatter<U>& rhs)
+{
+    return (int64_t)lhs.value < (int64_t)(rhs.value);
+}
+
+template <typename T, typename U>
+inline bool
+operator<(const T& lhs,
+          const FamilyFormatter<U>& rhs)
+{
+    return FamilyFormatter<T>(lhs) < rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator<(const FamilyFormatter<T>& lhs,
+          const U& rhs)
+{
+    return lhs < FamilyFormatter<U>(rhs);
+}
+
+template <typename T, typename U>
+inline bool
+operator<=(const FamilyFormatter<T>& lhs,
+           const FamilyFormatter<U>& rhs)
+{
+    return lhs == rhs || lhs < rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator<=(const T& lhs,
+           const FamilyFormatter<U>& rhs)
+{
+    return lhs == rhs || lhs < rhs;
+}
+
+template <typename T, typename U>
+inline bool
+operator<=(const FamilyFormatter<T>& lhs,
+           const U& rhs)
+{
+    return lhs == rhs || lhs < rhs;
 }
 
 
-#endif // CLARINET_TESTS_TEST_H
+template <typename T>
+std::ostream&
+operator<<(std::ostream& os,
+           const FamilyFormatter<T>& f)
+{
+    return f.value <= 0 ? os << to_string(f.value) : os << f.value;
+}
+
+/* endregion */
+
+#endif // TESTS_TEST_H

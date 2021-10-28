@@ -2,33 +2,30 @@
 
 ## Platforms
 
-  - Windows >= 7 (tested on Windows 10.19042.1165)
-  - Linux kernel >= 2.6. (tested Ubuntu 20.04.3)
-  - macOS >= 10.6 (tested OSX 10.15 Catalina)
-  
-Other relatively UN\*X platforms such as Solarias and FreeBSD should be supported but are not tested.
-
+  - Windows >= 8 (tested on Windows 10.19042.1165)
+  - Linux kernel >= 3.9 (tested Ubuntu 20.04.3)
+  - macOS >= 10.12 (tested OSX 10.15 Catalina)
   - Android: ?
   - iOS: ?
   - tvOS: ?
   - watchOS: ?
   - Orbis (PS4): ?
   - Durango (XboxOne): ?
+  
+Other related platforms such as FreeBSD, AIX and Solaris should be compatible but are not actively supported.
+
 
 ## Dependencies
 
-There are no imposed 3rparty runtime dependencies. The build option CLARINET_USE_STATIC_RT can be used to force link 
-to the static system runtime lib in case even the dependency on a shared libc is not desired. 
+There are no dependencies on 3rparty dynamic libraries but system shared libraries may still be required. 
 
-### Windows
+On Linux and BSD/Darwin librt and libresolv are required. On other Un\*x systems libsocket and libnsl may be required as 
+well as libnetwork and/or libxnet.
 
-Winsock 2 is required and can only be dynamically loaded, there is no static option, much like user32.dll and 
-kernel32.dll. 
+On Windows, winsock 2.2 is required and there is no static variant. It can only be dynamically loaded much like other 
+Windows system libraries such as user32.dll and kernel32.dll.
 
-### UN\*X
-
-Some unix systems other than Linux may require specific shared network libraries such as libsocket (which requires 
-libnsl), libnetwork and/or libxnet.
+The build option CL_USE_STATIC_RT can be used to force link with the static system runtime libc. 
 
 ## Build
 
@@ -42,17 +39,23 @@ libnsl), libnetwork and/or libxnet.
 
 As far as compilers go any of MSVC >= 1900, GCC >= 4.6 or CLANG >= 3.0 should do. 
 
+#### Tools
+
 [Git](https://git-scm.com/docs/git) is required to automatically download submodules and the test framework.
 
-[Catch2](https://github.com/catchorg/Catch2) is automatically fetched from git and only used to build unit tests.
+#### Submodules
 
-All submodules are configured to produce static libraries linked into the main target. Not only it simplifies 
-installation, it also contributes to keep functionality consistent regardless of the state of the system we deploy 
-into.
+[Catch2](https://github.com/catchorg/Catch2) is the unit testing framework. It is only used to build test programs.
 
-[MbedTLS](https://github.com/ARMmbed/mbedtls) requires Python3 to generate test code and sample programs in the 
-development branch but not having python should be ok since we only build the target libraries.
+[MbedTLS](https://github.com/ARMmbed/mbedtls) is a library that implements TLS and DTLS protocols. Python3 is required 
+if you are interested in building MbedTLS tests and sample programs. By default, only the target libraries are built 
+with static linking.
 
+[libasr](https://github.com/OpenSMTPD/libasr) is a library used for asynchronous name resolution (NSS/DNS) on Un\*x 
+systems. Windows 8+ already supports asynchronous name resolution via WSA and does not require an additional library.
+
+All library submodules are configured to be statically linked into the main target. Not only it simplifies installation
+but also contributes to keep functionality consistent regardless of the state of the system we deploy into.
 
 ### CMake
 
@@ -67,16 +70,16 @@ cmake --build .
 
 Unlike on Windows, the loader on Unix systems never checks the current directory for shared objects. This is 
 inconvenient because projects with executables linked against a shared library produced in a sub-project cannot be 
-immediately executed after installation if the install prefix was customized. On the other hand, one generally does not 
+immediately executed after installation if the prefix was customized. On the other hand, one generally does not 
 want to pollute system folders with development libraries. A possible compromise in this case is to temporarily set 
 $LD_LIBRARY_PATH to point to the devel libdir used by cmake to install the libraries. See the 
 [ld.so(8)](https://man7.org/linux/man-pages/man8/ld.so.8.html) man page for more details. 
 
 #### Windows
 
-On windows you might have to open a Native Tools Command Prompt rather than a normal command prompt if cmake was 
+On Windows you might have to open a Native Tools Command Prompt rather than a normal command prompt if cmake was 
 installed using the Visual Studio Installer. Mind that cmake will not automatically pick the target platform matching 
-the NTCP used so you still need to pass the target platform to cmake using `-A`. It also means you should be able to 
+the NTCP used, so you still need to pass the target platform to cmake using `-A`. It also means you should be able to 
 build x86 binaries from a x64 NTCP and vice-versa without problems.
 
 For Windows x64:
@@ -127,9 +130,9 @@ cd /path/to/build_dir
 cmake -LAH -B .
 ```
 
-Note that standard CMake options (with the exception of `BUILD_SHARED_LIBS` and `BUILD_TESTING`) are prefixed with 
-`CMAKE` while all Clarinet options are prefixed with `CLARINET`. Also note there are options that are dependent on 
-other options. For example, `CLARINET_ENABLE_TLS` will be automatically set to OFF if `CLARINET_ENABLE_TCP` is OFF.
+Note that standard CMake options (except for `BUILD_SHARED_LIBS` and `BUILD_TESTING`) are prefixed with 
+`CMAKE` while all Clarinet options are prefixed with `CL`. Also note there are options that are dependent on 
+other options. For example, `CL_ENABLE_TLS` will be automatically set to OFF if `CL_ENABLE_TCP` is OFF.
 
 #### Shared vs Static build
 
@@ -140,7 +143,7 @@ By default, cmake produces a static lib. For a shared lib (.so/.dll) use:
 cmake \path\to\clarinet -DBUILD_SHARED_LIBS=ON
 ``` 
  
-Note that `BUILD_SHARED_LIBS` is defined as an option so it does not affect submodules which will always be linked 
+Note that `BUILD_SHARED_LIBS` is defined as an option, so it does not affect submodules which will always be linked 
 statically unless otherwise noted.
 
 #### Debug vs Release
@@ -161,7 +164,7 @@ cmake --build \path\to\build_dir --config Release`
 
 #### Install
 
-The variable `CMAKE_INSTALL_PREFIX` can be used to customize the install directory during configuration as follows:
+The variable `CMAKE_INSTALL_PREFIX` can be used to customize the installation directory during configuration as follows:
 
 ```
 cmake \path\to\clarinet -DCMAKE_INSTALL_PREFIX:PATH=\path\to\install_dir 
@@ -205,7 +208,7 @@ target_sources(<TESTSETNAME> PRIVATE src/<TESTSETNAME>.cpp)
 
 where `<TESTSETNAME>` must be replaced by the name of the actual test set. This way test cases can be added or removed 
 without affecting the CMakeLists.txt and will not interfere with other tests. Note test sets should normally be agnostic 
-to execution order but they are guaranteed to be included in `NATURAL` order so contiguous digits are compared as whole 
+to execution order, but they are guaranteed to be included in `NATURAL` order so contiguous digits are compared as whole 
 numbers. For example: the following list 10.0 1.1 2.1 8.0 2.0 3.1 will be sorted to 1.1 2.0 2.1 3.1 8.0 10.0 as opposed 
 to the lexicographical order of 1.1 10.0 2.0 2.1 3.1 8.0. For more details see 
 [list(SORT ...)](https://cmake.org/cmake/help/latest/command/list.html#sort).
@@ -224,13 +227,13 @@ The `--output-on-failure` argument is optional and provides extended information
 
 The variable `BUILD_TESTING` is used to control whether tests are configured. Default value is ON. 
 
-The variable `CLARINET_BUILD_TESTING` is used to confirm whether tests should be configured when `BUILD_TESTING` is ON. 
+The variable `CL_BUILD_TESTING` is used to confirm whether tests should be configured when `BUILD_TESTING` is ON. 
 It defaults to ON when this is the top project and OFF otherwise. An additional variable is required because top 
 projects may configure their own unit tests using the variable `BUILD_TESTING` but usually they will not be interested 
 in building unit tests of sub-projects (dependencies). If for any reason a top project do want to build and run our unit 
-tests (e.g. top project is only an agregator) then it can force `CLARINET_BUILD_TESTING=ON`.
+tests (e.g. top project is only an agregator) then it can force `CL_BUILD_TESTING=ON`.
 
-The auto generated Visual Studio project *RUN_TESTS* or the makefile target *test* will run all tests when built but 
+The auto generated Visual Studio project *RUN_TESTS* or the makefile target *test* will run all tests when built, but 
 they do not depend on the tests themselves therefore will not automatically rebuild out-of-date tests. Visual Studio 
 2015, 2017 and 2019 require the [Test Adapter Catch2](https://github.com/JohnnyHendriks/TestAdapter_Catch2) 
 extension for tests to be discovered in the test explorer window. Running a test out of the test explorer windoe will 
@@ -239,15 +242,28 @@ rebuild if the executable is out-of-date.
 ## TODO
 
 - Export a conscise .editorconfig
-- Add feature to enable/disable ipv6 scope id: CLARINET_ENABLE_IPV6_SCOPE_ID/CLARINET_FEATURE_IPV6_SCOPE_ID dependent on 
+- Implement Logging
+- Add feature to enable/disable ipv6 scope id: CL_ENABLE_IPV6_SCOPE_ID/CL_FEATURE_IPV6_SCOPE_ID dependent on 
   HAVE_SOCKADDR_IN6_SCOPE_ID. Adjust functions and tests accordingly.
-- Support IPv4 broadcast and IPv4/IPv6 multicast in the udp interface
-- Test cmake generator using "-T ClangCL" on windows to ensure all conditions on MSVC are supported by the clang-cl too
-- Add C# wrapper
-- Add python wrapper
+- Support IPv4 broadcast and IPv4/IPv6 multicast in the udp interface or define a bcast/mcast interface
+- Support PMTUD on TCP depending on platform support (possibly only a matter of defining the right socket flags). May be
+  unsafe due to the possibility of ICMP spoofing.
+- Support PMTUD on UDP sockets with multiple destinations. This is not trivial because every destination has a different  
+  path so not only the host will have to handle multiple concurrent MTU estimates it will also have to rely on the 
+  socket error queue to determine which destination had a packet dropped due to MTU changes. The host will also have to 
+  deal with ICMP blackholes and cannot let the operating system itself track the MTU because each destination might have 
+  a different value, probably conflicting. Linux supports an error queue per destination using IP_RECVERR but the case 
+  is not clear for Windows and BSD/Darwin.
+- Support WebSockets (ws and wss) on top of TCP and TLS, client and server.
+- Support custom memory allocator callbacks (malloc, free and nomem). Perhaps not worth the trouble unless we plan to 
+  support embedded devices in which case libasr will have to be completely assimilated. Catch2 tests in C++ would also 
+  have to be taken into account but custom memory allocators in C++11 is a pandora's box.
+- Test cmake generator using "-T ClangCL" on Windows to ensure all conditions on MSVC are supported by the clang-cl too
+- Add a C# wrapper
+- Add a python wrapper 
 - Support code sanitizers
-- Use travis for automatic build check?
-- Run tests with Valgrind to detect memory leaks?
+- Use travis for automatic build checks?
+- Run tests with Valgrind on Linux/WSL/macOS to detect memory leaks?
 - Code coverage (https://gitlab.kitware.com/cmake/community/-/wikis/doc/ctest/Coverage)
   - For gcc (https://discourse.cmake.org/t/guideline-for-code-coverage/167) 
     - Build with flags `-fprofile-arcs` `-ftest-coverage`. 

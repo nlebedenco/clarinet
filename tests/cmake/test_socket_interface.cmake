@@ -1,0 +1,2 @@
+target_test(test_socket_interface)
+target_sources(test_socket_interface PRIVATE src/test_socket_interface.cpp)

@@ -1,27 +1,32 @@
-#pragma once
-#ifndef PORTABILITY_H
-#define PORTABILITY_H
-
 /***********************************************************************************************************************
- * Configuration and portability definitions.
+ * Configuration and compatibility definitions.
  *
  * This must be the very first header included in any private src file (direct or indirectly).
- * Defines _GNU_SOURCE if any GNU function is known to be available. 
+ * Defines _GNU_SOURCE if any GNU function is known to be available.
  *
- * Note that _WIN32 is known to be defined by Clang/LLVM(Windows target) 32/64-bit, Clang/LLVM(MinGW target) 32/64-bit, 
- * GNU GCC/G++(Windows target) 32-bit, GNU GCC/G++(MinGW target) 32-bit, Intel ICC/ICPC 32/64-bit, Portland PGCC/PGCPP 
- * 32/64-bit and Microsoft Visual Studio 32/64-bit. Oddly enough, GCC under Cygwin predefines UNIX macros even when 
- * building Windows applications. Some on-line advice recommends checking for _MSC_VER. The macro is defined with the 
- * compiler version number for Clang/LLVM, ICC, and Visual Studio, but it isn't defined by GCC or Portland Group 
+ * Note that _WIN32 is known to be defined by Clang/LLVM(Windows target) 32/64-bit, Clang/LLVM(MinGW target) 32/64-bit,
+ * GNU GCC/G++(Windows target) 32-bit, GNU GCC/G++(MinGW target) 32-bit, Intel ICC/ICPC 32/64-bit, Portland PGCC/PGCPP
+ * 32/64-bit and Microsoft Visual Studio 32/64-bit. Oddly enough, GCC under Cygwin predefines UNIX macros even when
+ * building Windows applications. Some on-line advice recommends checking for _MSC_VER. The macro is defined with the
+ * compiler version number for Clang/LLVM, ICC, and Visual Studio, but it isn't defined by GCC or Portland Group
  * compilers.
+ *
  ***********************************************************************************************************************/
+/* @formatter:off */
+#pragma once
+#ifndef COMPAT_H
+#define COMPAT_H
 
 #if HAVE_CONFIG_H
     #include "config.h"
 #endif
 
-#if (HAVE_GNU_ASPRINTF || HAVE_GNU_VASPRINTF)
-    #define _GNU_SOURCE
+/* Use UNICODE variants of the WINAPI. This is important because the ANSI version of some functions have limitations.
+ * For example, GetAddrInfoExW can perform asynchronously but GetAddrInfoExA cannot.
+ */
+#if defined(_WIN32)
+    #define UNICODE
+    #define _UNICODE
 #endif
 
 /* Intellisense doesn't like the restrict keyword */
@@ -64,76 +69,21 @@
             #define CLARINET_NORETURN
         #endif
     #else
-        #define CLARINET_NORETURN 
+        #define CLARINET_NORETURN
     #endif
 #endif
+
+/**
+ * Macro to explicitly declare unused parameters inside functions.
+ * Unfortunately, MSVC does not appear to have an equivalent to GCC's "__attribute__((unused))" to mark a particular
+ * function parameter as being known to be unused, so that the compiler won't warn about it (for example, the
+ * function might have that parameter because a pointer to it is being used, and the signature of that function
+ * includes that parameter). C++ lets you give a parameter a type but no name, but C doesn't have that.
+ */
+#define CLARINET_IGNORE_PARAM(x) (void)(x)
 
 #include <stdarg.h>
 #include <stddef.h>
-
-#if HAVE_STRLCAT
-    #if HAVE_STRLCAT_IN_BSD_STRING_H
-        #include <bsd/string.h>
-    #endif
-#else
-    #if defined(_MSC_VER) || defined(__MINGW32__)
-        #define strlcat(dst, src, dstsize)                 strncat_s((dst), (dstsize), (src), _TRUNCATE)
-    #else
-
-size_t
-strlcat(char* restrict dst,
-        const char* restrict src,
-        size_t dstsize);
-
-    #endif
-#endif /* HAVE_STRLCAT */
-
-#if HAVE_STRLCPY
-    #if HAVE_STRLCPY_IN_BSD_STRING_H
-        #include <bsd/string.h>
-    #endif
-#else
-    #if defined(_MSC_VER) || defined(__MINGW32__)
-        #define strlcpy(dst, src, dstsize)              strncpy_s((dst), (dstsize), (src), _TRUNCATE)
-    #else
-
-size_t
-strlcpy(char* restrict dst,
-        const char* restrict src,
-        size_t dstsize);
-
-    #endif
-#endif /* HAVE_STRLCPY */
-
-#if !HAVE_STRTOK_R
-    #if defined(_WIN32)
-        #define strtok_r(str, delim, saveptr)            strtok_s(str, delim, saveptr)
-    #else
-char* strtok_r(char *str, const char *delim, char **saveptr);
-    #endif
-#endif /* HAVE_STRTOK_R */
-
-/* If <crtdbg.h> has been included, and _DEBUG is defined, and __STDC__ is zero, <crtdbg.h> will define strdup() to
- * call _strdup_dbg().  So if it's already defined, don't redefine it. 
- */
-#if defined(_MSC_VER)
-    #if !defined(strdup)
-        #define strdup(s)                               _strdup(s)
-    #endif
-#endif
-
-/* We want asprintf(), for some cases where we use it to construct dynamically-allocated variable-length strings. It's 
- * present on some, but not all, platforms. */
-#if !HAVE_GNU_ASPRINTF
-int asprintf(char** restrict strp,
-             const char* restrict fmt, ...);
-#endif
-
-#if !HAVE_GNU_VASPRINTF
-int vasprintf(char** restrict strp,
-              const char* restrict fmt,
-              va_list ap);
-#endif
 
 /* Fallbacks for un*x systems that don't define timer macros */
 #if !defined(_WIN32)
@@ -141,8 +91,7 @@ int vasprintf(char** restrict strp,
     #include <sys/time.h>
 
     #ifndef timeradd
-        #define timeradd(a, b, result)                       \
-          do {                                               \
+        #define timeradd(a, b, result) do {                  \
             (result)->tv_sec = (a)->tv_sec + (b)->tv_sec;    \
             (result)->tv_usec = (a)->tv_usec + (b)->tv_usec; \
             if ((result)->tv_usec >= 1000000) {              \
@@ -153,8 +102,7 @@ int vasprintf(char** restrict strp,
     #endif /* timeradd */
 
     #ifndef timersub
-        #define timersub(a, b, result)                       \
-          do {                                               \
+        #define timersub(a, b, result) do {                  \
             (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;    \
             (result)->tv_usec = (a)->tv_usec - (b)->tv_usec; \
             if ((result)->tv_usec < 0) {                     \
@@ -163,35 +111,25 @@ int vasprintf(char** restrict strp,
             }                                                \
           } while (0)
     #endif /* timersub */
+
+    /** Returns the time in milliseconds represented the struct timeval pointed ot by @p tv */
+    #define tv2ms(t)  ((t)->tv_sec * 1000 + ((t)->tv_usec + 500)/ 1000)
+
+    /** Initializes the struct timeval pointed to by @p t to the time @p m in milliseconds */
+    #define ms2tv(t, m) do { \
+        (t)->tv_sec = m / 1000; \
+        (t)->tv_usec = (m % 1000) * 1000; \
+    } while (0)
+
 #endif /* __WIN32 */
-
-
-/* Define strerror_s if not available */
-#if !HAVE_STRERROR_S
-    #if HAVE_STRERROR_R && HAVE_POSIX_STRERROR_R
-        #define strerror_s(buf, buflen, errnum)         strerror_r(errnum, buf, buflen)
-    #elif HAVE_STRERROR_R && HAVE_GNU_STRERROR_R
-
-int
-strerror_s(char* buf,
-           size_t buflen,
-           int errnum);
-
-    #else /* if there is no safe alternative for strerror_s define as if it returned an error itself */
-        #include <errno.h>
-        #define strerror_c(buf, buflen, errnum)         (ENOSYS)
-    #endif
-#endif
-
 
 #if HAVE_FFS
     #if HAVE_FFS_IN_STRINGS_H
-
         #include "strings.h"
-
     #endif
 #else
-int ffs(int i);
+    int
+    ffs(int i);
 #endif
 
 /* Include stdlib.h to check for min/max as this is normally where they are defined. */
@@ -207,17 +145,28 @@ int ffs(int i);
     #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
+#ifndef clamp
+    #define clamp(v, a, b) ((a) > (v) ? (a) : (b) < (v) ? (b) : (v))
+#endif
+
 /* Include socket headers. */
 #if defined(_WIN32)
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <windows.h>
-typedef ADDRESS_FAMILY sa_family_t;
+
+    #if(_WIN32_WINNT < 0x0600)
+        typedef short sa_family_t;
+    #else
+        typedef ADDRESS_FAMILY sa_family_t;
+    #endif
 #else /* BSD, Linux, macOS, iOS, Android, PS4, PS5 */
     #include <sys/types.h>
     #include <sys/socket.h>
+    #include <netdb.h>
     #include <netinet/in.h>
     #include <arpa/inet.h>
+    #include <errno.h>
 
     #ifndef INVALID_SOCKET
         #define INVALID_SOCKET (~0)
@@ -229,7 +178,7 @@ typedef ADDRESS_FAMILY sa_family_t;
 
 /* Fallback socklen_t */
 #if !HAVE_SOCKLEN_T
-typedef size_t socklen_t;
+    typedef size_t socklen_t;
 #endif
 
 /* Fallback sockaddr_storage struct */
@@ -240,18 +189,22 @@ struct sockaddr_storage
     {
         struct 
         {
-#if HAVE_STRUCT_SOCKADDR_SA_LEN
+            #if HAVE_STRUCT_SOCKADDR_SA_LEN
             uint8_t ss_len;
-#endif
+            #endif
+
             sa_family_t ss_family;
         };
-#if HAVE_SOCKADDR_IN6_SIN6_ADDR
+
+        #if HAVE_SOCKADDR_IN6_SIN6_ADDR
         struct sockaddr_in6 __ss_padding;
-#else
+        #else
         struct sockaddr_in __ss_padding;
-#endif /* HAVE_SOCKADDR_IN6_SIN6_ADDR */
+        #endif /* HAVE_SOCKADDR_IN6_SIN6_ADDR */
     };
 };
 #endif /* !HAVE_STRUCT_SOCKADDR_STORAGE */
 
-#endif /* PORTABILITY_H */
+#endif /* COMPAT_H */
+
+/* @formatter:on */

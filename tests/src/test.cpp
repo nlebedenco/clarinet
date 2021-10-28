@@ -1,5 +1,41 @@
 #include "test.h"
 
+std::string
+to_string(enum clarinet_error value)
+{
+    return clarinet_error_name((int)value);
+}
+
+std::string
+to_string(enum clarinet_family value)
+{
+    return clarinet_family_name((int)value);
+}
+
+std::string
+to_string(enum clarinet_proto value)
+{
+    return clarinet_proto_name((int)value);
+}
+
+autoload::
+autoload() noexcept
+{
+    clarinet_initialize();
+}
+
+autoload::
+~autoload()
+{
+    clarinet_finalize();
+}
+
+starter::
+starter(std::function<void()> const& callback) noexcept
+{
+    callback();
+}
+
 void
 memnoise(void* dst,
          size_t n)

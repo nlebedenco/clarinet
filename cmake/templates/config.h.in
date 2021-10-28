@@ -81,52 +81,10 @@
 #cmakedefine HAVE___ATOMIC_STORE_N 1
 
 /* Define to 1 if EAGAIN == EWOULDBLOCK. */
-#cmakedefine HAVE_EAGAIN_SAME_AS_EWOULDBLOCK 1
+#cmakedefine HAVE_EAGAIN_EQUAL_TO_EWOULDBLOCK 1
 
-/* Define to 1 if you have the `strerror' function. */
-#cmakedefine HAVE_STRERROR 1
-
-/* Define to 1 if you have the `strerror_r' function. */
-#cmakedefine HAVE_STRERROR_R 1
-
-/* Define to 1 if you have a GNU-style `strerror_r' function. */
-#cmakedefine HAVE_GNU_STRERROR_R 1
-
-/* Define to 1 if you have a POSIX-style `strerror_r' function. */
-#cmakedefine HAVE_POSIX_STRERROR_R 1
-
-/* Define to 1 if you have the `strerror_s' function. */
-#cmakedefine HAVE_STRERROR_S 1
-
-/* Define to 1 if you have the `snprintf' function. */
-#cmakedefine HAVE_SNPRINTF 1
-
-/* Define to 1 if you have the `asprintf' function. */
-#cmakedefine HAVE_GNU_ASPRINTF 1
-
-/* Define to 1 if you have the `vasprintf' function. */
-#cmakedefine HAVE_GNU_VASPRINTF 1
-
-/* Define to 1 if you have the `vsnprintf' function. */
-#cmakedefine HAVE_VSNPRINTF 1
-
-/* Define to 1 if you have the `vsyslog' function. */
-#cmakedefine HAVE_VSYSLOG 1
-
-/* Define to 1 if you have the `strlcat' function. */
-#cmakedefine HAVE_STRLCAT 1
-
-/* Define to 1 if 'strlcat' is declared in bsd/string.h  */
-#cmakedefine HAVE_STRCAT_IN_BSD_STRING_H 1
-
-/* Define to 1 if you have the `strlcpy' function. */
-#cmakedefine HAVE_STRLCPY 1
-
-/* Define to 1 if 'strlcpy' is declared in bsd/string.h  */
-#cmakedefine HAVE_STRLCPY_IN_BSD_STRING_H 1
-
-/* Define to 1 if you have the `strtok_r' function. */
-#cmakedefine HAVE_STRTOK_R 1
+/* Define to 1 if ENOTSUP == EOPNOTSUPP. */
+#cmakedefine HAVE_ENOTSUP_EQUAL_TO_EOPNOTSUPP 1
 
 /* Define to 1 if you have the type `socklen_t'. */
 #cmakedefine HAVE_SOCKLEN_T 1
@@ -191,12 +149,18 @@
 #define CONFIG_FILEVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
 
 /* Define to the file name of this package (used in windows DLL only). */
-#define CONFIG_FILENAME @PROJECT_FILENAME@
+#define CONFIG_FILENAME "@PROJECT_FILENAME@"
+
+/* Define to the platform name (used in unit tests). */
+#define CONFIG_SYSTEM_NAME "@PROJECT_SYSTEM_NAME@"
 
 
 /***************************
- * MbedTLS
+ * Submodules
  ***************************/
+
+/* libasr */
+#cmakedefine HAVE_LIBASR 1
 
 /* MbedTLS */
 #cmakedefine HAVE_MBEDTLS 1
@@ -207,42 +171,15 @@
  ***************************/
 
 /* Profiler */
-#cmakedefine CLARINET_ENABLE_PROFILE 1 
+#cmakedefine CLARINET_ENABLE_PROFILE 1
 
 /* Log */
-#cmakedefine CLARINET_ENABLE_LOG 1 
+#cmakedefine CLARINET_ENABLE_LOG 1
 
-/* IPv6 */
-#cmakedefine CLARINET_ENABLE_IPV6 1
+/* IPv6 (depends on platform support) */
+#cmakedefine CLARINET_ENABLE_IPV6 HAVE_SOCKADDR_IN6_SIN6_ADDR
 
-/* IPv6 Dual Stack */
-#cmakedefine CLARINET_ENABLE_IPV6DUAL 1
-
-/* UDP */
-#cmakedefine CLARINET_ENABLE_UDP 1
-
-/* DTLC */
-#cmakedefine CLARINET_ENABLE_DTLC 1
-
-/* DTLS */
-#cmakedefine CLARINET_ENABLE_DTLS 1
-
-/* UDTP over DTLC */
-#cmakedefine CLARINET_ENABLE_UDTP 1
-
-/* UDTP over DTLS */
-#cmakedefine CLARINET_ENABLE_UDTPS 1
-
-/* ENet */
-#cmakedefine CLARINET_ENABLE_ENET 1
-
-/* ENet over DTLS */
-#cmakedefine CLARINET_ENABLE_ENETS 1
-
-/* TCP */
-#cmakedefine CLARINET_ENABLE_TCP 1
-
-/* TLS */
-#cmakedefine CLARINET_ENABLE_TLS 1
+/* IPv6 Dual Stack (depends on IPv6 being enabled) */
+#cmakedefine CLARINET_ENABLE_IPV6DUAL CLARINET_ENABLE_IPV6
 
 #endif /* CONFIG_H */

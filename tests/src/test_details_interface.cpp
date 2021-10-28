@@ -1,6 +1,6 @@
 #include "test.h"
 
-TEST_CASE("Library Semantic Version", "[details][version]")
+TEST_CASE("Semantic Version", "[details][version]")
 {
     const uint32_t expected = (CONFIG_VERSION_MAJOR << 24)
                               | (CONFIG_VERSION_MINOR << 16)
@@ -18,7 +18,7 @@ TEST_CASE("Library Semantic Version", "[details][version]")
     REQUIRE(actual == expected);
 }
 
-TEST_CASE("Library String Version", "[details][version]")
+TEST_CASE("String Version", "[details][version]")
 {
     const char* expected = CLARINET_XSTR(CONFIG_VERSION_MAJOR)
                            "." CLARINET_XSTR(CONFIG_VERSION_MINOR)
@@ -27,127 +27,59 @@ TEST_CASE("Library String Version", "[details][version]")
     REQUIRE_THAT(actual, Equals(expected));
 }
 
-TEST_CASE("Library Name", "[details][name]")
+TEST_CASE("Name", "[details][name]")
 {
     const char* expected = "clarinet";
     const char* actual = clarinet_get_name();
     REQUIRE_THAT(actual, Equals(expected));
 }
 
-TEST_CASE("Library Description", "[details][description]")
+TEST_CASE("Description", "[details][description]")
 {
     const char* actual = clarinet_get_description();
     REQUIRE(actual != NULL);
     REQUIRE_THAT(std::string(actual), !IsEmpty());
 }
 
-#define REQUIRE_FLAG_SET(F, P)          \
-    do {                                \
-        REQUIRE(((F) & (P)) == (P));    \
-        (F) &= ~(P);                    \
-    } while(0)
-
+#define REQUIRE_FLAG_SET(F, P)          do { REQUIRE(((F) & (P)) == (P)); (F) &= ~(P); } while(0)
 #define REQUIRE_FLAG_CLR(F, P)          REQUIRE(((F) & (P)) == 0)
 
 
-TEST_CASE("Library Protocol Flags", "[details][protocols]")
-{
-    REQUIRE(CLARINET_PROTO_NONE == 0);
-
-    uint32_t protocols = clarinet_get_protocols();
-
-#ifdef CLARINET_ENABLE_UDP
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_UDP);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_UDP);
-#endif
-
-#ifdef CLARINET_ENABLE_DTLC
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_DTLC);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_DTLC);
-#endif
-
-#ifdef CLARINET_ENABLE_DTLS
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_DTLS);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_DTLS);
-#endif
-
-#ifdef CLARINET_ENABLE_UDTP
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_UDTP);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_UDTP);
-#endif
-
-#ifdef CLARINET_ENABLE_UDTPS
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_UDTPS);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_UDTPS);
-#endif
-
-#ifdef CLARINET_ENABLE_ENET
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_ENET);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_ENET);
-#endif
-
-#ifdef CLARINET_ENABLE_ENETS
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_ENETS);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_ENETS);
-#endif
-
-#ifdef CLARINET_ENABLE_TCP
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_TCP);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_TCP);
-#endif
-
-#ifdef CLARINET_ENABLE_TLS
-    REQUIRE_FLAG_SET(protocols, CLARINET_PROTO_TLS);
-#else
-    REQUIRE_FLAG_CLR(protocols, CLARINET_PROTO_TLS);
-#endif
-
-    REQUIRE(protocols == CLARINET_PROTO_SOCK);
-}
-
-TEST_CASE("Library Feature Flags", "[details][features]")
+TEST_CASE("Feature Flags", "[details][features]")
 {
     REQUIRE(CLARINET_FEATURE_NONE == 0);
 
     uint32_t features = clarinet_get_features();
 
-#if !defined(NDEBUG)
+    #if !defined(NDEBUG)
     REQUIRE_FLAG_SET(features, CLARINET_FEATURE_DEBUG);
-#else
+    #else
     REQUIRE_FLAG_CLR(features, CLARINET_FEATURE_DEBUG);
-#endif
+    #endif
 
-#if defined(CLARINET_ENABLE_PROFILE)
+    #if defined(CLARINET_ENABLE_PROFILE)
     REQUIRE_FLAG_SET(features, CLARINET_FEATURE_PROFILE);
-#else
+    #else
     REQUIRE_FLAG_CLR(features, CLARINET_FEATURE_PROFILE);
-#endif
+    #endif
 
-#if defined(CLARINET_ENABLE_LOG)
+    #if defined(CLARINET_ENABLE_LOG)
     REQUIRE_FLAG_SET(features, CLARINET_FEATURE_LOG);
-#else
+    #else
     REQUIRE_FLAG_CLR(features, CLARINET_FEATURE_LOG);
-#endif
+    #endif
 
-#if defined(CLARINET_ENABLE_IPV6)
+    #if CLARINET_ENABLE_IPV6
     REQUIRE_FLAG_SET(features, CLARINET_FEATURE_IPV6);
-#else
+    #else
     REQUIRE_FLAG_CLR(features, CLARINET_FEATURE_IPV6);
-#endif
+    #endif
 
-#if defined(CLARINET_ENABLE_IPV6DUAL)
+    #if CLARINET_ENABLE_IPV6DUAL
     REQUIRE_FLAG_SET(features, CLARINET_FEATURE_IPV6DUAL);
-#else
+    #else
     REQUIRE_FLAG_CLR(features, CLARINET_FEATURE_IPV6DUAL);
-#endif
+    #endif
 
     REQUIRE(features == CLARINET_FEATURE_NONE);
 }

@@ -24,7 +24,7 @@
         VALUE "InternalName",     CONFIG_NAME
         VALUE "LegalCopyright",   "Copyright (c) Default Name"
         VALUE "LegalTrademarks",  ""
-        VALUE "OriginalFilename", "CONFIG_FILENAME"
+        VALUE "OriginalFilename", CONFIG_FILENAME
         VALUE "ProductName",      CONFIG_NAME
         VALUE "ProductVersion",   CONFIG_VERSION_MAJOR.CONFIG_VERSION_MINOR.CONFIG_VERSION_PATCH
       END

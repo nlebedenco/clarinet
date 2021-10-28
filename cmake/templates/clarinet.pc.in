@@ -8,4 +8,4 @@ Version: @PROJECT_VERSION@
 
 Requires:
 Libs: -L${libdir} @PKG_CONFIG_LINK_LIBRARIES@ 
-Cflags: -I${includedir} @PKG_CONFIG_STATIC_DEFINE@
+Cflags: -I${includedir} @PKG_CONFIG_DEFINES@

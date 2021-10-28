@@ -2,7 +2,7 @@
 #   Configuration
 ########################################################################################################################
 
-set(${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER "CTest")
+set(${PROJECT_API_PREFIX_UPPERCASE}_TESTS_FOLDER "CTest")
 
 
 ########################################################################################################################
@@ -21,7 +21,7 @@ macro(target_test _target)
     # Set folder
     # Set linker for cmd line param support tests - for now all tests are in CXX this must be reviewed if the test framework changes
     set_target_properties(${_target} PROPERTIES
-        FOLDER "${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}"
+        FOLDER "${${PROJECT_MACRO_PREFIX}_TESTS_FOLDER}"
         LINKER_LANGUAGE CXX
     )
 
@@ -90,22 +90,10 @@ macro(target_test _target)
 
     # Register catch2 tests defined in target
     catch_discover_tests(${_target}
+        EXTRA_ARGS -w NoAssertions
         PROPERTIES TIMEOUT 5
     )
 endmacro()
-
-
-########################################################################################################################
-#   Dependencies
-########################################################################################################################
-include(FetchCatch2)
-set_target_properties(Catch2 PROPERTIES 
-    FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}/Dependencies
-)
-set_target_properties(Catch2WithMain PROPERTIES 
-    FOLDER ${${PROJECT_NAME_UPPERCASE}_TESTS_FOLDER}/Dependencies
-)
-
 
 ########################################################################################################################
 #   Tests
