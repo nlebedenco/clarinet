@@ -146,6 +146,7 @@
 #endif
 
 #ifndef clamp
+    /** Clamp the value @c v to the interval [@c a, @c b] */
     #define clamp(v, a, b) ((a) > (v) ? (a) : (b) < (v) ? (b) : (v))
 #endif
 

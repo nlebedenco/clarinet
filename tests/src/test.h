@@ -52,6 +52,9 @@ to_string(enum clarinet_family value);
 std::string
 to_string(enum clarinet_proto value);
 
+std::string
+to_string(const char* s);
+
 using namespace Catch::Generators;
 using std::to_string;
 

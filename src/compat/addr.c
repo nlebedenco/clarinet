@@ -684,6 +684,26 @@ clarinet_make_ipv6(uint16_t a,
     return r;
 }
 
+clarinet_addr
+clarinet_make_mac(uint8_t a,
+                  uint8_t b,
+                  uint8_t c,
+                  uint8_t d,
+                  uint8_t e,
+                  uint8_t f)
+{
+    clarinet_addr r = { 0 };
+    r.family = CLARINET_AF_LINK;
+    r.as.mac.u.byte[0] = a;
+    r.as.mac.u.byte[1] = b;
+    r.as.mac.u.byte[2] = c;
+    r.as.mac.u.byte[3] = d;
+    r.as.mac.u.byte[4] = e;
+    r.as.mac.u.byte[5] = f;
+    return r;
+}
+
+
 clarinet_endpoint
 clarinet_make_endpoint(clarinet_addr addr,
                        uint16_t port)

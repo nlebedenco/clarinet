@@ -24,23 +24,20 @@ TEST_CASE("Address Init", "[address]")
 
 TEST_CASE("Address Size", "[address]")
 {
-    SECTION("Size")
-    {
-        REQUIRE(sizeof(clarinet_addr) == 28);
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->family) == sizeof(uint16_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.byte[0]) == sizeof(uint8_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.word[0]) == sizeof(uint16_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.dword) == sizeof(uint32_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.byte[0]) == sizeof(uint8_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.word[0]) == sizeof(uint16_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.dword[0]) == sizeof(uint32_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.flowinfo) == sizeof(uint32_t));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.scope_id) == sizeof(uint32_t));
-        REQUIRE(sizeof(struct clarinet_ipv4) == 24);
-        REQUIRE(sizeof(struct clarinet_ipv6) == 24);
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4) == sizeof(struct clarinet_ipv4));
-        REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6) == sizeof(struct clarinet_ipv6));
-    }
+    REQUIRE(sizeof(clarinet_addr) == 28);
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->family) == sizeof(uint16_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.byte[0]) == sizeof(uint8_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.word[0]) == sizeof(uint16_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.dword) == sizeof(uint32_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.byte[0]) == sizeof(uint8_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.word[0]) == sizeof(uint16_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.dword[0]) == sizeof(uint32_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.flowinfo) == sizeof(uint32_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.scope_id) == sizeof(uint32_t));
+    REQUIRE(sizeof(struct clarinet_ipv4) == 24);
+    REQUIRE(sizeof(struct clarinet_ipv6) == 24);
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4) == sizeof(struct clarinet_ipv4));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6) == sizeof(struct clarinet_ipv6));
 }
 
 TEST_CASE("Address Max Strlen", "[address]")
@@ -68,7 +65,7 @@ TEST_CASE("IPv4 Address Any", "[address][ipv4][any]")
         REQUIRE_THAT(memory(&expected, sizeof(expected)), Equals(memory(&actual, sizeof(actual))));
     }
 
-    SECTION("0.0.0.0 is ipv4 any")
+    SECTION("Check 0.0.0.0 is ipv4 any")
     {
         REQUIRE(clarinet_addr_is_ipv4(&actual));
         REQUIRE(clarinet_addr_is_any_ipv4(&actual));
@@ -97,21 +94,21 @@ TEST_CASE("IPv4 Address Loopback", "[address][ipv4][loopback]")
         REQUIRE_THAT(memory(&expected, sizeof(expected)), Equals(memory(&actual, sizeof(actual))));
     }
 
-    SECTION("127.0.0.1 is an ipv4 looback")
+    SECTION("Check 127.0.0.1 is an ipv4 looback")
     {
         REQUIRE(clarinet_addr_is_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback_ip(&actual));
     }
 
-    SECTION("127.0.0.0 is NOT an ipv4 loopback")
+    SECTION("Check 127.0.0.0 is NOT an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 0;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE_FALSE(clarinet_addr_is_loopback_ip(&actual));
     }
 
-    SECTION("127.0.0.255 is NOT an ipv4 loopback")
+    SECTION("Check 127.0.0.255 is NOT an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 255;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4(&actual));
@@ -120,21 +117,21 @@ TEST_CASE("IPv4 Address Loopback", "[address][ipv4][loopback]")
 
         // Technically we should assert the whole range 127.0.0.1 to 127.255.255.254 but sampling must suffice.
 
-    SECTION("127.0.0.2 is an ipv4 loopback")
+    SECTION("Check 127.0.0.2 is an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 2;
         REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback_ip(&actual));
     }
 
-    SECTION("127.0.0.254 is an ipv4 loopback")
+    SECTION("Check 127.0.0.254 is an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[3] = 254;
         REQUIRE(clarinet_addr_is_loopback_ipv4(&actual));
         REQUIRE(clarinet_addr_is_loopback_ip(&actual));
     }
 
-    SECTION("127.255.255.254 is an ipv4 loopback")
+    SECTION("Check 127.255.255.254 is an ipv4 loopback")
     {
         actual.as.ipv4.u.byte[1] = 255;
         actual.as.ipv4.u.byte[2] = 255;
@@ -165,38 +162,38 @@ TEST_CASE("IPv4 Address Broadcast", "[address][ipv4][broadcast]")
         REQUIRE_THAT(memory(&expected, sizeof(expected)), Equals(memory(&actual, sizeof(actual))));
     }
 
-    SECTION("255.255.255.255 is an ipv4 broadcast")
+    SECTION("Check 255.255.255.255 is an ipv4 broadcast")
     {
         REQUIRE(clarinet_addr_is_ipv4(&actual));
         REQUIRE(clarinet_addr_is_broadcast_ipv4(&actual));
         REQUIRE(clarinet_addr_is_broadcast_ip(&actual));
     }
 
-    SECTION("255.255.255.0 is NOT an ipv4 broadcast")
+    SECTION("Check 255.255.255.0 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 0;
         REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
-    SECTION("255.255.255.127 is NOT an ipv4 broadcast")
+    SECTION("Check 255.255.255.127 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 127;
         REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
-    SECTION("255.255.255.2 is NOT an ipv4 broadcast")
+    SECTION("Check 255.255.255.2 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 2;
         REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
-    SECTION("255.255.255.127 is NOT an ipv4 broadcast")
+    SECTION("Check 255.255.255.127 is NOT an ipv4 broadcast")
     {
         actual.as.ipv4.u.byte[3] = 127;
         REQUIRE_FALSE(clarinet_addr_is_broadcast_ipv4(&actual));
     }
 
-    SECTION("::FFFF:255.255.255.255 is NOT an ipv4 broadcast")
+    SECTION("Check ::FFFF:255.255.255.255 is NOT an ipv4 broadcast")
     {
         actual.family = CLARINET_AF_INET6;
         actual.as.ipv6.u.byte[10] = 255;
@@ -254,32 +251,32 @@ TEST_CASE("IPv4 Mapped Loopback", "[address][ipv6][ipv4][loopback]")
         REQUIRE_THAT(memory(&expected, sizeof(expected)), Equals(memory(&actual, sizeof(actual))));
     }
 
-    SECTION("::FFFF:127.0.0.1 is an ipv4 mapped loopback")
+    SECTION("Check ::FFFF:127.0.0.1 is an ipv4 mapped loopback")
     {
         REQUIRE(clarinet_addr_is_ipv4mapped(&actual));
         REQUIRE(clarinet_addr_is_loopback_ipv4mapped(&actual));
         REQUIRE(clarinet_addr_is_loopback_ip(&actual));
     }
 
-    SECTION("::FFFF:127.0.0.0 is NOT an ipv4 mapped loopback")
+    SECTION("Check ::FFFF:127.0.0.0 is NOT an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[15] = 0;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 
-    SECTION("::FFFF:127.0.0.255 is NOT an ipv4 mapped loopback")
+    SECTION("Check ::FFFF:127.0.0.255 is NOT an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[15] = 255;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 
-    SECTION("::FFFF:127.0.0.2 is an ipv4 mapped loopback")
+    SECTION("Check ::FFFF:127.0.0.2 is an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[15] = 2;
         REQUIRE(clarinet_addr_is_loopback_ipv4mapped(&actual));
     }
 
-    SECTION("::FFFF:127.255.255.254 is an ipv4 mapped loopback")
+    SECTION("Check ::FFFF:127.255.255.254 is an ipv4 mapped loopback")
     {
         actual.as.ipv6.u.byte[13] = 255;
         actual.as.ipv6.u.byte[14] = 255;
@@ -375,38 +372,38 @@ TEST_CASE("IPv6 Address Loopback", "[address][ipv6][loopback]")
         REQUIRE_THAT(memory(&expected, sizeof(expected)), Equals(memory(&actual, sizeof(clarinet_addr))));
     }
 
-    SECTION("::1 is an ipv6 looback")
+    SECTION("Check ::1 is an ipv6 looback")
     {
         REQUIRE(clarinet_addr_is_ipv6(&actual));
         REQUIRE(clarinet_addr_is_loopback_ipv6(&actual));
         REQUIRE(clarinet_addr_is_loopback_ip(&actual));
     }
 
-    SECTION(":: is NOT an ipv6 looback")
+    SECTION("Check :: is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 0;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
-    SECTION("::00ff is NOT an ipv6 looback")
+    SECTION("Check ::00ff is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 255;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
-    SECTION("::2 is NOT an ipv6 looback")
+    SECTION("Check ::2 is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 2;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
-    SECTION("::00fe is NOT an ipv6 looback")
+    SECTION("Check ::00fe is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[15] = 254;
         REQUIRE_FALSE(clarinet_addr_is_loopback_ipv6(&actual));
     }
 
-    SECTION("::ffff:127.0.0.1 is NOT an ipv6 looback")
+    SECTION("Check ::ffff:127.0.0.1 is NOT an ipv6 looback")
     {
         actual.as.ipv6.u.byte[10] = 255;
         actual.as.ipv6.u.byte[11] = 255;
@@ -418,9 +415,9 @@ TEST_CASE("IPv6 Address Loopback", "[address][ipv6][loopback]")
     }
 }
 
-TEST_CASE("Address Is Equal", "[address]")
+TEST_CASE("Unspecified Address Is Equal", "[address]")
 {
-    SECTION("Address None (Equal)")
+    SECTION("Check None IS EQUAL to None")
     {
         // using two distinct allocations for possibly the same contant on purpose
         int sample;
@@ -438,7 +435,7 @@ TEST_CASE("Address Is Equal", "[address]")
         REQUIRE(addr_is_equal);
     }
 
-    SECTION("Address None (Not Equal)")
+    SECTION("Check all but None IS NOT EQUAL to None")
     {
         // using two distinct allocations for the same contant on purpose
         int sample;
@@ -448,7 +445,11 @@ TEST_CASE("Address Is Equal", "[address]")
         std::tie(sample, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
             { 0, clarinet_addr_none, clarinet_addr_any_ipv4 },
             { 1, clarinet_addr_none, clarinet_addr_loopback_ipv4 },
-            { 2, clarinet_addr_none, clarinet_addr_broadcast_ipv4 }
+            { 2, clarinet_addr_none, clarinet_addr_broadcast_ipv4 },
+        #if CLARINET_ENABLE_IPV6
+            { 3, clarinet_addr_none, clarinet_addr_any_ipv6 },
+            { 4, clarinet_addr_none, clarinet_addr_loopback_ipv6 },
+        #endif
         }));
         // @formatter:on
 
@@ -461,7 +462,7 @@ TEST_CASE("Address Is Equal", "[address]")
 
 TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
 {
-    SECTION("Constant ipv4 addresses (Equal)")
+    SECTION("Check IS EQUAL to constant ipv4 addresses")
     {
         // using two distinct allocations for the same contant on purpose
         int sample;
@@ -481,7 +482,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
         REQUIRE(addr_is_equal);
     }
 
-    SECTION("Constant ipv4 addresses (Not Equal)")
+    SECTION("Check IS NOT EQUAL to constant ipv4 addresses")
     {
         int sample;
         clarinet_addr a, b;
@@ -500,7 +501,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
         REQUIRE_FALSE(addr_is_equal);
     }
 
-    SECTION("Custom ipv4 addresses (Equal)")
+    SECTION("Check IS EQUAL to custom ipv4 addresses")
     {
         clarinet_addr a;
         memnoise(&a, sizeof(a));
@@ -522,32 +523,71 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
         REQUIRE(addr_is_equal);
     }
 
-    SECTION("Same ipv4 address but one has family NONE")
+    SECTION("Check IS NOT EQUAL to custom ipv4 addresses")
     {
-        clarinet_addr a;
-        memnoise(&a, sizeof(a));
-        a.family = CLARINET_AF_UNSPEC;
-        a.as.ipv4.u.byte[0] = 0x00;
-        a.as.ipv4.u.byte[1] = 0x11;
-        a.as.ipv4.u.byte[2] = 0x22;
-        a.as.ipv4.u.byte[3] = 0x33;
+        SECTION("Check SAME ipv4 address but one has family UNSPEC")
+        {
+            clarinet_addr a;
+            memnoise(&a, sizeof(a));
+            a.family = CLARINET_AF_UNSPEC;
+            a.as.ipv4.u.byte[0] = 0x00;
+            a.as.ipv4.u.byte[1] = 0x11;
+            a.as.ipv4.u.byte[2] = 0x22;
+            a.as.ipv4.u.byte[3] = 0x33;
 
-        clarinet_addr b;
-        memnoise(&b, sizeof(b));
-        b.family = CLARINET_AF_INET;
-        b.as.ipv4.u.byte[0] = 0x00;
-        b.as.ipv4.u.byte[1] = 0x11;
-        b.as.ipv4.u.byte[2] = 0x22;
-        b.as.ipv4.u.byte[3] = 0x33;
+            clarinet_addr b;
+            memnoise(&b, sizeof(b));
+            b.family = CLARINET_AF_INET;
+            b.as.ipv4.u.byte[0] = 0x00;
+            b.as.ipv4.u.byte[1] = 0x11;
+            b.as.ipv4.u.byte[2] = 0x22;
+            b.as.ipv4.u.byte[3] = 0x33;
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
-        REQUIRE_FALSE(addr_is_equal);
+            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            REQUIRE_FALSE(addr_is_equal);
+        }
+
+        SECTION("Check SAME ipv4 address but one is an IPv6 mapped to IPv6 ")
+        {
+            clarinet_addr a;
+            memnoise(&a, sizeof(a));
+            a.family = CLARINET_AF_INET;
+            a.as.ipv4.u.byte[0] = 0x00;
+            a.as.ipv4.u.byte[1] = 0x11;
+            a.as.ipv4.u.byte[2] = 0x22;
+            a.as.ipv4.u.byte[3] = 0x33;
+
+            clarinet_addr b;
+            memnoise(&b, sizeof(b));
+            b.family = CLARINET_AF_INET6;
+            b.as.ipv6.flowinfo = 0;
+            b.as.ipv6.u.byte[0] = 0;
+            b.as.ipv6.u.byte[1] = 0;
+            b.as.ipv6.u.byte[2] = 0;
+            b.as.ipv6.u.byte[3] = 0;
+            b.as.ipv6.u.byte[4] = 0;
+            b.as.ipv6.u.byte[5] = 0;
+            b.as.ipv6.u.byte[6] = 0;
+            b.as.ipv6.u.byte[7] = 0;
+            b.as.ipv6.u.byte[8] = 0;
+            b.as.ipv6.u.byte[9] = 0;
+            b.as.ipv6.u.byte[10] = 0xFF;
+            b.as.ipv6.u.byte[11] = 0xFF;
+            b.as.ipv6.u.byte[12] = 0x00;
+            b.as.ipv6.u.byte[13] = 0x11;
+            b.as.ipv6.u.byte[14] = 0x22;
+            b.as.ipv6.u.byte[15] = 0x33;
+            b.as.ipv6.scope_id = 0;
+
+            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            REQUIRE_FALSE(addr_is_equal);
+        }
     }
 }
 
 TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
 {
-    SECTION("Constant ipv6 addresses (Equal)")
+    SECTION("Check IS EQUAL to constant ipv6 addresses")
     {
         // using two distinct allocations for the same contant on purpose
         int sample;
@@ -567,7 +607,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
         REQUIRE(addr_is_equal);
     }
 
-    SECTION("Constant ipv6 addresses (Not Equal)")
+    SECTION("Check IS NOT EQUAL to constant ipv6 addresses")
     {
         int sample;
         clarinet_addr a, b;
@@ -588,7 +628,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
         REQUIRE_FALSE(addr_is_equal);
     }
 
-    SECTION("Custom ipv6 addresses (Equal)")
+    SECTION("Check IS EQUAL to custom ipv6 addresses")
     {
         clarinet_addr a;
         memnoise(&a, sizeof(a));
@@ -644,9 +684,9 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
         REQUIRE(addr_is_equal);
     }
 
-    SECTION("Custom ipv6 addresses (Not Equal)")
+    SECTION("Check IS NOT EQUAL to custom ipv6 addresses")
     {
-        SECTION("Same ipv6 address but one has family NONE")
+        SECTION("Check SAME ipv6 address but one has family UNSPEC")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -696,7 +736,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             REQUIRE_FALSE(addr_is_equal);
         }
 
-        SECTION("Same ipv6 address but one has family INET")
+        SECTION("Check SAME ipv6 address but one has family INET")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -746,7 +786,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             REQUIRE_FALSE(addr_is_equal);
         }
 
-        SECTION("Same ipv6 address but different flow info")
+        SECTION("Check SAME ipv6 address but different flow info")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -796,7 +836,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             REQUIRE(addr_is_equal);
         }
 
-        SECTION("Same ipv6 address but different scope id")
+        SECTION("Check SAME ipv6 address but different scope id")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -845,48 +885,12 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE_FALSE(addr_is_equal);
         }
-
-        SECTION("Same ipv4 address but different but one is ipv4 mapped to ipv6 ")
-        {
-            clarinet_addr a;
-            memnoise(&a, sizeof(a));
-            a.family = CLARINET_AF_INET;
-            a.as.ipv4.u.byte[0] = 0x00;
-            a.as.ipv4.u.byte[1] = 0x11;
-            a.as.ipv4.u.byte[2] = 0x22;
-            a.as.ipv4.u.byte[3] = 0x33;
-
-            clarinet_addr b;
-            memnoise(&b, sizeof(b));
-            b.family = CLARINET_AF_INET6;
-            b.as.ipv6.flowinfo = 0;
-            b.as.ipv6.u.byte[0] = 0;
-            b.as.ipv6.u.byte[1] = 0;
-            b.as.ipv6.u.byte[2] = 0;
-            b.as.ipv6.u.byte[3] = 0;
-            b.as.ipv6.u.byte[4] = 0;
-            b.as.ipv6.u.byte[5] = 0;
-            b.as.ipv6.u.byte[6] = 0;
-            b.as.ipv6.u.byte[7] = 0;
-            b.as.ipv6.u.byte[8] = 0;
-            b.as.ipv6.u.byte[9] = 0;
-            b.as.ipv6.u.byte[10] = 0xFF;
-            b.as.ipv6.u.byte[11] = 0xFF;
-            b.as.ipv6.u.byte[12] = 0x00;
-            b.as.ipv6.u.byte[13] = 0x11;
-            b.as.ipv6.u.byte[14] = 0x22;
-            b.as.ipv6.u.byte[15] = 0x33;
-            b.as.ipv6.scope_id = 0;
-
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
-            REQUIRE_FALSE(addr_is_equal);
-        }
     }
 }
 
 TEST_CASE("IPv4 Address Is Equivalent", "[address][ipv4]")
 {
-    SECTION("Constant ipv4 addresses (Equivalent)")
+    SECTION("Check IS EQUIVALENT to constant ipv4 addresses")
     {
         // using two distinct allocations for the same contant on purpose
         int sample;
@@ -906,7 +910,7 @@ TEST_CASE("IPv4 Address Is Equivalent", "[address][ipv4]")
         REQUIRE(addr_is_equivalent);
     }
 
-    SECTION("Constant ipv4 addresses (Not Equivalent)")
+    SECTION("Check IS NOT EQUIVALENT to constant ipv4 addresses")
     {
         int sample;
         clarinet_addr a, b;
@@ -925,7 +929,7 @@ TEST_CASE("IPv4 Address Is Equivalent", "[address][ipv4]")
         REQUIRE_FALSE(addr_is_equivalent);
     }
 
-    SECTION("Custom ipv4 addresses (Equivalent)")
+    SECTION("Check IS EQUIVALENT to custom ipv4 addresses")
     {
         clarinet_addr a;
         memnoise(&a, sizeof(a));
@@ -950,7 +954,7 @@ TEST_CASE("IPv4 Address Is Equivalent", "[address][ipv4]")
 
 TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
 {
-    SECTION("Constant ipv6 addresses (Equivalent)")
+    SECTION("Check IS EQUIVALENT to constant ipv6 addresses")
     {
         // using two distinct allocations for the same contant on purpose
         int sample;
@@ -971,7 +975,7 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
         REQUIRE(addr_is_equivalent);
     }
 
-    SECTION("Constant ipv6 addresses (Not Equivalent)")
+    SECTION("Check IS NOT EQUIVALENT to constant ipv6 addresses")
     {
         int sample;
         clarinet_addr a, b;
@@ -990,7 +994,7 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
         REQUIRE_FALSE(addr_is_equivalent);
     }
 
-    SECTION("Custom ipv6 addresses (Equivalent)")
+    SECTION("Check IS EQUIVALENT to custom ipv6 addresses")
     {
         SECTION("Same ipv6 addresses")
         {
@@ -1084,9 +1088,9 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
         }
     }
 
-    SECTION("Custom ipv6 addresses (Not Equivalent)")
+    SECTION("Check IS NOT EQUIVALENT to custom ipv6 addresses")
     {
-        SECTION("Same ipv6 address but one has family NONE")
+        SECTION("Check SAME ipv6 address but one has family UNSPEC")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -1136,7 +1140,7 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
             REQUIRE_FALSE(addr_is_equivalent);
         }
 
-        SECTION("Same ipv6 address but different flow info")
+        SECTION("Check SAME ipv6 address but different flow info")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -1186,7 +1190,7 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
             REQUIRE(addr_is_equivalent);
         }
 
-        SECTION("Same ipv6 address but different cope id")
+        SECTION("Check SAME ipv6 address but different scope id")
         {
             clarinet_addr a;
             memnoise(&a, sizeof(a));
@@ -1240,7 +1244,7 @@ TEST_CASE("IPv6 Address Is Equivalent", "[address][ipv6]")
 
 TEST_CASE("Convert to IPv4", "[address][ipv4]")
 {
-    SECTION("Valid conversion to IPv4")
+    SECTION("VALID conversion to IPv4")
     {
         // @formatter:off
         const std::vector<std::tuple<int, clarinet_addr, clarinet_addr>> data =
@@ -1267,7 +1271,7 @@ TEST_CASE("Convert to IPv4", "[address][ipv4]")
         REQUIRE(addr_is_equal);
     }
 
-    SECTION("Invalid conversion To IPv4")
+    SECTION("INVALID conversion To IPv4")
     {
         // @formatter:off
         const std::vector<std::tuple<int, clarinet_addr>> data = {
@@ -1295,7 +1299,7 @@ TEST_CASE("Convert to IPv4", "[address][ipv4]")
 
 TEST_CASE("Convert to IPv6", "[address][ipv6]")
 {
-    SECTION("Valid conversion to IPv6")
+    SECTION("VALID conversion to IPv6")
     {
         #if CLARINET_ENABLE_IPV6
 
@@ -1320,7 +1324,7 @@ TEST_CASE("Convert to IPv6", "[address][ipv6]")
         #endif // CLARINET_ENABLE_IPV6
     }
 
-    SECTION("Invalid conversion To IPv6")
+    SECTION("INVALID conversion To IPv6")
     {
         // @formatter:off
         const std::vector<std::tuple<int, clarinet_addr>> data = {
@@ -1348,7 +1352,7 @@ TEST_CASE("Convert to IPv6", "[address][ipv6]")
 
 TEST_CASE("Address To String", "[address]")
 {
-    SECTION("With invalid arguments")
+    SECTION("With INVALID arguments")
     {
         SECTION("NULL dst")
         {
@@ -1452,7 +1456,7 @@ TEST_CASE("Address To String", "[address]")
         }
     }
 
-    SECTION("Wiht valid arguments")
+    SECTION("Wiht VALID arguments")
     {
         SECTION("IPv4 to string")
         {
@@ -1541,21 +1545,21 @@ TEST_CASE("Address To String", "[address]")
 
 TEST_CASE("Address From String", "[address]")
 {
-    SECTION("NULL dst")
+    SECTION("With NULL dst")
     {
         const char* src = "192.168.0.1";
         const int errcode = clarinet_addr_from_string(nullptr, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("NULL src")
+    SECTION("With NULL src")
     {
         clarinet_addr dst = { 0 };
         const int errcode = clarinet_addr_from_string(&dst, nullptr, 0);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Zero srclen")
+    SECTION("With Zero srclen")
     {
         clarinet_addr dst = { 0 };
         const char* src = "192.168.0.1";
@@ -1563,7 +1567,7 @@ TEST_CASE("Address From String", "[address]")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Insufficient srclen")
+    SECTION("With INSUFFICIENT srclen")
     {
         clarinet_addr dst = { 0 };
         const char* src = "192.168.0.1";
@@ -1571,7 +1575,7 @@ TEST_CASE("Address From String", "[address]")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Invalid addresses")
+    SECTION("With INVALID addresses")
     {
         const std::vector<std::tuple<int, const char*>> data = {
             { 0, "" },
@@ -1632,7 +1636,7 @@ TEST_CASE("Address From String", "[address]")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Valid addresses")
+    SECTION("With VALID addresses")
     {
         #if CLARINET_ENABLE_IPV6
 
@@ -1735,7 +1739,6 @@ TEST_CASE("Address From String", "[address]")
 
 TEST_CASE("Endpoint Size", "[endpoint]")
 {
-
     REQUIRE(sizeof(clarinet_endpoint) == 32);
     REQUIRE(sizeof(((clarinet_endpoint*)nullptr)->addr) == sizeof(clarinet_addr));
     REQUIRE(sizeof(((clarinet_endpoint*)nullptr)->port) == sizeof(uint16_t));
@@ -1748,23 +1751,23 @@ TEST_CASE("Endpoint Max Strlen", "[endpoint]")
 
 TEST_CASE("Endpoint To String", "[endpoint]")
 {
-    SECTION("With invalid arguments")
+    SECTION("With INVALID arguments")
     {
-        SECTION("NULL dst")
+        SECTION("With NULL dst")
         {
             clarinet_endpoint src = { clarinet_addr_any_ipv4, 0 };
             const int errcode = clarinet_endpoint_to_string(nullptr, 0, &src);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
-        SECTION("NULL src")
+        SECTION("With NULL src")
         {
             char dst[CLARINET_ENDPOINT_STRLEN];
             const int errcode = clarinet_endpoint_to_string(dst, sizeof(dst), nullptr);
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
-        SECTION("Not enough space on dst for ipv4")
+        SECTION("With INSUFFICIENT space on dst for ipv4")
         {
             clarinet_endpoint src = { clarinet_addr_any_ipv4, 0 };
             char dst[4];
@@ -1772,7 +1775,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
-        SECTION("Not enough space on dst for ipv6")
+        SECTION("With INSUFFICIENT space on dst for ipv6")
         {
             clarinet_endpoint src = { { 0 } };
             memnoise(&src, sizeof(src));
@@ -1802,7 +1805,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         }
 
-        SECTION("Family not supported")
+        SECTION("With UNSUPPORTED family")
         {
             clarinet_endpoint custom_ipv6 = { { 0 } };
             memnoise(&custom_ipv6, sizeof(custom_ipv6));
@@ -1851,7 +1854,7 @@ TEST_CASE("Endpoint To String", "[endpoint]")
         }
     }
 
-    SECTION("With valid arguments")
+    SECTION("With VALID arguments")
     {
         SECTION("IPv4 to string")
         {
@@ -1948,21 +1951,21 @@ TEST_CASE("Endpoint To String", "[endpoint]")
 
 TEST_CASE("Endpoint From string", "[endpoint]")
 {
-    SECTION("NULL dst")
+    SECTION("With NULL dst")
     {
         const char* src = "192.168.0.1:0";
         const int errcode = clarinet_endpoint_from_string(nullptr, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("NULL src")
+    SECTION("With NULL src")
     {
         clarinet_endpoint dst = { { 0 } };
         const int errcode = clarinet_endpoint_from_string(&dst, nullptr, 0);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Zero srclen")
+    SECTION("With Zero srclen")
     {
         clarinet_endpoint dst = { { 0 } };
         const char* src = "192.168.0.1:0";
@@ -1970,7 +1973,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Insufficient srclen")
+    SECTION("With INSUFFICIENT space on src")
     {
         clarinet_endpoint dst = { { 0 } };
         const char* src = "192.168.0.1:0";
@@ -1978,7 +1981,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Invalid endpoints")
+    SECTION("With INVALID endpoints")
     {
         const std::vector<std::tuple<int, const char*>> data = {
             { 0, "" },
@@ -2078,7 +2081,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("Valid endpoints")
+    SECTION("With VALID endpoints")
     {
         #if CLARINET_ENABLE_IPV6
 

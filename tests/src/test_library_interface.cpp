@@ -1,6 +1,6 @@
 #include "test.h"
 
-TEST_CASE("Semantic Version", "[details][version]")
+TEST_CASE("Library Semantic Version", "[details][version]")
 {
     const uint32_t expected = (CONFIG_VERSION_MAJOR << 24)
                               | (CONFIG_VERSION_MINOR << 16)
@@ -18,7 +18,7 @@ TEST_CASE("Semantic Version", "[details][version]")
     REQUIRE(actual == expected);
 }
 
-TEST_CASE("String Version", "[details][version]")
+TEST_CASE("Library String Version", "[details][version]")
 {
     const char* expected = CLARINET_XSTR(CONFIG_VERSION_MAJOR)
                            "." CLARINET_XSTR(CONFIG_VERSION_MINOR)
@@ -27,14 +27,14 @@ TEST_CASE("String Version", "[details][version]")
     REQUIRE_THAT(actual, Equals(expected));
 }
 
-TEST_CASE("Name", "[details][name]")
+TEST_CASE("Library Name", "[details][name]")
 {
     const char* expected = "clarinet";
     const char* actual = clarinet_get_name();
     REQUIRE_THAT(actual, Equals(expected));
 }
 
-TEST_CASE("Description", "[details][description]")
+TEST_CASE("Library Description", "[details][description]")
 {
     const char* actual = clarinet_get_description();
     REQUIRE(actual != NULL);
@@ -44,8 +44,7 @@ TEST_CASE("Description", "[details][description]")
 #define REQUIRE_FLAG_SET(F, P)          do { REQUIRE(((F) & (P)) == (P)); (F) &= ~(P); } while(0)
 #define REQUIRE_FLAG_CLR(F, P)          REQUIRE(((F) & (P)) == 0)
 
-
-TEST_CASE("Feature Flags", "[details][features]")
+TEST_CASE("Library Feature Flags", "[details][features]")
 {
     REQUIRE(CLARINET_FEATURE_NONE == 0);
 
@@ -82,4 +81,69 @@ TEST_CASE("Feature Flags", "[details][features]")
     #endif
 
     REQUIRE(features == CLARINET_FEATURE_NONE);
+}
+
+TEST_CASE("Library Initialize")
+{
+    SECTION("Initialize ONCE")
+    {
+        int errcode = clarinet_initialize();
+        REQUIRE(Error(errcode) == CLARINET_ENONE);
+
+        SECTION("Finalize ONCE")
+        {
+            errcode = clarinet_finalize();
+            REQUIRE(Error(errcode) == CLARINET_ENONE);
+        }
+
+        SECTION("Finalize MULTIPLE")
+        {
+            /* Repeated calls should never fail */
+            for (int i = 0; i < 10; ++i)
+            {
+                errcode = clarinet_finalize();
+                REQUIRE(Error(errcode) == CLARINET_ENONE);
+            }
+        }
+    }
+
+    SECTION("Initialize MULTIPLE")
+    {
+        /* Repeated calls should never fail */
+        for (int i = 0; i < 10; ++i)
+        {
+            int errcode = clarinet_initialize();
+            REQUIRE(Error(errcode) == CLARINET_ENONE);
+        }
+
+        SECTION("Finalize ONCE")
+        {
+            int errcode = clarinet_finalize();
+            REQUIRE(Error(errcode) == CLARINET_ENONE);
+        }
+
+        SECTION("Finalize MULTIPLE")
+        {
+            /* Repeated calls should never fail */
+            for (int i = 0; i < 10; ++i)
+            {
+                int errcode = clarinet_finalize();
+                REQUIRE(Error(errcode) == CLARINET_ENONE);
+            }
+        }
+    }
+}
+
+TEST_CASE("Library Finalize")
+{
+    /* It's OK to call finalize without a previous call to Initialize() */
+    int errcode = clarinet_finalize();
+    REQUIRE(Error(errcode) == CLARINET_ENONE);
+
+    /* And repeated calls should never fail */
+    for (int i = 0; i < 10; ++i)
+    {
+        errcode = clarinet_finalize();
+        REQUIRE(Error(errcode) == CLARINET_ENONE);
+    }
 }

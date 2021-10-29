@@ -383,7 +383,7 @@ clarinet_proto_description(int proto);
 
 /**
  * Controls how @c clarinet_socket_bind() should handle local address/port conflicts internally.
- * This option stores an @c int value. Valid values are limited to 0 (false) and 1 (true).
+ * This option stores a 32-bit integer value. Valid values are limited to 0 (false) and non-zero (true).
  *
  * @details A <b>partial conflict</b> is said to occur when a socket tries to bind to a specific local address despite a
  * pre-existing socket bound to a wildcard in the same space. An <b>exact conflict</b> occurs when a socket tries to
@@ -608,7 +608,7 @@ clarinet_proto_description(int proto);
 #define CLARINET_SO_REUSEADDR       2
 
 /**
- * Socket buffer size for output. This option stores an @c int value. Valid values are limited to the range
+ * Socket buffer size for output. This option stores 32-bit integer value. Valid values are limited to the range
  * [1, INT_MAX]. Behaviour is undefined for negative values. A value of zero (0) may yield different results depending
  * on the platform but these should be well defined (see notes).
  *
@@ -814,7 +814,7 @@ clarinet_proto_description(int proto);
 #define CLARINET_SO_SNDBUF          3
 
 /**
- * Socket buffer size for input.  This option stores an @c int value. Valid values are limited to [1, INT_MAX]
+ * Socket buffer size for input.  This option stores a 32-bit integer value. Valid values are limited to [1, INT_MAX]
  *
  * @details See @c CLARINET_SO_SNDBUF for complete details and notes.
  */
@@ -838,8 +838,8 @@ clarinet_proto_description(int proto);
 #define CLARINET_SO_DONTLINGER      9           /**< Enable/disable linger without affecting the timeout already configured */
 
 /**
- * Enable/Disable Dual Stack on an IPV6 socket. This option stores an @c int value. Valid values are limited
- * to 0 (false) and 1 (true).
+ * Enable/Disable Dual Stack on an IPV6 socket. This option stores a 32-bit integer value. Valid values are limited
+ * to 0 (false) and non-zero (true).
  *
  * @details If this options is set to 1 , then the socket is restricted to sending and receiving IPv6 packets only.  In
  * this case, an IPv4 and an IPv6 application can bind to a single port at the same time. If this flag is set to false
@@ -860,8 +860,8 @@ clarinet_proto_description(int proto);
 #define CLARINET_IP_V6ONLY          100
 
 /**
- * Unicast Time-To-Live for IPv4 or Hop Limit for IPv6. This option stores an @c int value. Valid values are limited
- * to the range [1, 255].
+ * Unicast Time-To-Live for IPv4 or Hop Limit for IPv6. This option stores a 32-bit integer value. Valid values are
+ * limited to the range [1, 255].
  *
  * @details This is the value used in the IP header when sending unicast packets. This option is considered a hint to
  * the system and not a strict requirement. Underlying IP stacks may ignore this option without returning an error.
@@ -876,7 +876,35 @@ clarinet_proto_description(int proto);
 
 #define CLARINET_IP_MTU             102         /**< Get the current known path MTU of the current socket. */
 
-#define CLARINET_IP_PMTUD           103         /**< Enable/disable path MTU discovery mode. */
+#define CLARINET_IP_MTU_DISCOVER    103         /**< Enable/disable path MTU discovery mode. */
+
+/* endregion */
+
+/* region MTU Discovery Modes */
+
+#define CLARINET_PMTUD_UNSPEC       0           /**< Use per-route settings. Socket will set DF=0 and fragment datagrams larger than IP_MTU, otherwise will set DF=1 before sending.*/
+#define CLARINET_PMTUD_ON           1           /**< Always do Path MTU Discovery. Socket will set DF=1 and fail to send datagrams larger than IP_MTU. */
+
+
+/**
+ * Never do Path MTU Discovery.
+ *
+ * @details Socket will set DF=0 and fragment datagrams larger than the interfce MTU, except on Linux <= 3.15 where the
+ * fragmentation does not occur and the send operation will fail instead (see notes).
+ *
+ * @note On Linux @c IP_PMTUDISC_DONT will handle ICMP Type 3 Code 4 packets even though datagrams are only sent with
+ * DF=0 (WTF!?). So in kernel 3.13 a new mode was introduced, @c IP_PMTUDISC_INTERFACE, to ignore the path MTU estimate
+ * and always use the interface MTU instead. ICMP packets, which are clearly spoofed in this case, are ignored and
+ * datagrams are sent with DF=0. However @c send(2) will fail if the datagram is larger than the interface MTU
+ * (WTF again!?). In kernel 3.15 another mode was introduced, @c IP_PMTUDISC_OMIT, which behaves exactly like
+ * @c IP_PMTUDISC_INTERFACE but fragments datagrams larger than the interface MTU.
+ *
+ * @note On Windows this flag has the correct semantics and will fragment packets larger then the interface MTU.
+ *
+ * @note On Windows this flag has the correct semantics and will fragment packets larger then the interface MTU.
+ */
+#define CLARINET_PMTUD_OFF          2
+#define CLARINET_PMTUD_PROBE        3           /**< Socket will set DF=1 and send the datagram (unfragmented) even if it is larger than IP_MTU. */
 
 /* endregion */
 
@@ -1307,6 +1335,15 @@ clarinet_make_ipv6(uint16_t a,
                    uint32_t scope_id);
 
 CLARINET_EXTERN
+clarinet_addr
+clarinet_make_mac(uint8_t a,
+                  uint8_t b,
+                  uint8_t c,
+                  uint8_t d,
+                  uint8_t e,
+                  uint8_t f);
+
+CLARINET_EXTERN
 clarinet_endpoint
 clarinet_make_endpoint(clarinet_addr addr,
                        uint16_t port);
@@ -1317,8 +1354,8 @@ clarinet_make_endpoint(clarinet_addr addr,
 
 /**
  * Static initialization. Must be called once before any function that depends on the network subsystem. This is the
- * case for all socket and host info functions. Only details and address manipulation functions can be safely called
- * before initialization (unless otherwise noticed in the function description).
+ * case for all socket and host info functions. Only library and address functions can be safely called before
+ * initialization (unless otherwise noted in the function description).
  */
 CLARINET_EXTERN
 int

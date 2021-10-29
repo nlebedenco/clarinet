@@ -17,62 +17,95 @@ static starter init([] // NOLINT(cert-err58-cpp)
 // Scope initialize and finalize the library
 static autoload loader;
 
-// All families compatible with clarinet_socket_open()
-#define OPEN_COMPATIBLE_FAMILIES_COMMON \
-CLARINET_AF_INET,
+#define CLARINET_TEST_DECLARE_LIST_ITEM(i)                      (i),
+#define CLARINET_TEST_DECLARE_BSET_ITEM(i)                      | (i)
 
 #if CLARINET_ENABLE_IPV6
-#define OPEN_COMPATIBLE_FAMILIES OPEN_COMPATIBLE_FAMILIES_COMMON CLARINET_AF_INET6,
+#define CLARINET_TEST_DECLARE_LIST_ITEM_WHEN_IPV6_ENABLED(i)    CLARINET_TEST_DECLARE_LIST_ITEM(i)
+#define CLARINET_TEST_DECLARE_LIST_ITEM_WHEN_IPV6_DISABLED(i)
 #else
-#define OPEN_COMPATIBLE_FAMILIES OPEN_COMPATIBLE_FAMILIES_COMMON
+#define CLARINET_TEST_DECLARE_LIST_ITEM_WHEN_IPV6_ENABLED(i)
+#define CLARINET_TEST_DECLARE_LIST_ITEM_WHEN_IPV6_DISABLED(i)   CLARINET_TEST_DECLARE_LIST_ITEM(i)
 #endif
 
-// All families incompatible with clarinet_socket_open()
-#define OPEN_INCOMPATIBLE_FAMILIES_COMMON \
-CLARINET_AF_UNSPEC, \
-CLARINET_AF_LINK,
+// All families compatible with clarinet_socket_open():  D - Declare; X - Conditional Declare
+#define CLARINET_TEST_SOCKET_OPEN_SUPPORTED_FAMILIES(D, X) \
+    D(CLARINET_AF_INET) \
+    X(CLARINET_AF_INET6) \
 
-#if CLARINET_ENABLE_IPV6
-#define OPEN_INCOMPATIBLE_FAMILIES OPEN_INCOMPATIBLE_FAMILIES_COMMON
-#else
-#define OPEN_INCOMPATIBLE_FAMILIES OPEN_INCOMPATIBLE_FAMILIES_COMMON CLARINET_AF_INET6,
-#endif
+// All families incompatible with clarinet_socket_open():  D - Declare; X - Conditional Declare
+#define CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_FAMILIES(D, X) \
+    D(CLARINET_AF_UNSPEC) \
+    X(CLARINET_AF_INET6) \
+    D(CLARINET_AF_LINK) \
 
 // All protocols compatible with clarinet_socket_open()
-#define OPEN_COMPATIBLE_PROTOCOLS \
-CLARINET_PROTO_UDP, \
-CLARINET_PROTO_TCP,
+#define CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTOS(D) \
+    D(CLARINET_PROTO_UDP) \
+    D(CLARINET_PROTO_TCP) \
 
 // All protocols incompatible with clarinet_socket_open()
-#define OPEN_INCOMPATIBLE_PROTOCOLS \
-CLARINET_PROTO_NONE, \
-CLARINET_PROTO_DTLC, \
-CLARINET_PROTO_DTLS, \
-CLARINET_PROTO_TLS, \
-CLARINET_PROTO_GDTP, \
-CLARINET_PROTO_GDTPS, \
-CLARINET_PROTO_ENET, \
-CLARINET_PROTO_ENETS,
+#define CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_PROTOS(D) \
+    D(CLARINET_PROTO_NONE) \
+    D(CLARINET_PROTO_DTLC) \
+    D(CLARINET_PROTO_DTLS) \
+    D(CLARINET_PROTO_TLS) \
+    D(CLARINET_PROTO_GDTP) \
+    D(CLARINET_PROTO_GDTPS) \
+    D(CLARINET_PROTO_ENET) \
+    D(CLARINET_PROTO_ENETS) \
 
-// All protocols compatible with clarinet_socket_listen(), clarinet_socket_accept() and clarinet_socket_connect()
-#define LISTEN_COMPATIBLE_PROTOCOLS \
-CLARINET_PROTO_TCP,
+// All protocols compatible with clarinet_socket_listen() and clarinet_socket_accept()
+#define CLARINET_TEST_SOCKET_LISTEN_SUPPORTED_PROTOS(D) \
+    D(CLARINET_PROTO_TCP) \
 
-// All protocols incompatible with clarinet_socket_listen()
-#define LISTEN_INCOMPATIBLE_PROTOCOLS \
-CLARINET_PROTO_NONE, \
-CLARINET_PROTO_UDP, \
-CLARINET_PROTO_DTLC, \
-CLARINET_PROTO_DTLS, \
-CLARINET_PROTO_TLS, \
-CLARINET_PROTO_GDTP, \
-CLARINET_PROTO_GDTPS, \
-CLARINET_PROTO_ENET, \
-CLARINET_PROTO_ENETS,
+// All protocols incompatible with clarinet_socket_listen()and clarinet_socket_accept()
+#define CLARINET_TEST_SOCKET_LISTEN_UNSUPPORTED_PROTOS(D) \
+    D(CLARINET_PROTO_NONE) \
+    D(CLARINET_PROTO_UDP) \
+    D(CLARINET_PROTO_DTLC) \
+    D(CLARINET_PROTO_DTLS) \
+    D(CLARINET_PROTO_TLS) \
+    D(CLARINET_PROTO_GDTP) \
+    D(CLARINET_PROTO_GDTPS) \
+    D(CLARINET_PROTO_ENET) \
+    D(CLARINET_PROTO_ENETS) \
 
-TEST_CASE("Initialize")
+// All protocols compatible with clarinet_socket_connect()
+#define CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTOS(D) \
+    D(CLARINET_PROTO_UDP) \
+    D(CLARINET_PROTO_TCP) \
+
+// All protocols incompatible with clarinet_socket_connect()
+#define CLARINET_TEST_SOCKET_CONNECT_UNSUPPORTED_PROTOS(D) \
+    D(CLARINET_PROTO_NONE) \
+    D(CLARINET_PROTO_DTLC) \
+    D(CLARINET_PROTO_DTLS) \
+    D(CLARINET_PROTO_TLS) \
+    D(CLARINET_PROTO_GDTP) \
+    D(CLARINET_PROTO_GDTPS) \
+    D(CLARINET_PROTO_ENET) \
+    D(CLARINET_PROTO_ENETS) \
+
+#define CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST             CLARINET_TEST_SOCKET_OPEN_SUPPORTED_FAMILIES(CLARINET_TEST_DECLARE_LIST_ITEM, CLARINET_TEST_DECLARE_LIST_ITEM_WHEN_IPV6_ENABLED)
+#define CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_AF_LIST           CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_FAMILIES(CLARINET_TEST_DECLARE_LIST_ITEM, CLARINET_TEST_DECLARE_LIST_ITEM_WHEN_IPV6_DISABLED)
+
+#define CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST          CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTOS(CLARINET_TEST_DECLARE_LIST_ITEM)
+#define CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_PROTO_LIST        CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_PROTOS(CLARINET_TEST_DECLARE_LIST_ITEM)
+#define CLARINET_TEST_SOCKET_OPEN_PROTO_BSET                 (0 CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTOS(CLARINET_TEST_DECLARE_BSET_ITEM))
+
+#define CLARINET_TEST_SOCKET_LISTEN_SUPPORTED_PROTO_LIST        CLARINET_TEST_SOCKET_LISTEN_SUPPORTED_PROTOS(CLARINET_TEST_DECLARE_LIST_ITEM)
+#define CLARINET_TEST_SOCKET_LISTEN_UNSUPPORTED_PROTO_LIST      CLARINET_TEST_SOCKET_LISTEN_UNSUPPORTED_PROTOS(CLARINET_TEST_DECLARE_LIST_ITEM)
+#define CLARINET_TEST_SOCKET_LISTEN_PROTO_BSET               (0 CLARINET_TEST_SOCKET_LISTEN_SUPPORTED_PROTOS(CLARINET_TEST_DECLARE_BSET_ITEM))
+
+#define CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTO_LIST       CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTOS(CLARINET_TEST_DECLARE_LIST_ITEM)
+#define CLARINET_TEST_SOCKET_CONNECT_UNSUPPORTED_PROTO_LIST     CLARINET_TEST_SOCKET_CONNECT_UNSUPPORTED_PROTOS(CLARINET_TEST_DECLARE_LIST_ITEM)
+#define CLARINET_TEST_SOCKET_CONNECT_PROTO_BSET              (0 CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTOS(CLARINET_TEST_DECLARE_BSET_ITEM))
+
+
+TEST_CASE("Socket Initialize")
 {
-    SECTION("Memory unmodified")
+    SECTION("With memory unmodified")
     {
         clarinet_socket socket;
         clarinet_socket* sp = &socket;
@@ -81,7 +114,7 @@ TEST_CASE("Initialize")
         REQUIRE(sp->proto == CLARINET_PROTO_NONE);
     }
 
-    SECTION("Memory with all zeroes")
+    SECTION("With memory set to all zeroes")
     {
         clarinet_socket socket;
         clarinet_socket* sp = &socket;
@@ -92,7 +125,7 @@ TEST_CASE("Initialize")
         REQUIRE(sp->proto == CLARINET_PROTO_NONE);
     }
 
-    SECTION("Memory with all ones")
+    SECTION("With memory set to all ones")
     {
         clarinet_socket socket;
         clarinet_socket* sp = &socket;
@@ -104,145 +137,184 @@ TEST_CASE("Initialize")
     }
 }
 
-TEST_CASE("Open/Close")
+TEST_CASE("Socket Open/Close")
 {
-    SECTION("NULL socket")
+    SECTION("Open")
     {
-        clarinet_family family = GENERATE(values({ OPEN_COMPATIBLE_FAMILIES OPEN_INCOMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS OPEN_INCOMPATIBLE_PROTOCOLS }));
+        SECTION("With NULL socket")
+        {
+            clarinet_family family = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+                CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_AF_LIST
+            }));
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+                CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_PROTO_LIST
+            }));
 
-        FROM(family);
-        FROM(proto);
+            FROM(family);
+            FROM(proto);
 
-        int errcode = clarinet_socket_open(nullptr, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+            int errcode = clarinet_socket_open(nullptr, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+        }
+
+        SECTION("With an UNSUPPORTED family")
+        {
+            clarinet_family family = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_AF_LIST
+            }));
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+                CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_PROTO_LIST
+            }));
+
+            FROM(family);
+            FROM(proto);
+
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+            REQUIRE(sp->family == CLARINET_AF_UNSPEC);
+            REQUIRE(sp->proto == CLARINET_PROTO_NONE);
+
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_EAFNOSUPPORT));
+        }
+
+        SECTION("With an UNSUPPORTED protocol")
+        {
+            clarinet_family family = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+            }));
+
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_UNSUPPORTED_PROTO_LIST
+            }));
+
+            FROM(family);
+            FROM(proto);
+
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_EPROTONOSUPPORT));
+        }
+
+        SECTION("With COMPATIBLE family and protocol")
+        {
+            clarinet_family family = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+            }));
+
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
+
+            FROM(family);
+            FROM(proto);
+
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            CHECK(sp->family == family);
+            CHECK(sp->proto == proto);
+
+            errcode = clarinet_socket_close(sp);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            REQUIRE(sp->family == CLARINET_AF_UNSPEC);
+            REQUIRE(sp->proto == CLARINET_PROTO_NONE);
+        }
+
+        SECTION("SAME socket TWICE")
+        {
+            clarinet_family family = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+            }));
+
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
+
+            FROM(family);
+            FROM(proto);
+
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+            errcode = clarinet_socket_open(sp, family, proto);
+            CHECK(Error(errcode) == Error(CLARINET_EINVAL));
+
+            errcode = clarinet_socket_close(sp);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        }
     }
 
-    SECTION("INITIALIZED socket with INCOMPATIBLE family")
+    SECTION("Close")
     {
-        clarinet_family family = GENERATE(values({ OPEN_INCOMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS OPEN_INCOMPATIBLE_PROTOCOLS }));
+        SECTION("With NULL socket")
+        {
+            int errcode = clarinet_socket_close(nullptr);
+            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+        }
 
-        FROM(family);
-        FROM(proto);
+        SECTION("With UNOPEN socket")
+        {
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
 
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-        REQUIRE(sp->family == CLARINET_AF_UNSPEC);
-        REQUIRE(sp->proto == CLARINET_PROTO_NONE);
+            int errcode = clarinet_socket_close(&socket);
+            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+        }
 
-        int errcode = clarinet_socket_open(sp, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_EAFNOSUPPORT));
-    }
+        SECTION("SAME socket TWICE")
+        {
+            clarinet_family family = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+            }));
 
-    SECTION("INITIALIZED socket with INCOMPATIBLE protocol")
-    {
-        clarinet_family family = GENERATE(values({ OPEN_COMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_INCOMPATIBLE_PROTOCOLS }));
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
 
-        FROM(family);
-        FROM(proto);
+            FROM(family);
+            FROM(proto);
 
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
 
-        int errcode = clarinet_socket_open(sp, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_EPROTONOSUPPORT));
-    }
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
-    SECTION("INITIALIZED socket with COMPATIBLE family and protocol")
-    {
-        clarinet_family family = GENERATE(values({ OPEN_COMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
+            errcode = clarinet_socket_close(sp);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
-        FROM(family);
-        FROM(proto);
-
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int errcode = clarinet_socket_open(sp, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        CHECK(sp->family == family);
-        CHECK(sp->proto == proto);
-
-        errcode = clarinet_socket_close(sp);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-    }
-
-    SECTION("SAME socket twice")
-    {
-        clarinet_family family = GENERATE(values({ OPEN_COMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
-        FROM(family);
-        FROM(proto);
-
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int errcode = clarinet_socket_open(sp, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-        errcode = clarinet_socket_open(sp, family, proto);
-        CHECK(Error(errcode) == Error(CLARINET_EINVAL));
-
-        errcode = clarinet_socket_close(sp);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-    }
-
-    SECTION("Close NULL socket")
-    {
-        int errcode = clarinet_socket_close(nullptr);
-        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-    }
-
-    SECTION("Close EMPTY socket")
-    {
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int errcode = clarinet_socket_close(&socket);
-        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-    }
-
-    SECTION("Close SAME socket twice")
-    {
-        clarinet_family family = GENERATE(values({ OPEN_COMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
-        FROM(family);
-        FROM(proto);
-
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int errcode = clarinet_socket_open(sp, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-        errcode = clarinet_socket_close(sp);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-        /* It should be safe to close a socket multiple times as long as the previous attempt did not fail */
-        errcode = clarinet_socket_close(sp);
-        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+            /* It should be safe to close a socket multiple times as long as the previous attempt did not fail */
+            errcode = clarinet_socket_close(sp);
+            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+        }
     }
 }
 
-TEST_CASE("Get/Set Option")
+TEST_CASE("Socket Get/Set Option")
 {
-    const int VAL_INIT = -1; /* 0xFFFFFFFF */
-    const size_t LEN_INIT = 4 * sizeof(int);
+    const int32_t VAL_INIT = -1; /* 0xFFFFFFFF */
+    const size_t LEN_INIT = 4 * sizeof(int32_t); /* deliberately larger than sizeof(int32_t) */
 
-    SECTION("NULL socket")
+    SECTION("With NULL socket")
     {
-        int val = VAL_INIT;
+        int32_t val = VAL_INIT;
         size_t len = LEN_INIT;
 
         int errcode = clarinet_socket_getopt(nullptr, 0, &val, &len);
@@ -261,10 +333,906 @@ TEST_CASE("Get/Set Option")
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("INITIALIZED socket")
+    SECTION("With INVALID option arguments")
     {
-        clarinet_family family = GENERATE(values({ OPEN_COMPATIBLE_FAMILIES }));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(family);
+        FROM(proto);
+
+        /* Run the same tests with UNOPEN, CLOSED and OPEN sockets */
+
+        clarinet_socket unopen_socket;
+        clarinet_socket* usp = &unopen_socket;
+        clarinet_socket_init(usp);
+
+        clarinet_socket closed_socket;
+        clarinet_socket* csp = &closed_socket;
+        clarinet_socket_init(csp);
+
+        int errcode = clarinet_socket_open(csp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        errcode = clarinet_socket_close(csp);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+        clarinet_socket open_socket;
+        clarinet_socket* osp = &open_socket;
+        clarinet_socket_init(osp);
+
+        errcode = clarinet_socket_open(osp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&osp]
+        {
+            clarinet_socket_close(osp);
+        });
+
+        const char* state;
+        clarinet_socket* sp;
+
+        // @formatter:off
+            std::tie(state, sp) = GENERATE_REF(table<const char*, clarinet_socket*>({
+                { "UNOPEN", usp },
+                { "CLOSED", csp },
+                { "OPEN",   osp }
+            }));
+            // @formatter:on
+
+        FROM(state);
+
+        int32_t val = VAL_INIT;
+        size_t len = LEN_INIT;
+
+        SECTION("With INVALID optname")
+        {
+            int optname = GENERATE(-1, 0, 1 << 16, 1 << 24, INT_MAX);
+            FROM(optname);
+
+            SECTION("Get option")
+            {
+                errcode = clarinet_socket_getopt(sp, optname, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                REQUIRE(val == VAL_INIT);
+                REQUIRE(len == LEN_INIT);
+
+                errcode = clarinet_socket_getopt(sp, optname, nullptr, nullptr);
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                REQUIRE(val == VAL_INIT);
+                REQUIRE(len == LEN_INIT);
+            }
+
+            SECTION("Set option")
+            {
+                errcode = clarinet_socket_setopt(sp, optname, &val, sizeof(val));
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                REQUIRE(val == VAL_INIT);
+
+                errcode = clarinet_socket_setopt(sp, optname, nullptr, 0);
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+            }
+        }
+
+        SECTION("With VALID optname but INVALID optval/optlen")
+        {
+            #define TABLE_ITEM(s) { #s "(" CLARINET_XSTR(s) ")", (s) }
+            const char* option;
+            int optname;
+            std::tie(option, optname) = GENERATE(table<const char*, int>({
+                TABLE_ITEM(CLARINET_SO_NONBLOCK),
+                TABLE_ITEM(CLARINET_SO_REUSEADDR),
+                TABLE_ITEM(CLARINET_SO_SNDBUF),
+                TABLE_ITEM(CLARINET_SO_RCVBUF),
+                TABLE_ITEM(CLARINET_SO_SNDTIMEO),
+                TABLE_ITEM(CLARINET_SO_RCVTIMEO),
+                TABLE_ITEM(CLARINET_SO_KEEPALIVE),
+                TABLE_ITEM(CLARINET_SO_LINGER),
+                TABLE_ITEM(CLARINET_SO_DONTLINGER),
+                TABLE_ITEM(CLARINET_IP_TTL),
+                TABLE_ITEM(CLARINET_IP_V6ONLY),
+                TABLE_ITEM(CLARINET_IP_MTU),
+                TABLE_ITEM(CLARINET_IP_MTU_DISCOVER),
+            }));
+            #undef TABLE_ITEM
+            FROM(option);
+
+            SECTION("With NULL optval")
+            {
+                SECTION("Get Option")
+                {
+                    errcode = clarinet_socket_getopt(sp, optname, nullptr, nullptr);
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+
+                    errcode = clarinet_socket_getopt(sp, optname, nullptr, &len);
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                    REQUIRE(len == LEN_INIT);
+                }
+
+                SECTION("Set Option")
+                {
+                    errcode = clarinet_socket_setopt(sp, optname, nullptr, sizeof(val));
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+
+                    errcode = clarinet_socket_setopt(sp, optname, nullptr, 0);
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                }
+            }
+
+            SECTION("With NULL optlen")
+            {
+                errcode = clarinet_socket_getopt(sp, optname, &val, nullptr);
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                REQUIRE(val == VAL_INIT);
+            }
+
+            SECTION("With INVALID optlen")
+            {
+                auto target = (int32_t)GENERATE(0, 1, 2, 3);
+
+                SECTION("Get option")
+                {
+                    len = (size_t)target;
+                    errcode = clarinet_socket_getopt(sp, optname, &val, &len);
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                    REQUIRE(val == VAL_INIT);
+                    REQUIRE(len == (size_t)target);
+                }
+
+                SECTION("Set option")
+                {
+                    errcode = clarinet_socket_setopt(sp, optname, &val, target);
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                    REQUIRE(val == VAL_INIT);
+                }
+            }
+        }
+    }
+
+    SECTION("With VALID option arguments")
+    {
+        const int on = 1;
+        const int off = 0;
+
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(family);
+        FROM(proto);
+
+        SECTION("With UNOPEN/CLOSED socket")
+        {
+            clarinet_socket unopen_socket;
+            clarinet_socket* usp = &unopen_socket;
+            clarinet_socket_init(usp);
+
+            clarinet_socket closed_socket;
+            clarinet_socket* csp = &closed_socket;
+            clarinet_socket_init(csp);
+
+            int errcode = clarinet_socket_open(csp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            errcode = clarinet_socket_close(csp);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+            const char* state;
+            clarinet_socket* sp;
+
+            // @formatter:off
+                std::tie(state, sp) = GENERATE_REF(table<const char*, clarinet_socket*>({
+                    { "UNOPEN", usp },
+                    { "CLOSED", csp },
+                }));
+                // @formatter:on
+
+            FROM(state);
+
+            #define TABLE_ITEM(s) { #s "(" CLARINET_XSTR(s) ")", (s) }
+            const char* option;
+            int optname;
+            std::tie(option, optname) = GENERATE(table<const char*, int>({
+                TABLE_ITEM(CLARINET_SO_NONBLOCK),
+                TABLE_ITEM(CLARINET_SO_REUSEADDR),
+                TABLE_ITEM(CLARINET_SO_SNDBUF),
+                TABLE_ITEM(CLARINET_SO_RCVBUF),
+                TABLE_ITEM(CLARINET_SO_SNDTIMEO),
+                TABLE_ITEM(CLARINET_SO_RCVTIMEO),
+                TABLE_ITEM(CLARINET_SO_KEEPALIVE),
+                TABLE_ITEM(CLARINET_SO_LINGER),
+                TABLE_ITEM(CLARINET_SO_DONTLINGER),
+                TABLE_ITEM(CLARINET_IP_TTL),
+                TABLE_ITEM(CLARINET_IP_V6ONLY),
+                TABLE_ITEM(CLARINET_IP_MTU),
+                TABLE_ITEM(CLARINET_IP_MTU_DISCOVER),
+            }));
+            #undef TABLE_ITEM
+            FROM(option);
+
+            SECTION("Get")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                errcode = clarinet_socket_getopt(sp, optname, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                REQUIRE(val == VAL_INIT);
+                REQUIRE(len == LEN_INIT);
+            }
+
+            SECTION("Set")
+            {
+                /* It's ok to test read-only socket options here too because they'd return CALRINET_EINVAL anyway */
+                int32_t val = on;
+                errcode = clarinet_socket_setopt(sp, optname, &val, sizeof(val));
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                REQUIRE(val == on);
+            }
+        }
+
+        SECTION("With OPEN socket")
+        {
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexit = finalizer([&sp]
+            {
+                clarinet_socket_close(sp);
+            });
+
+            SECTION("With optname CLARINET_SO_NONBLOCK")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* All platforms are expected to open the socket in blocking mode */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_NONBLOCK, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_NONBLOCK, &on, sizeof(on));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_NONBLOCK, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_NONBLOCK, &off, sizeof(off));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_NONBLOCK, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_REUSEADDR")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* All platforms are expected to open the socket without address reuse */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_REUSEADDR, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_REUSEADDR, &on, sizeof(on));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_REUSEADDR, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_REUSEADDR, &off, sizeof(off));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_REUSEADDR, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_SNDBUF")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* Every platform has a different default buffer size but all are > 0 */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDBUF, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val > 0);
+                REQUIRE(len == sizeof(val));
+
+                /* These are safe values supposed to be between the minimum and maximum supported by all platforms so a call
+                 * to clarinet_socket_getopt() will return the expected value.
+                 *
+                 * Minimum SO_SNDBUF is:
+                 *  - WINDOWS: 0 (effectively disables the buffer and leaves only the net driver queue)
+                 *  - LINUX (x64): 4608
+                 *  - BSD/DARWIN: 1
+                 *
+                 * Maximum SO_SNDBUF is:
+                 *  - WINDOWS: 2147483648 but in practice it is bounded by available memory
+                 *  - LINUX (x64): 212992 (defined by net.core.wmem_max)
+                 *  - BSD/DARWIN: 2097152 (defined by kern.ipc.maxsockbuf)
+                 */
+                auto target = (int32_t)GENERATE(8191, 8192, 16383, 16384);
+                FROM(target);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_SNDBUF, &target, sizeof(target));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDBUF, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                #if defined(__linux__) /* linux is special as we always round down odd buffer sizes to the nearest even number */
+                REQUIRE(val == (target & -2)); /* target & 0XFFFFFFFE */
+                #else
+                REQUIRE(val == target);
+                #endif // defined(__linux__)
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_RCVBUF")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* Every platform has a different default buffer size but all are > 0 */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVBUF, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val > 0);
+                REQUIRE(len == sizeof(val));
+
+                /* These are safe values supposed to be between the minimum and maximum supported by all platforms so a call
+                 * to clarinet_socket_getopt() will return the expected value.
+                 *
+                 * Minimum SO_RCVBUF is:
+                 *  - WINDOWS: 0 (effectively disables the buffer and leaves only the net driver queue)
+                 *  - LINUX (x64): 2292
+                 *  - BSD/DARWIN: 1
+                 *
+                 * Maximum SO_RCVBUF is:
+                 *  - WINDOWS: 2147483648 but in practice it is bounded by available memory
+                 *  - LINUX (x64): 212992 (defined by net.core.wmem_max)
+                 *  - BSD/DARWIN: 2097152 (defined by kern.ipc.maxsockbuf)
+                 */
+                auto target = (int32_t)GENERATE(8191, 8192, 16383, 16384);
+                FROM(target);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_RCVBUF, &target, sizeof(target));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVBUF, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                #if defined(__linux__) /* linux is special as we always round down odd buffer sizes to the nearest even number */
+                REQUIRE(val == (target & -2)); /* target & 0XFFFFFFFE */
+                #else
+                REQUIRE(val == target);
+                #endif // defined(__linux__)
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_SNDTIMEO")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* All platforms are expected to have a default timeout of 0. */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDTIMEO, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == 0);
+                REQUIRE(len == sizeof(val));
+
+                auto target = (int32_t)GENERATE(0, 10, 250, 500, 1000, 5000, 60000);
+                FROM(target);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_SNDTIMEO, &target, sizeof(target));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDTIMEO, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == target);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_RCVTIMEO")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* All platforms are expected to have a default timeout of 0. */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVTIMEO, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == 0);
+                REQUIRE(len == sizeof(val));
+
+                auto target = (int32_t)GENERATE(0, 10, 250, 500, 1000, 5000, 60000);
+                FROM(target);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_RCVTIMEO, &target, sizeof(target));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVTIMEO, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == target);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_KEEPALIVE")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* All platforms are expected to open the socket keep alive off */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_KEEPALIVE, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_KEEPALIVE, &on, sizeof(on));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_KEEPALIVE, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_KEEPALIVE, &off, sizeof(off));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_KEEPALIVE, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_LINGER")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                clarinet_linger linger;
+                memset(&linger, 0xFF, sizeof(linger));
+                size_t lingerlen = sizeof(linger);
+
+                /* All platforms are expected to open the socket without linger */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE_FALSE(linger.enabled);
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+
+                auto target = (int32_t)GENERATE(0, 5, 10, 250, 500, 1000, 5000, 65535);
+                FROM(target);
+
+                linger.enabled = true;
+                linger.seconds = (uint16_t)target;
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_LINGER, &linger, sizeof(linger));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(linger.enabled);
+                REQUIRE(linger.seconds == target);
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE(linger.enabled);
+                REQUIRE(linger.seconds == target);
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+
+                linger.enabled = false;
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_LINGER, &linger, sizeof(linger));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(linger.enabled);
+                REQUIRE(linger.seconds == target);
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE_FALSE(linger.enabled);
+                REQUIRE(linger.seconds == target);
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_SO_DONTLINGER")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                clarinet_linger linger;
+                memset(&linger, 0xFF, sizeof(linger));
+                size_t lingerlen = sizeof(linger);
+
+                /* All platforms are expected to open the socket without linger this means ON */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+
+                /* All platforms are expected to open the socket without linger */
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE_FALSE(linger.enabled);
+
+                uint16_t seconds = linger.seconds;
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_DONTLINGER, &off, sizeof(off));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE(linger.enabled);
+                REQUIRE(linger.seconds == seconds);
+
+                seconds = 5; /* arbitrary non-zero value - we just want to check that CLARINET_SO_DONTLINGER does not affect the timeout previously set here */
+                linger.seconds = seconds;
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_LINGER, &linger, sizeof(linger));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(linger.enabled);
+                REQUIRE(linger.seconds == seconds);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_DONTLINGER, &on, sizeof(on));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE_FALSE(linger.enabled);
+                REQUIRE(linger.seconds == seconds);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_SO_DONTLINGER, &off, sizeof(off));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE_FALSE(val);
+                REQUIRE(len == sizeof(val));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(lingerlen == sizeof(clarinet_linger));
+                REQUIRE(linger.enabled);
+                REQUIRE(linger.seconds == seconds);
+            }
+
+            SECTION("With optname CLARINET_IP_V6ONLY")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                #if CLARINET_ENABLE_IPV6
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
+                if (sp->family == CLARINET_AF_INET6)
+                {
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                    /* Each platform has a specific default initial values assuming unmodified system configurations. */
+                    #if defined(_WIN32)
+                    REQUIRE(val);
+                    #elif defined(__linux__)
+                    REQUIRE_FALSE(val);
+                    #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
+                    REQUIRE_FALSE(val);
+            #else
+            REQUIRE_FALSE(val);
+                    #endif
+                    REQUIRE(len == sizeof(val));
+                }
+                else
+                {
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                }
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &on, sizeof(on));
+                if (sp->family == CLARINET_AF_INET6)
+                {
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                    errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                    REQUIRE(val);
+                    REQUIRE(len == sizeof(val));
+
+                    errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &off, sizeof(off));
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                    errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                    REQUIRE_FALSE(val);
+                    REQUIRE(len == sizeof(val));
+                }
+                else
+                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+
+                #else // CLARINET_ENABLE_IPV6
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
+        CHECK(Error(errcode) == Error(CLARINET_ENOTSUP));
+
+        errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &on, sizeof(on));
+        CHECK(Error(errcode) == Error(CLARINET_ENOTSUP));
+
+                #endif // CLARINET_ENABLE_IPV6
+            }
+
+                // TODO: create tests for CLARINET_IP_TTL values < 1 and > 255 and document for each platform
+            SECTION("With optname CLARINET_IP_TTL")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* Every platform has a different default TTL but all are > 0 */
+                errcode = clarinet_socket_getopt(sp, CLARINET_IP_TTL, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val > 0);
+                REQUIRE(len == sizeof(val));
+
+                /* valid values are in the interval [1, 255] */
+                auto target = (int32_t)GENERATE(1, 2, 4, 8, 16, 32, 64, 128, 255);
+                FROM(target);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_IP_TTL, &target, sizeof(target));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_IP_TTL, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == target);
+                REQUIRE(len == sizeof(val));
+            }
+
+            SECTION("With optname CLARINET_IP_MTU")
+            {
+                #define CLARINET_IP_MTU_TEST_VALUES 0, 32, 576, 1280, 1500, 4096
+
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                SECTION("BEFORE Connect")
+                {
+                    SECTION("Get option")
+                    {
+                        /* MTU cannot be retrieved until the scoket is connected */
+                        errcode = clarinet_socket_getopt(sp, CLARINET_IP_MTU, &val, &len);
+                        REQUIRE(Error(errcode) == Error(CLARINET_ENOTCONN));
+                    }
+
+                    SECTION("Set option")
+                    {
+                        /* All attempts to set CLARINET_IP_MTU should fail since it is a read-only option */
+                        auto target = (int32_t)GENERATE(CLARINET_IP_MTU_TEST_VALUES);
+                        FROM(target);
+
+                        errcode = clarinet_socket_setopt(sp, CLARINET_IP_MTU, &target, sizeof(target));
+                        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                    }
+                }
+
+                SECTION("AFTER Connect")
+                {
+                    clarinet_socket server;
+                    clarinet_socket* srv = &server;
+                    clarinet_socket_init(srv);
+
+                    errcode = clarinet_socket_open(srv, family, proto);
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                    const auto onserverexit = finalizer([&srv]
+                    {
+                        clarinet_socket_close(srv);
+                    });
+
+                    clarinet_endpoint endpoint;
+                    clarinet_addr addr;
+                    switch(family)
+                    {
+                        case CLARINET_AF_INET:
+                            endpoint = clarinet_make_endpoint(clarinet_addr_any_ipv4, 0);
+                            addr = clarinet_addr_loopback_ipv4;
+                            break;
+                        case CLARINET_AF_INET6:
+                            endpoint = clarinet_make_endpoint(clarinet_addr_any_ipv6, 0);
+                            addr = clarinet_addr_loopback_ipv6;
+                            break;
+                        default:
+                            FAIL(); /* unexpected family */
+                    }
+
+                    errcode = clarinet_socket_bind(srv, &endpoint);
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                    errcode = clarinet_socket_local_endpoint(srv, &endpoint);
+                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                    endpoint.addr = addr;
+
+                    /* if the server protocol supports listen then make it listen */
+                    if (proto & CLARINET_TEST_SOCKET_LISTEN_PROTO_BSET)
+                    {
+                        errcode = clarinet_socket_listen(srv, 1);
+                        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                    }
+
+                    if (proto & CLARINET_TEST_SOCKET_CONNECT_PROTO_BSET)
+                    {
+                        errcode = clarinet_socket_connect(sp, &endpoint);
+                        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                    }
+
+                    SECTION("Get option")
+                    {
+                        errcode = clarinet_socket_getopt(sp, CLARINET_IP_MTU, &val, &len);
+                        /* CLARINET_IP_MTU requires the socket to be connected. */
+                        if (proto & CLARINET_TEST_SOCKET_CONNECT_PROTO_BSET)
+                        {
+                            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                            /* According to RFC791: "Every internet module must be able to forward a datagram of 68
+                             * octets without further fragmentation. This is because an internet header may be up to
+                             * 60 octets, and the minimum fragment is 8 octets." */
+                            REQUIRE(val > 68);
+                            REQUIRE(len == sizeof(val));
+                        }
+                        else
+                        {
+                            REQUIRE(Error(errcode) == Error(CLARINET_ENOTCONN));
+                        }
+                    }
+
+                    SECTION("Set option")
+                    {
+                        /* All attempts to set CLARINET_IP_MTU should fail since it is a read-only option */
+                        auto target = (int32_t)GENERATE(CLARINET_IP_MTU_TEST_VALUES);
+                        FROM(target);
+
+                        errcode = clarinet_socket_setopt(sp, CLARINET_IP_MTU, &target, sizeof(target));
+                        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+                    }
+                }
+
+                #undef CLARINET_IP_MTU_TEST_VALUES
+            }
+
+            SECTION("With optname CLARINET_IP_MTU_DISCOVER")
+            {
+                int32_t val = VAL_INIT;
+                size_t len = LEN_INIT;
+
+                /* All platforms are expected to open the socket with CLARINET_PMTUD_UNSPEC mode */
+                errcode = clarinet_socket_getopt(sp, CLARINET_IP_MTU_DISCOVER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == CLARINET_PMTUD_UNSPEC);
+                REQUIRE(len == sizeof(val));
+
+                #define TABLE_ITEM(s) { #s, (s) }
+                const char* optval;
+                int32_t target;
+                std::tie(optval, target) = GENERATE(table<const char*, int32_t>({
+                    TABLE_ITEM(CLARINET_PMTUD_UNSPEC),
+                    TABLE_ITEM(CLARINET_PMTUD_ON),
+                    TABLE_ITEM(CLARINET_PMTUD_OFF),
+                    TABLE_ITEM(CLARINET_PMTUD_PROBE),
+                }));
+                #undef TABLE_ITEM
+
+                FROM(optval);
+
+                errcode = clarinet_socket_setopt(sp, CLARINET_IP_MTU_DISCOVER, &target, sizeof(target));
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_getopt(sp, CLARINET_IP_MTU_DISCOVER, &val, &len);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+                REQUIRE(val == target);
+                REQUIRE(len == sizeof(val));
+            }
+        }
+    }
+}
+
+TEST_CASE("Socket Bind")
+{
+    SECTION("With NULL socket")
+    {
+        // @formatter:off
+        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
+            { 0, { clarinet_addr_any_ipv4,      0 } },
+            { 1, { clarinet_addr_loopback_ipv4, 0 } },
+            #if CLARINET_ENABLE_IPV6
+            { 2, { clarinet_addr_any_ipv6,      0 } },
+            { 3, { clarinet_addr_loopback_ipv6, 0 } },
+            #endif // CLARINET_ENABLE_IPV6
+        };
+        // @formatter:on
+
+        SAMPLES(data);
+
+        int sample;
+        clarinet_endpoint endpoint;
+        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
+
+        FROM(sample);
+
+        int errcode = clarinet_socket_bind(nullptr, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With UNOPEN socket")
+    {
+        // @formatter:off
+        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
+            { 0, { clarinet_addr_any_ipv4,      0 } },
+            { 1, { clarinet_addr_loopback_ipv4, 0 } },
+            #if CLARINET_ENABLE_IPV6
+            { 2, { clarinet_addr_any_ipv6,      0 } },
+            { 3, { clarinet_addr_loopback_ipv6, 0 } },
+            #endif // CLARINET_ENABLE_IPV6
+        };
+        // @formatter:on
+
+        SAMPLES(data);
+
+        int sample;
+        clarinet_endpoint endpoint;
+        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(sample);
+        FROM(proto);
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_bind(sp, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With NULL endpoint")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
 
         FROM(family);
         FROM(proto);
@@ -280,673 +1248,29 @@ TEST_CASE("Get/Set Option")
             clarinet_socket_close(sp);
         });
 
-        const int on = 1;
-        const int off = 0;
-
-        SECTION("Invalid optname")
-        {
-            int val = VAL_INIT;
-            size_t len = LEN_INIT;
-
-            errcode = clarinet_socket_getopt(sp, 0, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-            REQUIRE(val == VAL_INIT);
-            REQUIRE(len == LEN_INIT);
-
-            errcode = clarinet_socket_getopt(sp, 0, nullptr, nullptr);
-            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-            REQUIRE(val == VAL_INIT);
-            REQUIRE(len == LEN_INIT);
-
-            errcode = clarinet_socket_setopt(sp, 0, &val, sizeof(val));
-            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-            REQUIRE(val == VAL_INIT);
-
-            errcode = clarinet_socket_setopt(sp, 0, nullptr, 0);
-            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-        }
-
-        SECTION("Valid optname")
-        {
-            int val = VAL_INIT;
-            size_t len = LEN_INIT;
-
-            int optname = GENERATE(CLARINET_SO_NONBLOCK, CLARINET_SO_REUSEADDR, CLARINET_SO_SNDBUF, CLARINET_SO_RCVBUF,
-                CLARINET_SO_SNDTIMEO, CLARINET_SO_RCVTIMEO, CLARINET_SO_KEEPALIVE,
-                CLARINET_SO_LINGER, CLARINET_SO_DONTLINGER);
-
-            SECTION("NULL optval")
-            {
-                errcode = clarinet_socket_getopt(sp, optname, nullptr, nullptr);
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-
-                errcode = clarinet_socket_getopt(sp, optname, nullptr, &len);
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-                REQUIRE(len == LEN_INIT);
-
-                errcode = clarinet_socket_setopt(sp, optname, nullptr, sizeof(val));
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-
-                errcode = clarinet_socket_setopt(sp, optname, nullptr, 0);
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-            }
-
-            SECTION("NULL optlen")
-            {
-                errcode = clarinet_socket_getopt(sp, optname, &val, nullptr);
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-                REQUIRE(val == VAL_INIT);
-            }
-
-            SECTION("Invalid optlen")
-            {
-                int target = GENERATE(0, 1, 2, 3);
-
-                len = (size_t)target;
-                errcode = clarinet_socket_getopt(sp, optname, &val, &len);
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-                REQUIRE(val == VAL_INIT);
-                REQUIRE(len == (size_t)target);
-
-                errcode = clarinet_socket_setopt(sp, optname, &val, target);
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-                REQUIRE(val == VAL_INIT);
-            }
-        }
-
-        SECTION("CLARINET_SO_NONBLOCK")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* All platforms are expected to open the socket in blocking mode */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_NONBLOCK, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_NONBLOCK, &on, sizeof(on));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_NONBLOCK, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_NONBLOCK, &off, sizeof(off));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_NONBLOCK, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_REUSEADDR")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* All platforms are expected to open the socket without address reuse */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_REUSEADDR, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_REUSEADDR, &on, sizeof(on));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_REUSEADDR, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_REUSEADDR, &off, sizeof(off));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_REUSEADDR, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_SNDBUF")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* Every platform has a different default buffer size but all are > 0 */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDBUF, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val > 0);
-            REQUIRE(len == sizeof(val));
-
-            /* These are safe values supposed to be between the minimum and maximum supported by all platforms so a call
-             * to clarinet_socket_getopt() will return the expected value.
-             *
-             * Minimum SO_SNDBUF is:
-             *  - WINDOWS: 0 (effectively disables the buffer and leaves only the net driver queue)
-             *  - LINUX (x64): 4608
-             *  - BSD/DARWIN: 1
-             *
-             * Maximum SO_SNDBUF is:
-             *  - WINDOWS: 2147483648 but in practice it is bounded by available memory
-             *  - LINUX (x64): 212992 (defined by net.core.wmem_max)
-             *  - BSD/DARWIN: 2097152 (defined by kern.ipc.maxsockbuf)
-             */
-            int target = GENERATE(8191, 8192, 16383, 16384);
-            FROM(target);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_SNDBUF, &target, sizeof(target));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDBUF, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            #if defined(__linux__) /* linux is special as we always round down odd buffer sizes to the nearest even number */
-            REQUIRE(val == (target & -2)); /* target & 0XFFFFFFFE */
-            #else
-            REQUIRE(val == target);
-            #endif // defined(__linux__)
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_RCVBUF")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* Every platform has a different default buffer size but all are > 0 */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVBUF, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val > 0);
-            REQUIRE(len == sizeof(val));
-
-            /* These are safe values supposed to be between the minimum and maximum supported by all platforms so a call
-             * to clarinet_socket_getopt() will return the expected value.
-             *
-             * Minimum SO_RCVBUF is:
-             *  - WINDOWS: 0 (effectively disables the buffer and leaves only the net driver queue)
-             *  - LINUX (x64): 2292
-             *  - BSD/DARWIN: 1
-             *
-             * Maximum SO_RCVBUF is:
-             *  - WINDOWS: 2147483648 but in practice it is bounded by available memory
-             *  - LINUX (x64): 212992 (defined by net.core.wmem_max)
-             *  - BSD/DARWIN: 2097152 (defined by kern.ipc.maxsockbuf)
-             */
-            int target = GENERATE(8191, 8192, 16383, 16384);
-            FROM(target);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_RCVBUF, &target, sizeof(target));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVBUF, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            #if defined(__linux__) /* linux is special as we always round down odd buffer sizes to the nearest even number */
-            REQUIRE(val == (target & -2)); /* target & 0XFFFFFFFE */
-            #else
-            REQUIRE(val == target);
-            #endif // defined(__linux__)
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_SNDTIMEO")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* All platforms are expected to have a default timeout of 0. */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDTIMEO, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val == 0);
-            REQUIRE(len == sizeof(val));
-
-            int target = GENERATE(0, 10, 250, 500, 1000, 5000, 60000);
-            FROM(target);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_SNDTIMEO, &target, sizeof(target));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_SNDTIMEO, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val == target);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_RCVTIMEO")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* All platforms are expected to have a default timeout of 0. */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVTIMEO, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val == 0);
-            REQUIRE(len == sizeof(val));
-
-            int target = GENERATE(0, 10, 250, 500, 1000, 5000, 60000);
-            FROM(target);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_RCVTIMEO, &target, sizeof(target));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_RCVTIMEO, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val == target);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_KEEPALIVE")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* All platforms are expected to open the socket keep alive off */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_KEEPALIVE, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_KEEPALIVE, &on, sizeof(on));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_KEEPALIVE, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_KEEPALIVE, &off, sizeof(off));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_KEEPALIVE, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_LINGER")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            clarinet_linger linger;
-            memset(&linger, 0xFF, sizeof(linger));
-            size_t lingerlen = sizeof(linger);
-
-            /* All platforms are expected to open the socket without linger */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE_FALSE(linger.enabled);
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-
-            int target = GENERATE(0, 5, 10, 250, 500, 1000, 5000, 65535);
-            FROM(target);
-
-            linger.enabled = true;
-            linger.seconds = (uint16_t)target;
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_LINGER, &linger, sizeof(linger));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(linger.enabled);
-            REQUIRE(linger.seconds == target);
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE(linger.enabled);
-            REQUIRE(linger.seconds == target);
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-
-            linger.enabled = false;
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_LINGER, &linger, sizeof(linger));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(linger.enabled);
-            REQUIRE(linger.seconds == target);
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE_FALSE(linger.enabled);
-            REQUIRE(linger.seconds == target);
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_SO_DONTLINGER")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            clarinet_linger linger;
-            memset(&linger, 0xFF, sizeof(linger));
-            size_t lingerlen = sizeof(linger);
-
-            /* All platforms are expected to open the socket without linger this means ON */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-
-            /* All platforms are expected to open the socket without linger */
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE_FALSE(linger.enabled);
-
-            uint16_t seconds = linger.seconds;
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_DONTLINGER, &off, sizeof(off));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE(linger.enabled);
-            REQUIRE(linger.seconds == seconds);
-
-            seconds = 5; /* arbitrary non-zero value - we just want to check that CLARINET_SO_DONTLINGER does not affect the timeout previously set here */
-            linger.seconds = seconds;
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_LINGER, &linger, sizeof(linger));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(linger.enabled);
-            REQUIRE(linger.seconds == seconds);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_DONTLINGER, &on, sizeof(on));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE_FALSE(linger.enabled);
-            REQUIRE(linger.seconds == seconds);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_SO_DONTLINGER, &off, sizeof(off));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_DONTLINGER, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE_FALSE(val);
-            REQUIRE(len == sizeof(val));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_SO_LINGER, &linger, &lingerlen);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(lingerlen == sizeof(clarinet_linger));
-            REQUIRE(linger.enabled);
-            REQUIRE(linger.seconds == seconds);
-        }
-
-        SECTION("CLARINET_IP_V6ONLY")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            #if CLARINET_ENABLE_IPV6
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
-            if (sp->family == CLARINET_AF_INET6)
-            {
-                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-                /* Each platform has a specific default initial values assuming unmodified system configurations. */
-                #if defined(_WIN32)
-                REQUIRE(val);
-                #elif defined(__linux__)
-                REQUIRE_FALSE(val);
-                #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
-                REQUIRE_FALSE(val);
-                #else
-                REQUIRE_FALSE(val);
-                #endif
-                REQUIRE(len == sizeof(val));
-            }
-            else
-            {
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-            }
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &on, sizeof(on));
-            if (sp->family == CLARINET_AF_INET6)
-            {
-                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-                errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
-                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-                REQUIRE(val);
-                REQUIRE(len == sizeof(val));
-
-                errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &off, sizeof(off));
-                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-                errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
-                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-                REQUIRE_FALSE(val);
-                REQUIRE(len == sizeof(val));
-            }
-            else
-                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-
-            #else // CLARINET_ENABLE_IPV6
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_IP_V6ONLY, &val, &len);
-            CHECK(Error(errcode) == Error(CLARINET_ENOTSUP));
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &on, sizeof(on));
-            CHECK(Error(errcode) == Error(CLARINET_ENOTSUP));
-
-            #endif // CLARINET_ENABLE_IPV6
-        }
-
-        SECTION("CLARINET_IP_TTL")
-        {
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            /* Every platform has a different default TTL but all are > 0 */
-            errcode = clarinet_socket_getopt(sp, CLARINET_IP_TTL, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val > 0);
-            REQUIRE(len == sizeof(val));
-
-            int target = GENERATE(32, 64, 128);
-            FROM(target);
-
-            errcode = clarinet_socket_setopt(sp, CLARINET_IP_TTL, &target, sizeof(target));
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-            errcode = clarinet_socket_getopt(sp, CLARINET_IP_TTL, &val, &len);
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-            REQUIRE(val == target);
-            REQUIRE(len == sizeof(val));
-        }
-
-        SECTION("CLARINET_IP_MTU")
-        {
-            #define CLARINET_IP_MTU_TEST_VALUES 0, 32, 576, 1280, 1500, 4096
-
-            int val = -1; /* 0xFFFFFFFF */
-            size_t len = sizeof(val);
-
-            SECTION("Disconnected")
-            {
-                SECTION("Get")
-                {
-                    /* MTU cannot be retrieved until the scoket is connected */
-                    errcode = clarinet_socket_getopt(sp, CLARINET_IP_MTU, &val, &len);
-                    REQUIRE(Error(errcode) == Error(CLARINET_ENOTCONN));
-                }
-
-                SECTION("Set")
-                {
-                    /* All attempts to set CLARINET_IP_MTU should fail since it is a read-only option */
-                    int target = GENERATE(CLARINET_IP_MTU_TEST_VALUES);
-                    FROM(target);
-
-                    errcode = clarinet_socket_setopt(sp, CLARINET_IP_MTU, &target, sizeof(target));
-                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-                }
-            }
-
-            SECTION("Connected")
-            {
-                /* TODO: connect */
-
-                SECTION("Get")
-                {
-                    errcode = clarinet_socket_getopt(sp, CLARINET_IP_MTU, &val, &len);
-                    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-                    REQUIRE(val > 0);
-                    REQUIRE(len == sizeof(val));
-                }
-
-                SECTION("Set")
-                {
-                    /* All attempts to set CLARINET_IP_MTU should fail since it is a read-only option */
-                    int target = GENERATE(CLARINET_IP_MTU_TEST_VALUES);
-                    FROM(target);
-
-                    errcode = clarinet_socket_setopt(sp, CLARINET_IP_MTU, &target, sizeof(target));
-                    REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
-                }
-            }
-
-            #undef CLARINET_IP_MTU_TEST_VALUES
-        }
-
-        SECTION("CLARINET_IP_PMTUD")
-        {
-        }
-    }
-}
-
-TEST_CASE("Bind")
-{
-    SECTION("ONE socket once")
-    {
-        // @formatter:off
-        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
-            { 0, { clarinet_addr_any_ipv4,      0 } },
-            { 1, { clarinet_addr_loopback_ipv4, 0 } },
-        #if CLARINET_ENABLE_IPV6
-            { 2, { clarinet_addr_any_ipv6,      0 } },
-            { 3, { clarinet_addr_loopback_ipv6, 0 } },
-        #endif // CLARINET_ENABLE_IPV6
-        };
-        // @formatter:on
-
-        SAMPLES(data);
-
-        int sample;
-        clarinet_endpoint endpoint;
-        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
-        FROM(sample);
-        FROM(proto);
-
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexit = finalizer([&sp]
-        {
-            clarinet_socket_close(sp);
-        });
-
-        errcode = clarinet_socket_bind(sp, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-    }
-
-    SECTION("ONE socket TWICE")
-    {
-        // @formatter:off
-        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
-            { 0, { clarinet_addr_any_ipv4,      0 } },
-            { 1, { clarinet_addr_loopback_ipv4, 0 } },
-        #if CLARINET_ENABLE_IPV6
-            { 2, { clarinet_addr_any_ipv6,      0 } },
-            { 3, { clarinet_addr_loopback_ipv6, 0 } },
-        #endif // CLARINET_ENABLE_IPV6
-        };
-        // @formatter:on
-
-        SAMPLES(data);
-
-        int sample;
-        clarinet_endpoint endpoint;
-        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
-        FROM(sample);
-        FROM(proto);
-
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexit = finalizer([&sp]
-        {
-            clarinet_socket_close(sp);
-        });
-
-        errcode = clarinet_socket_bind(sp, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-
-        errcode = clarinet_socket_bind(sp, &endpoint);
+        errcode = clarinet_socket_bind(sp, nullptr);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
-    SECTION("ONE socket with dual stack")
+    SECTION("With INVALID endpoint")
     {
-        // @formatter:off
-        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
-            { 0, { clarinet_addr_any_ipv4,      0 } },
-            { 1, { clarinet_addr_loopback_ipv4, 0 } },
-        #if CLARINET_ENABLE_IPV6
-            { 2, { clarinet_addr_any_ipv6,      0 } },
-            { 3, { clarinet_addr_loopback_ipv6, 0 } },
-        #endif // CLARINET_ENABLE_IPV6
-        };
-        // @formatter:on
+        clarinet_endpoint endpoint = clarinet_make_endpoint(clarinet_make_mac(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF), 0);
 
-        SAMPLES(data);
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
 
-        int sample;
-        clarinet_endpoint endpoint;
-        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
 
-        FROM(sample);
+        FROM(family);
         FROM(proto);
 
         clarinet_socket socket;
         clarinet_socket* sp = &socket;
         clarinet_socket_init(sp);
 
-        int family = endpoint.addr.family;
         int errcode = clarinet_socket_open(sp, family, proto);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         const auto onexit = finalizer([&sp]
@@ -954,20 +1278,11 @@ TEST_CASE("Bind")
             clarinet_socket_close(sp);
         });
 
-        const int off = 1;
-        #if CLARINET_ENABLE_IPV6DUAL
-        const int expected = (family == CLARINET_AF_INET6) ? CLARINET_ENONE : CLARINET_EINVAL;
-        #else
-        const int expected = CLARINET_EINVAL;
-        #endif // CLARINET_ENABLE_IPV6DUAL
-        errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &off, sizeof(off));
-        REQUIRE(Error(errcode) == Error(expected));
-
         errcode = clarinet_socket_bind(sp, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        REQUIRE(Error(errcode) == Error(CLARINET_EAFNOSUPPORT));
     }
 
-    SECTION("TWO sockets with SAME address and port but different protocols")
+    SECTION("With no conflicts")
     {
         // @formatter:off
         const std::vector<std::tuple<int, clarinet_endpoint>> data = {
@@ -988,101 +1303,163 @@ TEST_CASE("Bind")
 
         FROM(sample);
 
-        clarinet_socket sa;
-        clarinet_socket* spa = &sa;
-        clarinet_socket_init(spa);
-
-        /* Any two protocols should do here. There is no need to test all combinations. */
-        int proto_a = GENERATE(CLARINET_PROTO_UDP);
-        int proto_b = GENERATE(CLARINET_PROTO_TCP);
-
-        FROM(proto_a);
-        FROM(proto_b);
-
-        int errcode = clarinet_socket_open(spa, endpoint.addr.family, proto_a);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexita = finalizer([&spa]
+        SECTION("Bind BEFORE Open should not affect the socket")
         {
-            clarinet_socket_close(spa);
-        });
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
 
-        errcode = clarinet_socket_bind(spa, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            FROM(proto);
 
-        clarinet_endpoint local;
-        errcode = clarinet_socket_local_endpoint(spa, &local);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
 
-        endpoint.port = local.port;
+            int errcode = clarinet_socket_bind(sp, &endpoint);
+            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
 
-        clarinet_socket sb;
-        clarinet_socket* spb = &sb;
-        clarinet_socket_init(spb);
+            errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexit = finalizer([&sp]
+            {
+                clarinet_socket_close(sp);
+            });
+        }
 
-        errcode = clarinet_socket_open(spb, endpoint.addr.family, proto_b);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexitb = finalizer([&spb]
+        SECTION("Bind AFTER Open")
         {
-            clarinet_socket_close(spb);
-        });
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
 
-        errcode = clarinet_socket_bind(spb, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            FROM(proto);
 
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+
+            int errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexit = finalizer([&sp]
+            {
+                clarinet_socket_close(sp);
+            });
+
+            SECTION("Bind ONCE")
+            {
+                errcode = clarinet_socket_bind(sp, &endpoint);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            }
+
+            SECTION("Bind TWICE")
+            {
+                errcode = clarinet_socket_bind(sp, &endpoint);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+                errcode = clarinet_socket_bind(sp, &endpoint);
+                REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+            }
+
+            SECTION("Bind ONCE with dual stack (CLARINET_IP_V6ONLY off)")
+            {
+                #if CLARINET_ENABLE_IPV6DUAL
+                const int expected = (endpoint.addr.family == CLARINET_AF_INET6) ? CLARINET_ENONE : CLARINET_EINVAL;
+                #else
+                const int expected = CLARINET_EINVAL;
+                #endif // CLARINET_ENABLE_IPV6DUAL
+
+                const int off = 1;
+                errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &off, sizeof(off));
+                REQUIRE(Error(errcode) == Error(expected));
+
+                errcode = clarinet_socket_bind(sp, &endpoint);
+                REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            }
+        }
+
+        SECTION("Bind TWO sockets with SAME address and port but DIFFERENT protocols")
+        {
+            clarinet_socket sa;
+            clarinet_socket* spa = &sa;
+            clarinet_socket_init(spa);
+
+            /* Any two protocols should do here. There is no need to test all combinations. */
+            clarinet_proto proto_a = GENERATE(CLARINET_PROTO_UDP);
+            clarinet_proto proto_b = GENERATE(CLARINET_PROTO_TCP);
+
+            FROM(proto_a);
+            FROM(proto_b);
+
+            int errcode = clarinet_socket_open(spa, endpoint.addr.family, proto_a);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexita = finalizer([&spa]
+            {
+                clarinet_socket_close(spa);
+            });
+
+            errcode = clarinet_socket_bind(spa, &endpoint);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+            clarinet_endpoint local;
+            errcode = clarinet_socket_local_endpoint(spa, &local);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+            endpoint.port = local.port;
+
+            clarinet_socket sb;
+            clarinet_socket* spb = &sb;
+            clarinet_socket_init(spb);
+
+            errcode = clarinet_socket_open(spb, endpoint.addr.family, proto_b);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexitb = finalizer([&spb]
+            {
+                clarinet_socket_close(spb);
+            });
+
+            errcode = clarinet_socket_bind(spb, &endpoint);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+        }
+
+        SECTION("Bind TWO sockets with SAME address and protocol but DIFFERENT ports")
+        {
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
+
+            FROM(proto);
+
+            clarinet_socket socket;
+            clarinet_socket* sp = &socket;
+            clarinet_socket_init(sp);
+
+            int family = endpoint.addr.family;
+            int errcode = clarinet_socket_open(sp, family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexit = finalizer([&sp]
+            {
+                clarinet_socket_close(sp);
+            });
+
+            const int off = 1;
+            #if CLARINET_ENABLE_IPV6DUAL
+            const int expected = (family == CLARINET_AF_INET6) ? CLARINET_ENONE : CLARINET_EINVAL;
+            #else
+            const int expected = CLARINET_EINVAL;
+            #endif // CLARINET_ENABLE_IPV6DUAL
+            errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &off, sizeof(off));
+            REQUIRE(Error(errcode) == Error(expected));
+
+            errcode = clarinet_socket_bind(sp, &endpoint);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        }
     }
 
-    SECTION("TWO sockets with SAME address and protocol but different ports")
-    {
-        // @formatter:off
-        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
-            { 0, { clarinet_addr_any_ipv4,      0 } },
-            { 1, { clarinet_addr_loopback_ipv4, 0 } },
-        #if CLARINET_ENABLE_IPV6
-            { 2, { clarinet_addr_any_ipv6,      0 } },
-            { 3, { clarinet_addr_loopback_ipv6, 0 } },
-        #endif // CLARINET_ENABLE_IPV6
-        };
-        // @formatter:on
-
-        SAMPLES(data);
-
-        int sample;
-        clarinet_endpoint endpoint;
-        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
-        FROM(sample);
-        FROM(proto);
-
-        clarinet_socket socket;
-        clarinet_socket* sp = &socket;
-        clarinet_socket_init(sp);
-
-        int family = endpoint.addr.family;
-        int errcode = clarinet_socket_open(sp, family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexit = finalizer([&sp]
-        {
-            clarinet_socket_close(sp);
-        });
-
-        const int off = 1;
-        #if CLARINET_ENABLE_IPV6DUAL
-        const int expected = (family == CLARINET_AF_INET6) ? CLARINET_ENONE : CLARINET_EINVAL;
-        #else
-        const int expected = CLARINET_EINVAL;
-        #endif // CLARINET_ENABLE_IPV6DUAL
-        errcode = clarinet_socket_setopt(sp, CLARINET_IP_V6ONLY, &off, sizeof(off));
-        REQUIRE(Error(errcode) == Error(expected));
-
-        errcode = clarinet_socket_bind(sp, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-    }
-
-    SECTION("TWO sockets with SAME port and protocol")
+    SECTION("With ALL address combinations (including conflicts)")
     {
         const int NONE = 0;
         const int REUSEADDR = (1 << 0);
@@ -1096,23 +1473,28 @@ TEST_CASE("Bind")
             {  2, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_any_ipv4,         NONE,               CLARINET_EADDRINUSE },
             {  3, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_loopback_ipv4,    NONE,               CLARINET_EADDRINUSE },
             {  4, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_EADDRINUSE },
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
+
+            #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
             {  5, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_ENONE      }, // BSD/Darwin
-#else
+            #else
             {  5, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_EADDRINUSE }, // Others
-#endif
-#if defined(__linux__)
+            #endif
+
+            #if defined(__linux__)
             {  6, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_EADDRINUSE }, // Linux
-#else
+            #else
             {  6, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_ENONE      }, // Others
-#endif
+            #endif
+
             {  7, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_EADDRINUSE },
             {  8, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_any_ipv4,         NONE,               CLARINET_EADDRINUSE },
-#if defined(_WIN32)
+
+            #if defined(_WIN32)
             {  9, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_loopback_ipv4,    NONE,               CLARINET_ENONE      }, // Windows
-#else
+            #else
             {  9, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_loopback_ipv4,    NONE,               CLARINET_EADDRINUSE }, // Others
-#endif
+            #endif
+
             { 10, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_any_ipv4,         NONE,               CLARINET_EADDRINUSE },
             { 11, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_loopback_ipv4,    NONE,               CLARINET_EADDRINUSE },
             { 12, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_ENONE      },
@@ -1120,29 +1502,35 @@ TEST_CASE("Bind")
             { 14, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_ENONE      },
             { 15, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_ENONE      },
 
-#if CLARINET_ENABLE_IPV6
+        #if CLARINET_ENABLE_IPV6
+
             { 16, clarinet_addr_any_ipv6,       NONE,               clarinet_addr_any_ipv6,         NONE,               CLARINET_EADDRINUSE },
             { 17, clarinet_addr_any_ipv6,       NONE,               clarinet_addr_loopback_ipv6,    NONE,               CLARINET_EADDRINUSE },
             { 18, clarinet_addr_loopback_ipv6,  NONE,               clarinet_addr_any_ipv6,         NONE,               CLARINET_EADDRINUSE },
             { 19, clarinet_addr_loopback_ipv6,  NONE,               clarinet_addr_loopback_ipv6,    NONE,               CLARINET_EADDRINUSE },
             { 20, clarinet_addr_any_ipv6,       NONE,               clarinet_addr_any_ipv6,         REUSEADDR,          CLARINET_EADDRINUSE },
+
             #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
             { 21, clarinet_addr_any_ipv6,       NONE,               clarinet_addr_loopback_ipv6,    REUSEADDR,          CLARINET_ENONE      }, // BSD/Darwin
             #else
             { 21, clarinet_addr_any_ipv6,       NONE,               clarinet_addr_loopback_ipv6,    REUSEADDR,          CLARINET_EADDRINUSE }, // Others
             #endif
+
             #if defined(__linux__)
             { 22, clarinet_addr_loopback_ipv6,  NONE,               clarinet_addr_any_ipv6,         REUSEADDR,          CLARINET_EADDRINUSE }, // Linux
             #else
             { 22, clarinet_addr_loopback_ipv6,  NONE,               clarinet_addr_any_ipv6,         REUSEADDR,          CLARINET_ENONE      }, // Others
             #endif
+
             { 23, clarinet_addr_loopback_ipv6,  NONE,               clarinet_addr_loopback_ipv6,    REUSEADDR,          CLARINET_EADDRINUSE },
             { 24, clarinet_addr_any_ipv6,       REUSEADDR,          clarinet_addr_any_ipv6,         NONE,               CLARINET_EADDRINUSE },
+
             #if defined(_WIN32)
             { 25, clarinet_addr_any_ipv6,       REUSEADDR,          clarinet_addr_loopback_ipv6,    NONE,               CLARINET_ENONE      }, // Windows
             #else
             { 25, clarinet_addr_any_ipv6,       REUSEADDR,          clarinet_addr_loopback_ipv6,    NONE,               CLARINET_EADDRINUSE }, // Others
             #endif
+
             { 26, clarinet_addr_loopback_ipv6,  REUSEADDR,          clarinet_addr_any_ipv6,         NONE,               CLARINET_EADDRINUSE },
             { 27, clarinet_addr_loopback_ipv6,  REUSEADDR,          clarinet_addr_loopback_ipv6,    NONE,               CLARINET_EADDRINUSE },
             { 28, clarinet_addr_any_ipv6,       REUSEADDR,          clarinet_addr_any_ipv6,         REUSEADDR,          CLARINET_ENONE      },
@@ -1184,19 +1572,23 @@ TEST_CASE("Bind")
             { 62, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_any_ipv6,         REUSEADDR,          CLARINET_ENONE      },
             { 63, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_loopback_ipv6,    REUSEADDR,          CLARINET_ENONE      },
 
-        #if CLARINET_ENABLE_IPV6DUAL
+            #if CLARINET_ENABLE_IPV6DUAL
+
             { 64, clarinet_addr_any_ipv6,       IPV6DUAL,           clarinet_addr_any_ipv4,         NONE,               CLARINET_EADDRINUSE },
             { 65, clarinet_addr_any_ipv6,       IPV6DUAL,           clarinet_addr_loopback_ipv4,    NONE,               CLARINET_EADDRINUSE },
             { 66, clarinet_addr_loopback_ipv6,  IPV6DUAL,           clarinet_addr_any_ipv4,         NONE,               CLARINET_ENONE      },
             { 67, clarinet_addr_loopback_ipv6,  IPV6DUAL,           clarinet_addr_loopback_ipv4,    NONE,               CLARINET_ENONE      },
             { 68, clarinet_addr_any_ipv6,       IPV6DUAL,           clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_EADDRINUSE },
+
             #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
             { 69, clarinet_addr_any_ipv6,       IPV6DUAL,           clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_ENONE      }, // BSD/Darwin
             #else
             { 69, clarinet_addr_any_ipv6,       IPV6DUAL,           clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_EADDRINUSE }, // Others
             #endif
+
             { 70, clarinet_addr_loopback_ipv6,  IPV6DUAL,           clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_ENONE      },
             { 71, clarinet_addr_loopback_ipv6,  IPV6DUAL,           clarinet_addr_loopback_ipv4,    REUSEADDR,          CLARINET_ENONE      },
+
             #if defined(_WIN32)
             { 72, clarinet_addr_any_ipv6,       IPV6DUAL|REUSEADDR, clarinet_addr_any_ipv4,         NONE,               CLARINET_ENONE      }, // Windows
             { 73, clarinet_addr_any_ipv6,       IPV6DUAL|REUSEADDR, clarinet_addr_loopback_ipv4,    NONE,               CLARINET_ENONE      }, // Windows
@@ -1204,6 +1596,7 @@ TEST_CASE("Bind")
             { 72, clarinet_addr_any_ipv6,       IPV6DUAL|REUSEADDR, clarinet_addr_any_ipv4,         NONE,               CLARINET_EADDRINUSE }, // Others
             { 73, clarinet_addr_any_ipv6,       IPV6DUAL|REUSEADDR, clarinet_addr_loopback_ipv4,    NONE,               CLARINET_EADDRINUSE }, // Others
             #endif
+
             { 74, clarinet_addr_loopback_ipv6,  IPV6DUAL|REUSEADDR, clarinet_addr_any_ipv4,         NONE,               CLARINET_ENONE      },
             { 75, clarinet_addr_loopback_ipv6,  IPV6DUAL|REUSEADDR, clarinet_addr_loopback_ipv4,    NONE,               CLARINET_ENONE      },
             { 76, clarinet_addr_any_ipv6,       IPV6DUAL|REUSEADDR, clarinet_addr_any_ipv4,         REUSEADDR,          CLARINET_ENONE      },
@@ -1216,26 +1609,33 @@ TEST_CASE("Bind")
             #else
             { 80, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_any_ipv6,         IPV6DUAL,           CLARINET_EADDRINUSE }, // Others
             #endif
+
             { 81, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_loopback_ipv6,    IPV6DUAL,           CLARINET_ENONE      },
             { 82, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_any_ipv6,         IPV6DUAL,           CLARINET_EADDRINUSE },
             { 83, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_loopback_ipv6,    IPV6DUAL,           CLARINET_ENONE      },
+
             #if defined(__linux__)
             { 84, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_any_ipv6,         IPV6DUAL|REUSEADDR, CLARINET_EADDRINUSE }, // Linux
             #else
             { 84, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_any_ipv6,         IPV6DUAL|REUSEADDR, CLARINET_ENONE      }, // Others
             #endif
+
             { 85, clarinet_addr_any_ipv4,       NONE,               clarinet_addr_loopback_ipv6,    IPV6DUAL|REUSEADDR, CLARINET_ENONE      },
+
             #if defined(__linux__)
             { 86, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_any_ipv6,         IPV6DUAL|REUSEADDR, CLARINET_EADDRINUSE }, // Linux
             #else
             { 86, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_any_ipv6,         IPV6DUAL|REUSEADDR, CLARINET_ENONE      }, // Others
             #endif
+
             { 87, clarinet_addr_loopback_ipv4,  NONE,               clarinet_addr_loopback_ipv6,    IPV6DUAL|REUSEADDR, CLARINET_ENONE      },
+
             #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__ )
             { 88, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_any_ipv6,         IPV6DUAL,           CLARINET_ENONE      }, // BSD/Darwin
             #else
             { 88, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_any_ipv6,         IPV6DUAL,           CLARINET_EADDRINUSE }, // Others
             #endif
+
             { 89, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_loopback_ipv6,    IPV6DUAL,           CLARINET_ENONE      },
             { 90, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_any_ipv6,         IPV6DUAL,           CLARINET_EADDRINUSE },
             { 91, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_loopback_ipv6,    IPV6DUAL,           CLARINET_ENONE      },
@@ -1243,8 +1643,9 @@ TEST_CASE("Bind")
             { 93, clarinet_addr_any_ipv4,       REUSEADDR,          clarinet_addr_loopback_ipv6,    IPV6DUAL|REUSEADDR, CLARINET_ENONE      },
             { 94, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_any_ipv6,         IPV6DUAL|REUSEADDR, CLARINET_ENONE      },
             { 95, clarinet_addr_loopback_ipv4,  REUSEADDR,          clarinet_addr_loopback_ipv6,    IPV6DUAL|REUSEADDR, CLARINET_ENONE      },
-        #endif // CLARINET_ENABLE_IPV6DUAL
-#endif // CLARINET_ENABLE_IPV6
+
+            #endif // CLARINET_ENABLE_IPV6DUAL
+        #endif // CLARINET_ENABLE_IPV6
         };
         // @formatter:on
 
@@ -1257,66 +1658,88 @@ TEST_CASE("Bind")
         int fb;
         int expected;
         std::tie(sample, addra, fa, addrb, fb, expected) = GENERATE_REF(from_samples(data));
-        clarinet_proto proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
         FROM(sample);
-        FROM(proto);
 
-        const int reuseaddr[] = { fa & REUSEADDR ? 1 : 0, fb & REUSEADDR ? 1 : 0 };
-        const int ipv6only[] = { fa & IPV6DUAL ? 0 : 1, fb & IPV6DUAL ? 0 : 1 };
-
-        clarinet_socket sa;
-        clarinet_socket* spa = &sa;
-        clarinet_socket_init(spa);
-
-        int errcode = clarinet_socket_open(spa, addra.family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexita = finalizer([&spa]
+        SECTION("Bind TWO sockets with SAME port and protocol")
         {
-            clarinet_socket_close(spa);
-        });
+            clarinet_proto proto = GENERATE(values({
+                CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+            }));
 
-        errcode = clarinet_socket_setopt(spa, CLARINET_SO_REUSEADDR, &reuseaddr[0], sizeof(reuseaddr[0]));
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            FROM(proto);
 
-        errcode = clarinet_socket_setopt(spa, CLARINET_IP_V6ONLY, &ipv6only[0], sizeof(ipv6only[0]));
-        REQUIRE(Error(errcode) == Error(spa->family == CLARINET_AF_INET6 ? CLARINET_ENONE : CLARINET_EINVAL));
+            const int reuseaddr[] = { fa & REUSEADDR ? 1 : 0, fb & REUSEADDR ? 1 : 0 };
+            const int ipv6only[] = { fa & IPV6DUAL ? 0 : 1, fb & IPV6DUAL ? 0 : 1 };
 
-        clarinet_endpoint endpoint = { addra, 0 };
-        errcode = clarinet_socket_bind(spa, &endpoint);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            clarinet_socket sa;
+            clarinet_socket* spa = &sa;
+            clarinet_socket_init(spa);
 
-        clarinet_endpoint local;
-        errcode = clarinet_socket_local_endpoint(spa, &local);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            int errcode = clarinet_socket_open(spa, addra.family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexita = finalizer([&spa]
+            {
+                clarinet_socket_close(spa);
+            });
 
-        clarinet_socket sb;
-        clarinet_socket* spb = &sb;
-        clarinet_socket_init(spb);
+            errcode = clarinet_socket_setopt(spa, CLARINET_SO_REUSEADDR, &reuseaddr[0], sizeof(reuseaddr[0]));
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
-        errcode = clarinet_socket_open(spb, addrb.family, proto);
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        const auto onexitb = finalizer([&spb]
-        {
-            clarinet_socket_close(spb);
-        });
+            errcode = clarinet_socket_setopt(spa, CLARINET_IP_V6ONLY, &ipv6only[0], sizeof(ipv6only[0]));
+            REQUIRE(Error(errcode) == Error(spa->family == CLARINET_AF_INET6 ? CLARINET_ENONE : CLARINET_EINVAL));
 
-        errcode = clarinet_socket_setopt(spb, CLARINET_SO_REUSEADDR, &reuseaddr[1], sizeof(reuseaddr[2]));
-        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            clarinet_endpoint endpoint = { addra, 0 };
+            errcode = clarinet_socket_bind(spa, &endpoint);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
-        errcode = clarinet_socket_setopt(spb, CLARINET_IP_V6ONLY, &ipv6only[1], sizeof(ipv6only[2]));
-        REQUIRE(Error(errcode) == Error(spb->family == CLARINET_AF_INET6 ? CLARINET_ENONE : CLARINET_EINVAL));
+            clarinet_endpoint local;
+            errcode = clarinet_socket_local_endpoint(spa, &local);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
-        endpoint.addr = addrb;
-        endpoint.port = local.port;
-        errcode = clarinet_socket_bind(spb, &endpoint);
-        CHECK(Error(errcode) == Error(expected));
+            clarinet_socket sb;
+            clarinet_socket* spb = &sb;
+            clarinet_socket_init(spb);
+
+            errcode = clarinet_socket_open(spb, addrb.family, proto);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const auto onexitb = finalizer([&spb]
+            {
+                clarinet_socket_close(spb);
+            });
+
+            errcode = clarinet_socket_setopt(spb, CLARINET_SO_REUSEADDR, &reuseaddr[1], sizeof(reuseaddr[2]));
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+            errcode = clarinet_socket_setopt(spb, CLARINET_IP_V6ONLY, &ipv6only[1], sizeof(ipv6only[2]));
+            REQUIRE(Error(errcode) == Error(spb->family == CLARINET_AF_INET6 ? CLARINET_ENONE : CLARINET_EINVAL));
+
+            endpoint.addr = addrb;
+            endpoint.port = local.port;
+            errcode = clarinet_socket_bind(spb, &endpoint);
+            CHECK(Error(errcode) == Error(expected));
+        }
     }
 }
 
-TEST_CASE("Listen")
+TEST_CASE("Socket Listen")
 {
-    SECTION("INCOMPATIBLE protocols")
+    SECTION("With NULL socket")
+    {
+        int errcode = clarinet_socket_listen(nullptr, 1);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With UNOPEN socket")
+    {
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_listen(sp, 1);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("UNSUPPORTED protocols")
     {
         // @formatter:off
         const std::vector<std::tuple<int, clarinet_endpoint>> data = {
@@ -1335,14 +1758,13 @@ TEST_CASE("Listen")
         clarinet_endpoint endpoint;
         std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
 
-        /* All protocols compatible with listen can be opened but not all protocols *incompatible* with listen can, so
-         * they must be filtered out */
-        const std::vector<int> protos = { OPEN_COMPATIBLE_PROTOCOLS };
-        const int can_open = std::accumulate(protos.begin(), protos.end(), (int)CLARINET_PROTO_NONE, std::bit_or<>());
-        clarinet_proto proto = GENERATE_REF(filter([&can_open](int v)
-        {
-            return v & can_open;
-        }, values({ LISTEN_INCOMPATIBLE_PROTOCOLS })));
+        /* All protocols compatible with listen can be opened but not all protocols that can be opened are compatible
+         * with listen, so we must filter from the protocols that can be opened which ones are not compatible */
+        clarinet_proto proto = GENERATE(filter([](int v)
+            {
+                return !(v & CLARINET_TEST_SOCKET_LISTEN_PROTO_BSET);
+            },
+            values({ CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST })));
 
         /* Cover the minimum supported backlog values but shouldn't be any different to any other value really */
         int backlog = GENERATE(0, 1, 2, 3, 4, 5);
@@ -1369,7 +1791,7 @@ TEST_CASE("Listen")
         REQUIRE(Error(errcode) == Error(CLARINET_EPROTONOSUPPORT));
     }
 
-    SECTION("COMPATIBLE protocols")
+    SECTION("SUPPORTED protocols")
     {
         // @formatter:off
         const std::vector<std::tuple<int, clarinet_endpoint>> data = {
@@ -1388,15 +1810,17 @@ TEST_CASE("Listen")
         clarinet_endpoint endpoint;
         std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
 
-        /* All protocols compatible with listen should be compatible with open too so no need to filter */
-        int proto = GENERATE(values({ LISTEN_COMPATIBLE_PROTOCOLS }));
+        /* All protocols compatible with listen can be opened */
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_LISTEN_SUPPORTED_PROTO_LIST
+        }));
 
         /* Cover the minimum supported backlog values */
         int backlog = GENERATE(0, 1, 2, 3, 4, 5);
         int calls = GENERATE(1, 2, 3, 4);
 
         FROM(sample);
-        FROM(Protocol(proto));
+        FROM(proto);
         FROM(backlog);
 
         clarinet_socket socket;
@@ -1421,110 +1845,326 @@ TEST_CASE("Listen")
     }
 }
 
-TEST_CASE("Connect")
+TEST_CASE("Socket Connect")
 {
-
-}
-
-TEST_CASE("Accept")
-{
-
-}
-
-TEST_CASE("Get local endpoint")
-{
-    // @formatter:off
-    const std::vector<std::tuple<int, clarinet_endpoint>> data = {
-        { 0, { clarinet_addr_any_ipv4,      0 } },
-        { 1, { clarinet_addr_loopback_ipv4, 0 } },
-#if CLARINET_ENABLE_IPV6
-        { 2, { clarinet_addr_any_ipv6,      0 } },
-        { 3, { clarinet_addr_loopback_ipv6, 0 } },
-#endif
-    };
-    // @formatter:on
-
-    SAMPLES(data);
-
-    int sample;
-    clarinet_endpoint endpoint;
-    std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
-    int proto = GENERATE(values({ OPEN_COMPATIBLE_PROTOCOLS }));
-
-    FROM(sample);
-    FROM(Protocol(proto));
-
-    clarinet_socket socket;
-    clarinet_socket* sp = &socket;
-    clarinet_socket_init(sp);
-
-    int errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
-    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-    const auto onexit = finalizer([&sp]
+    SECTION("With NULL socket")
     {
-        clarinet_socket_close(sp);
-    });
+        clarinet_endpoint remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 1313);
 
-    clarinet_endpoint unbound = { { 0 } };
-    unbound.addr.family = sp->family;
+        int errcode = clarinet_socket_connect(nullptr, &remote);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
 
-    clarinet_endpoint local;
+    SECTION("With UNOPEN socket")
+    {
+        clarinet_endpoint endpoint = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 1313);
 
-    memset(&local, 0, sizeof(local));
-    errcode = clarinet_socket_local_endpoint(sp, &local);
-    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
 
-    /* before bind the local endpoint should be empty except for the family */
-    int addr_is_equal = clarinet_endpoint_is_equal(&local, &unbound);
-    REQUIRE(addr_is_equal);
+        int errcode = clarinet_socket_connect(sp, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
 
-    errcode = clarinet_socket_bind(sp, &endpoint);
-    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+    SECTION("With NULL endpoint")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
 
-    memset(&local, 0, sizeof(local));
-    errcode = clarinet_socket_local_endpoint(sp, &local);
-    REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTO_LIST
+        }));
 
-    /* after a successful bind the local endpoint address should be defined although the port may still vary */
-    addr_is_equal = clarinet_addr_is_equal(&local.addr, &endpoint.addr);
-    REQUIRE(addr_is_equal);
-    if (endpoint.port == 0)
-        REQUIRE(local.port > 0);
-    else
-        REQUIRE(local.port == endpoint.port);
+        FROM(family);
+        FROM(proto);
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        errcode = clarinet_socket_connect(sp, nullptr);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With INVALID endpoint")
+    {
+        clarinet_endpoint endpoint = clarinet_make_endpoint(clarinet_make_mac(0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF), 0);
+
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(family);
+        FROM(proto);
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        errcode = clarinet_socket_connect(sp, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_EAFNOSUPPORT));
+    }
+
+    SECTION("With UNSUPPORTED protocols")
+    {
+        /* For now, all protocols supported by clarinet_socket_open() are also supported by clarinet_socket_connect()
+         * and vice-versa. We'll have something to test here only if they differ */
+        REQUIRE(Hex(CLARINET_TEST_SOCKET_OPEN_PROTO_BSET) == Hex(CLARINET_TEST_SOCKET_CONNECT_PROTO_BSET));
+    }
+
+    SECTION("With SUPPORTED protocols")
+    {
+        // @formatter:off
+        const std::vector<std::tuple<int, clarinet_endpoint, clarinet_addr>> data = {
+            { 0, { clarinet_addr_any_ipv4,      0 }, clarinet_addr_loopback_ipv4 },
+            { 1, { clarinet_addr_loopback_ipv4, 0 }, clarinet_addr_loopback_ipv4 },
+            #if CLARINET_ENABLE_IPV6
+            { 2, { clarinet_addr_any_ipv6,      0 }, clarinet_addr_loopback_ipv6 },
+            { 3, { clarinet_addr_loopback_ipv6, 0 }, clarinet_addr_loopback_ipv6 },
+            #endif // CLARINET_ENABLE_IPV6
+        };
+        // @formatter:on
+
+        SAMPLES(data);
+
+        int sample;
+        clarinet_endpoint endpoint;
+        clarinet_addr addr;
+        std::tie(sample, endpoint, addr) = GENERATE_REF(from_samples(data));
+
+        FROM(sample);
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_CONNECT_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(proto);
+
+        clarinet_socket server;
+        clarinet_socket* srv = &server;
+        clarinet_socket_init(srv);
+
+        int errcode = clarinet_socket_open(srv, endpoint.addr.family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onserverexit = finalizer([&srv]
+        {
+            clarinet_socket_close(srv);
+        });
+
+        errcode = clarinet_socket_bind(srv, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+        errcode = clarinet_socket_local_endpoint(srv, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+        endpoint.addr = addr;
+
+        /* if the server protocol supports listen then make it listen */
+        if (proto & CLARINET_TEST_SOCKET_LISTEN_PROTO_BSET)
+        {
+            errcode = clarinet_socket_listen(srv, 1);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        }
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        errcode = clarinet_socket_connect(sp, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+    }
 }
 
-TEST_CASE("Get remote endpoint")
+TEST_CASE("Socket Accept")
 {
 
 }
 
-TEST_CASE("Send")
+TEST_CASE("Socket Get local endpoint")
+{
+    SECTION("With NULL socket")
+    {
+        clarinet_endpoint local;
+
+        int errcode = clarinet_socket_local_endpoint(nullptr, &local);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With NULL endpoint")
+    {
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_local_endpoint(sp, nullptr);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With UNOPEN socket")
+    {
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        clarinet_endpoint local;
+
+        int errcode = clarinet_socket_local_endpoint(sp, &local);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With UNBOUND socket")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+
+        clarinet_endpoint unbound = { { 0 } };
+        unbound.addr.family = family;
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(family);
+        FROM(proto);
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        clarinet_endpoint local = { { 0 } };
+        errcode = clarinet_socket_local_endpoint(sp, &local);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+        /* before bind the local endpoint should be empty except for the family */
+        int addr_is_equal = clarinet_endpoint_is_equal(&local, &unbound);
+        REQUIRE(addr_is_equal);
+    }
+
+    SECTION("With BOUND socket")
+    {
+        // @formatter:off
+        const std::vector<std::tuple<int, clarinet_endpoint>> data = {
+            { 0, { clarinet_addr_any_ipv4,      0 } },
+            { 1, { clarinet_addr_loopback_ipv4, 0 } },
+        #if CLARINET_ENABLE_IPV6
+            { 2, { clarinet_addr_any_ipv6,      0 } },
+            { 3, { clarinet_addr_loopback_ipv6, 0 } },
+        #endif
+        };
+        // @formatter:on
+
+        SAMPLES(data);
+
+        int sample;
+        clarinet_endpoint endpoint;
+        std::tie(sample, endpoint) = GENERATE_REF(from_samples(data));
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+
+        FROM(sample);
+        FROM(proto);
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, endpoint.addr.family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        errcode = clarinet_socket_bind(sp, &endpoint);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+        clarinet_endpoint local = { { 0 } };
+        errcode = clarinet_socket_local_endpoint(sp, &local);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+
+        /* after a successful bind the local endpoint address should be defined although the port may still vary */
+        int addr_is_equal = clarinet_addr_is_equal(&local.addr, &endpoint.addr);
+        REQUIRE(addr_is_equal);
+        if (endpoint.port == 0)
+            REQUIRE(local.port > 0);
+        else
+            REQUIRE(local.port == endpoint.port);
+    }
+}
+
+TEST_CASE("Socket Get remote endpoint")
+{
+    SECTION("UDP")
+    {
+    }
+
+    SECTION("TCP")
+    {
+    }
+}
+
+TEST_CASE("Socket Send")
 {
 
 }
 
-TEST_CASE("Send To")
+TEST_CASE("Socket Send To")
 {
 
 }
 
-TEST_CASE("Send To on " CONFIG_SYSTEM_NAME, "[!nonportable]")
+TEST_CASE("Socket Send To on " CONFIG_SYSTEM_NAME, "[!nonportable]")
 {
 
 }
 
-TEST_CASE("Recv")
+TEST_CASE("Socket Recv")
 {
 
 }
 
-TEST_CASE("Recv From")
+TEST_CASE("Socket Recv From")
 {
 
 }
 
-TEST_CASE("Shutdown")
+TEST_CASE("Socket Shutdown")
 {
 
 }

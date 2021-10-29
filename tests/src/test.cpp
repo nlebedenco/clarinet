@@ -18,6 +18,12 @@ to_string(enum clarinet_proto value)
     return clarinet_proto_name((int)value);
 }
 
+std::string
+to_string(const char* s)
+{
+    return s;
+}
+
 autoload::
 autoload() noexcept
 {

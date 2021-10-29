@@ -419,33 +419,35 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
     switch (optname)
     {
         case CLARINET_SO_NONBLOCK:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
-                if (setnonblock(sockfd, *(const int*)optval) == SOCKET_ERROR)
+                const int val = *(const int32_t*)optval ? 1 : 0;
+                if (setnonblock(sockfd, val) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_REUSEADDR:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
-                if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR)
+                const int val = *(const int32_t*)optval ? 1 : 0;
+                if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                 #if defined(SO_REUSEPORT_LB)
                 /* Some BSD systems support a special reuse port mode that promotes load balancing between connections */
-                if (trysockopt(sockfd, SOL_SOCKET, SO_REUSEPORT_LB, (const void*)&reuseaddrport, sizeof(reuseaddrport)) == SOCKET_ERROR)
+                if (trysockopt(sockfd, SOL_SOCKET, SO_REUSEPORT_LB, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
                 #elif defined(SO_REUSEPORT)
                 /* SO_REUSEPORT is only supported on Linux >= 3.9 but also promotes load balancing on UDP - may be present on some patched 2.6 kernels (e.g. REHL 2.6.32) */
-                if (trysockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR)
+                if (trysockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
                 #endif /* defined(SO_REUSEPORT) */
 
                 #if defined(SO_EXCLBIND)
                 /* Solaris supports SO_EXCLBIND similarly to SO_EXCLUSIVEADDRUSE on Windows */
-                if (trysockopt(sockfd, SOL_SOCKET, SO_EXCLBIND, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR)
+                if (trysockopt(sockfd, SOL_SOCKET, SO_EXCLBIND, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
                 #endif /* defined(SO_EXCLBIND) */
 
@@ -453,15 +455,15 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             }
             break;
         case CLARINET_SO_SNDBUF:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 #if defined(__linux__)
                 /* Linux doubles the buffer size passed to setsockopt, so we half it here to more closely match
                  * how bufffer sizes are set in other platforms. The effect is that odd numbers are rounded down
                  * to the closest even number. */
-                const int val = *(int*)optval >> 1;
+                const int val = (int)clamp(*(const int32_t*)optval, INT_MIN, INT_MAX) >> 1;
                 #else
-                const int val = *(int*)optval;
+                const int val = (int)clamp(*(const int32_t*)optval, INT_MIN, INT_MAX);
                 #endif /* defined(__linux__) */
                 if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (const void*)&val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
@@ -470,15 +472,15 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             }
             break;
         case CLARINET_SO_RCVBUF:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 /* Linux doubles the buffer size passed to setsockopt, so we half it here to more closely match
                  * how bufffer sizes are set in other platforms. The effect is that odd numbers are rounded down
                  * to the closest even number. */
                 #if defined(__linux__)
-                const int val = *(const int*)optval >> 1;
+                const int val = (int)clamp(*(const int32_t*)optval, INT_MIN, INT_MAX) >> 1;
                 #else
-                const int val = *(const int*)optval;
+                const int val = (int)clamp(*(const int32_t*)optval, INT_MIN, INT_MAX);
                 #endif /* defined(__linux__) */
                 if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (const void*)&val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
@@ -487,10 +489,10 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             }
             break;
         case CLARINET_SO_SNDTIMEO:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 struct timeval val;
-                ms2tv(&val, *(const int*)optval);
+                ms2tv(&val, (int)clamp(*(const int32_t*)optval, INT_MIN, INT_MAX));
                 if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const void*)&val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
@@ -498,10 +500,10 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             }
             break;
         case CLARINET_SO_RCVTIMEO:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 struct timeval val;
-                ms2tv(&val, *(const int*)optval);
+                ms2tv(&val, (int)clamp(*(const int32_t*)optval, INT_MIN, INT_MAX));
                 if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const void*)&val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
@@ -509,9 +511,10 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             }
             break;
         case CLARINET_SO_KEEPALIVE:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
-                if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR)
+                const int val = *(const int32_t*)optval ? 1 : 0;
+                if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                 return CLARINET_ENONE;
@@ -531,7 +534,7 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             }
             break;
         case CLARINET_SO_DONTLINGER:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 struct linger val;
                 socklen_t len = sizeof(val);
@@ -541,7 +544,7 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
                 if (len != sizeof(val)) /* sanity check */
                     return CLARINET_ESYS;
 
-                val.l_onoff = *(const int*)optval ? 0 : 1;
+                val.l_onoff = *(const int32_t*)optval ? 0 : 1;
                 if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER, (const void*)&val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
@@ -550,12 +553,13 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             break;
         case CLARINET_IP_V6ONLY:
             #if CLARINET_ENABLE_IPV6
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 const int family = socket->family;
                 if (family == CLARINET_AF_INET6)
                 {
-                    if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR)
+                    const int val = *(const int32_t*)optval ? 1 : 0;
+                    if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val)) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                     return CLARINET_ENONE;
@@ -564,12 +568,13 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
             #endif /* CLARINET_ENABLE_IPV6 */
             break;
         case CLARINET_IP_TTL:
-            if (optlen == sizeof(int))
+            if (optlen == sizeof(int32_t))
             {
                 const int family = socket->family;
                 if (family == CLARINET_AF_INET)
                 {
-                    if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR)
+                    const int val = *(const int32_t*)optval;
+                    if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &val, sizeof(val)) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                     return CLARINET_ENONE;
@@ -578,7 +583,78 @@ clarinet_socket_setopt(clarinet_socket* restrict socket,
                 #if CLARINET_ENABLE_IPV6
                 if (family == CLARINET_AF_INET6)
                 {
-                    if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (const void*)optval, (socklen_t)optlen) == SOCKET_ERROR) /* curiously IPV6_HOPLIMIT corresponds to IP_RECV_TTL not IP_TTL */
+                    const int val = *(const int32_t*)optval;
+                    if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &val, sizeof(val)) == SOCKET_ERROR) /* curiously IPV6_HOPLIMIT corresponds to IP_RECV_TTL not IP_TTL */
+                        return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                    return CLARINET_ENONE;
+                }
+                #endif /* CLARINET_ENABLE_IPV6 */
+            }
+        case CLARINET_IP_MTU_DISCOVER:
+            if (optlen == sizeof(int32_t))
+            {
+                const int family = socket->family;
+                if (family == CLARINET_AF_INET)
+                {
+                    int val;
+                    switch (*(const int32_t*)optval)
+                    {
+                        case CLARINET_PMTUD_UNSPEC:
+                            val = IP_PMTUDISC_WANT;
+                            break;
+                        case CLARINET_PMTUD_ON:
+                            val = IP_PMTUDISC_DO;
+                            break;
+                        case CLARINET_PMTUD_OFF:
+                            #if defined(__linux__) && defined(IP_PMTUDISC_OMIT)
+                            val = IP_PMTUDISC_OMIT;
+                            #elif defined(__linux__) && defined(IP_PMTUDISC_INTERFACE)
+                            val = IP_PMTUDISC_INTERAFCE;
+                            #else
+                            val = IP_PMTUDISC_DONT;
+                            #endif
+                            break;
+                        case CLARINET_PMTUD_PROBE:
+                            val = IP_PMTUDISC_PROBE;
+                            break;
+                        default:
+                            return CLARINET_EINVAL;
+                    }
+
+                    if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val)) == SOCKET_ERROR)
+                        return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                    return CLARINET_ENONE;
+                }
+
+                #if CLARINET_ENABLE_IPV6
+                if (family == CLARINET_AF_INET6)
+                {
+                    int val;
+                    switch (*(const int32_t*)optval)
+                    {
+                        case CLARINET_PMTUD_UNSPEC:
+                            val = IPV6_PMTUDISC_WANT;
+                            break;
+                        case CLARINET_PMTUD_ON:
+                            val = IPV6_PMTUDISC_DO;
+                            break;
+                        case CLARINET_PMTUD_OFF:
+                            #if defined(__linux__) && defined(IPV6_PMTUDISC_OMIT)
+                            val = IPV6_PMTUDISC_OMIT;
+                            #else
+                            val = IPV6_PMTUDISC_DONT;
+                            #endif
+                            break;
+                        case CLARINET_PMTUD_PROBE:
+                            val = IPV6_PMTUDISC_PROBE;
+                            break;
+                        default:
+                            return CLARINET_EINVAL;
+                    }
+
+                    if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val)) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                     return CLARINET_ENONE;
@@ -605,98 +681,123 @@ clarinet_socket_getopt(clarinet_socket* restrict socket,
     switch (optname)
     {
         case CLARINET_SO_NONBLOCK:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
-                if (getnonblock(sockfd, optval) == SOCKET_ERROR)
+                int val;
+                if (getnonblock(sockfd, &val) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                *optlen = sizeof(int);
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_REUSEADDR:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
-                socklen_t optsocklen = (socklen_t)*optlen;
-                if (getsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, optval, &optsocklen) == SOCKET_ERROR)
+                int val;
+                socklen_t len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, &len) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                *optlen = (size_t)optsocklen;
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_SNDBUF:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
-                socklen_t optsocklen = (socklen_t)*optlen;
-                if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, optval, &optsocklen) == SOCKET_ERROR)
+                int val;
+                socklen_t len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &val, &len) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                *optlen = (size_t)optsocklen;
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_RCVBUF:
             if (*optlen >= sizeof(int))
             {
-                socklen_t optsocklen = (socklen_t)*optlen;
-                if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, optval, &optsocklen) == SOCKET_ERROR)
+                int val;
+                socklen_t len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &val, &len) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                *optlen = (size_t)optsocklen;
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_SNDTIMEO:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
                 struct timeval val;
                 socklen_t len = sizeof(val);
-
                 if (getsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (void*)&val, &len) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                 if (len != sizeof(val)) /* sanity check */
                     return CLARINET_ESYS;
 
-                *(int*)optval = (int)min(tv2ms(&val), INT_MAX);
-                *optlen = sizeof(int);
+                *(int32_t*)optval = (int32_t)min(tv2ms(&val), INT32_MAX);
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_RCVTIMEO:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
                 struct timeval val;
                 socklen_t len = sizeof(val);
-
                 if (getsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (void*)&val, &len) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
                 if (len != sizeof(val)) /* sanity check */
                     return CLARINET_ESYS;
 
-                *(int*)optval = (int)min(tv2ms(&val), INT_MAX);
-                *optlen = sizeof(int);
+                *(int32_t*)optval = (int32_t)min(tv2ms(&val), INT32_MAX);
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_KEEPALIVE:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
-                socklen_t optsocklen = (socklen_t)*optlen;
-                if (getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, optval, &optsocklen) == SOCKET_ERROR)
+                int val;
+                socklen_t len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &val, &len) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                *optlen = (size_t)optsocklen;
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_LINGER:
             if (*optlen >= sizeof(clarinet_linger))
             {
-                clarinet_linger* clinger = (clarinet_linger*)optval;
-
                 struct linger val;
                 socklen_t len = sizeof(val);
 
@@ -706,15 +807,16 @@ clarinet_socket_getopt(clarinet_socket* restrict socket,
                 if (len != sizeof(val)) /* sanity check */
                     return CLARINET_ESYS;
 
-                clinger->enabled = (uint16_t)val.l_onoff;
+                clarinet_linger* clinger = (clarinet_linger*)optval;
+                clinger->enabled = val.l_onoff ? 1 : 0;
                 clinger->seconds = (uint16_t)clamp(val.l_linger, 0, UINT16_MAX);
-
                 *optlen = sizeof(clarinet_linger);
+
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_SO_DONTLINGER:
-            if (*optlen >= sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
                 struct linger val;
                 socklen_t len = sizeof(val);
@@ -724,79 +826,186 @@ clarinet_socket_getopt(clarinet_socket* restrict socket,
                 if (len != sizeof(val)) /* sanity check */
                     return CLARINET_ESYS;
 
-                *(int*)optval = !val.l_onoff;
-                *optlen = sizeof(int);
+                *(int32_t*)optval = val.l_onoff ? 0 : 1;
+                *optlen = sizeof(int32_t);
                 return CLARINET_ENONE;
             }
             break;
         case CLARINET_IP_V6ONLY:
             #if CLARINET_ENABLE_IPV6
-            if (*optlen == sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
                 const int family = socket->family;
                 if (family == CLARINET_AF_INET6)
                 {
-
-
-                    socklen_t optsocklen = (socklen_t)*optlen;
-                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, optval, &optsocklen) == SOCKET_ERROR)
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &val, &len) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                    *optlen = (size_t)optsocklen;
+                    if (len != sizeof(val)) /* sanity check */
+                        return CLARINET_ESYS;
+
+                    *(int32_t*)optval = (int32_t)val;
+                    *optlen = sizeof(int32_t);
+
                     return CLARINET_ENONE;
                 }
             }
             #endif /* CLARINET_ENABLE_IPV6 */
             break;
         case CLARINET_IP_TTL:
-            if (*optlen == sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
                 const int family = socket->family;
                 if (family == CLARINET_AF_INET)
                 {
-                    socklen_t optsocklen = (socklen_t)*optlen;
-                    if (getsockopt(sockfd, IPPROTO_IP, IP_TTL, optval, &optsocklen) == SOCKET_ERROR)
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IP, IP_TTL, &val, &len) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                    *optlen = (size_t)optsocklen;
+                    if (len != sizeof(val)) /* sanity check */
+                        return CLARINET_ESYS;
+
+                    *(int32_t*)optval = (int32_t)val;
+                    *optlen = sizeof(int32_t);
+
                     return CLARINET_ENONE;
                 }
 
                 #if CLARINET_ENABLE_IPV6
                 if (family == CLARINET_AF_INET6)
                 {
-                    socklen_t optsocklen = (socklen_t)*optlen;
-                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, optval, &optsocklen) == SOCKET_ERROR) /* curiously IPV6_HOPLIMIT corresponds to IP_RECV_TTL not IP_TTL */
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &val, &len) == SOCKET_ERROR) /* curiously IPV6_HOPLIMIT corresponds to IP_RECV_TTL not IP_TTL */
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                    *optlen = (size_t)optsocklen;
+                    if (len != sizeof(val)) /* sanity check */
+                        return CLARINET_ESYS;
+
+                    *(int32_t*)optval = (int32_t)val;
+                    *optlen = sizeof(int32_t);
+
                     return CLARINET_ENONE;
                 }
                 #endif /* CLARINET_ENABLE_IPV6 */
             }
             break;
         case CLARINET_IP_MTU:
-            if (*optlen == sizeof(int))
+            if (*optlen >= sizeof(int32_t))
             {
                 const int family = socket->family;
                 if (family == CLARINET_AF_INET)
                 {
-                    socklen_t optsocklen = (socklen_t)*optlen;
-                    if (getsockopt(sockfd, IPPROTO_IP, IP_MTU, optval, &optsocklen) == SOCKET_ERROR)
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IP, IP_MTU, &val, &len) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                    *optlen = (size_t)optsocklen;
+                    if (len != sizeof(val)) /* sanity check */
+                        return CLARINET_ESYS;
+
+                    *(int32_t*)optval = (int32_t)val;
+                    *optlen = sizeof(int32_t);
+
                     return CLARINET_ENONE;
                 }
 
                 #if CLARINET_ENABLE_IPV6
                 if (family == CLARINET_AF_INET6)
                 {
-                    socklen_t optsocklen = (socklen_t)*optlen;
-                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_MTU, optval, &optsocklen) == SOCKET_ERROR)
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_MTU, &val, &len) == SOCKET_ERROR)
                         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
-                    *optlen = (size_t)optsocklen;
+                    *(int32_t*)optval = (int32_t)val;
+                    *optlen = sizeof(int32_t);
+
+                    return CLARINET_ENONE;
+                }
+                #endif /* CLARINET_ENABLE_IPV6 */
+            }
+            break;
+        case CLARINET_IP_MTU_DISCOVER:
+            if (*optlen >= sizeof(int32_t))
+            {
+                int32_t* optret = (int32_t*)optval;
+
+                const int family = socket->family;
+                if (family == CLARINET_AF_INET)
+                {
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &val, &len) == SOCKET_ERROR)
+                        return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                    if (len != sizeof(val)) /* sanity check */
+                        return CLARINET_ESYS;
+
+                    switch (val)
+                    {
+                        case IP_PMTUDISC_WANT:
+                            *optret = CLARINET_PMTUD_UNSPEC;
+                            break;
+                        case IP_PMTUDISC_DO:
+                            *optret = CLARINET_PMTUD_ON;
+                            break;
+                        case IP_PMTUDISC_DONT:
+                            #if defined(__linux__) && defined(IP_PMTUDISC_OMIT)
+                        case IP_PMTUDISC_OMIT:
+                            #endif
+                            #if defined(__linux__) && defined(IP_PMTUDISC_INTERFACE)
+                        case IP_PMTUDISC_INTERFACE:
+                            #endif
+                            *optret = CLARINET_PMTUD_OFF;
+                            break;
+                        case IP_PMTUDISC_PROBE:
+                            *optret = CLARINET_PMTUD_PROBE;
+                            break;
+                        default:
+                            return CLARINET_ESYS;
+                    }
+
+                    *optlen = sizeof(int32_t);
+                    return CLARINET_ENONE;
+                }
+
+                #if CLARINET_ENABLE_IPV6
+                if (family == CLARINET_AF_INET6)
+                {
+                    int val;
+                    socklen_t len = sizeof(val);
+                    if (getsockopt(sockfd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, &len) == SOCKET_ERROR)
+                        return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                    switch (val)
+                    {
+                        case IPV6_PMTUDISC_WANT:
+                            *optret = CLARINET_PMTUD_UNSPEC;
+                            break;
+                        case IPV6_PMTUDISC_DO:
+                            *optret = CLARINET_PMTUD_ON;
+                            break;
+                        case IPV6_PMTUDISC_DONT:
+                            #if defined(__linux__) && defined(IPV6_PMTUDISC_OMIT)
+                        case IPV6_PMTUDISC_OMIT:
+                            #endif
+                            #if defined(__linux__) && defined(IPV6_PMTUDISC_INTERFACE)
+                        case IPV6_PMTUDISC_INTERFACE:
+                            #endif
+                            *optret = CLARINET_PMTUD_OFF;
+                            break;
+                        case IPV6_PMTUDISC_PROBE:
+                            *optret = CLARINET_PMTUD_PROBE;
+                            break;
+                        default:
+                            return CLARINET_ESYS;
+                    }
+
+                    *optlen = sizeof(int32_t);
                     return CLARINET_ENONE;
                 }
                 #endif /* CLARINET_ENABLE_IPV6 */
@@ -816,9 +1025,9 @@ clarinet_socket_connect(clarinet_socket* restrict socket,
     if (!socket || socket->family == CLARINET_AF_UNSPEC || socket->proto == CLARINET_PROTO_NONE || !remote)
         return CLARINET_EINVAL;
 
-    /* For now, only CLARINET_PROTO_TCP is supported.
+    /* For now, only CLARINET_PROTO_UDP and CLARINET_PROTO_TCP are supported.
      * We could rely on the syscall to return an error, but it's more efficient to check the condition here. */
-    if (socket->proto != CLARINET_PROTO_TCP)
+    if (socket->proto != CLARINET_PROTO_UDP && socket->proto != CLARINET_PROTO_TCP)
         return CLARINET_EPROTONOSUPPORT;
 
     struct sockaddr_storage ss;
