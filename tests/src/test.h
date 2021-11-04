@@ -28,6 +28,23 @@
 
 #include "catch2/catch_all.hpp"
 
+#define CLARINET_TEST_STR_IPV6_WARNING             "IPv6 suport is disabled. Some IPV6 tests may be skipped."
+#define CLARINET_TEST_STR_IPV6_AND_WSL_WARNING     "WSL cannot interact with external IPV6-only addresses due to Hyper-V limitations. IPv6 samples will be skipped."
+
+#if CLARINET_ENABLE_IPV6
+#define CLARINET_TEST_DEPENDS_ON_IPV6()             ((void)0)
+#else
+#define CLARINET_TEST_DEPENDS_ON_IPV6()             do { std::cerr << "Warning: " CLARINET_TEST_STR_IPV6_WARNING << std::endl; } while(0)
+#endif
+
+#if CLARINET_ENABLE_IPV6 && defined(__wsl__)
+#define CLARINET_TEST_CASE_LIMITED_BY_WSL()         do { static bool _ = false; if (!_) { _ = true; WARN(CLARINET_TEST_STR_IPV6_AND_WSL_WARNING); } } while(0)
+#else
+#define CLARINET_TEST_CASE_LIMITED_BY_WSL()         ((void)0)
+#endif
+
+
+
 #if defined(__JETBRAINS_IDE__)
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedMacroInspection"

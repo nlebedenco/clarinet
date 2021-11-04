@@ -48,7 +48,7 @@ TEST_CASE("Library Feature Flags", "[details][features]")
 {
     REQUIRE(CLARINET_FEATURE_NONE == 0);
 
-    uint32_t features = clarinet_get_features();
+    int features = clarinet_get_features();
 
     #if !defined(NDEBUG)
     REQUIRE_FLAG_SET(features, CLARINET_FEATURE_DEBUG);
@@ -98,7 +98,7 @@ TEST_CASE("Library Initialize")
 
         SECTION("Finalize MULTIPLE")
         {
-            /* Repeated calls should never fail */
+            // Repeated calls should never fail
             for (int i = 0; i < 10; ++i)
             {
                 errcode = clarinet_finalize();
@@ -109,7 +109,7 @@ TEST_CASE("Library Initialize")
 
     SECTION("Initialize MULTIPLE")
     {
-        /* Repeated calls should never fail */
+        // Repeated calls should never fail
         for (int i = 0; i < 10; ++i)
         {
             int errcode = clarinet_initialize();
@@ -124,7 +124,7 @@ TEST_CASE("Library Initialize")
 
         SECTION("Finalize MULTIPLE")
         {
-            /* Repeated calls should never fail */
+            // Repeated calls should never fail
             for (int i = 0; i < 10; ++i)
             {
                 int errcode = clarinet_finalize();
@@ -136,11 +136,11 @@ TEST_CASE("Library Initialize")
 
 TEST_CASE("Library Finalize")
 {
-    /* It's OK to call finalize without a previous call to Initialize() */
+    // It's OK to call finalize without a previous call to Initialize()
     int errcode = clarinet_finalize();
     REQUIRE(Error(errcode) == CLARINET_ENONE);
 
-    /* And repeated calls should never fail */
+    // And repeated calls should never fail
     for (int i = 0; i < 10; ++i)
     {
         errcode = clarinet_finalize();

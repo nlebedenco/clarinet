@@ -24,7 +24,7 @@
  * - In POSIX, names ending with _t are reserved. Since we're targeting at least one POSIX system (i.e. Linux) typenames
  * defined here MUST NOT end with _t.
  *
- * - Macros that receive arguments should normally be defined in lower case following the same name convention of
+ * - Public macros that receive arguments should normally be defined in lower case following the same name convention of
  * functions, so no builds will break if we eventually replace those macros with real functions.
  *
  * - Unfortunately, struct and union initialization in C/C++ is a mess. C99 supports member designators but C++ does not.
@@ -58,7 +58,7 @@
  * dual stack mode enabled because then the ipv6 wildcard :: occupies all addresses in both ipv6 and ipv4 space. See
  * clarinet_socket_open() for details.
  *
- * - Note that clarinet_socket_connect() has different semantics for UDP and TCP and a slightly different behaviour
+ * - @c clarinet_socket_connect() has different semantics for UDP and TCP and a slightly different behaviour
  * for UDP depending on the platform. On Unix (including macOS) when a UDP socket is bound to a foreign address by
  * clarinet_socket_connect() it effectively assumes a 5-tuple identity so when a datagram arrives, the system first
  * selects all sockets associated with the src address of the packet and then selects the socket with the most specific
@@ -69,7 +69,7 @@
  * socket open on the same port). This basically prevents UDP servers from ever using clarinet_socket_connect() to
  * operate with multiple client sockets like TCP does.
  *
- * - Note that besides platform support, dual-stack also requires a local IPv6 address (either an explicit one or the
+ * - Besides platform support, dual-stack also requires a local IPv6 address (either an explicit one or the
  * wildcard [::] which is equalt to clarinet_addr_ipv6_any). The ability to interact with IPv4 hosts requires the use
  * of the IPv4MappedToIPv6 address format. Any IPv4 address must be represented in the IPv4MappedToIPv6 address format
  * which enables an IPv6-only application to communicate with an IPv4 node. The IPv4MappedToIPv6 address format allows
@@ -260,18 +260,18 @@ extern "C" {
     E(CLARINET_EAGAIN,          -12, "Operation could not be completed immediately or resource temporarily unavailable") \
     E(CLARINET_EALREADY,        -13, "Operation already performed") \
     E(CLARINET_EINPROGRESS,     -14, "Operation is already in progress") \
-    E(CLARINET_ENOTSOCK,        -15, "Operation attempted with an invalid socket descriptor") \
+    E(CLARINET_ENOTSOCK,        -15, "Operation attempted with an invalid socket") \
     E(CLARINET_EMSGSIZE,        -16, "Message too large") \
     E(CLARINET_ENOTSUP,         -17, "Operation is not supported") \
     E(CLARINET_ENOBUFS,         -18, "Not enough buffer space or queue is full") \
-    E(CLARINET_EAFNOSUPPORT,    -19, "Address family not supported") \
-    E(CLARINET_EPROTONOSUPPORT, -20, "Protocol not supported") \
+    E(CLARINET_EAFNOSUPPORT,    -20, "Address family not supported") \
+    E(CLARINET_EPROTONOSUPPORT, -21, "Protocol is not supported") \
     E(CLARINET_EADDRINUSE,      -22, "Address already in use") \
     E(CLARINET_EADDRNOTAVAIL,   -23, "Address is not available/cannot be assigned") \
     E(CLARINET_ENETDOWN,        -24, "Network is down") \
     E(CLARINET_ENETUNREACH,     -25, "Network is unreachable") \
     E(CLARINET_ENETRESET,       -26, "Network reset possibly due to keepalive timeout") \
-    E(CLARINET_ENOTCONN,        -27, "Socket is not connected") \
+    E(CLARINET_ENOTCONN,        -27, "Socket is not connected")    \
     E(CLARINET_EISCONN,         -28, "Socket is already connected") \
     E(CLARINET_ECONNABORTED,    -29, "Connection aborted (closed locally)") \
     E(CLARINET_ECONNRESET,      -30, "Connection reset by peer (closed remotely)") \
@@ -279,11 +279,12 @@ extern "C" {
     E(CLARINET_ECONNTIMEOUT,    -32, "Connection timeout") \
     E(CLARINET_ECONNREFUSED,    -33, "Connection refused") \
     E(CLARINET_EHOSTDOWN,       -34, "Host is down") \
-    E(CLARINET_EHOSTUNREACH,    -35, "No route to host")     \
-    E(CLARINET_EPROCLIM,        -36, "Too many processes or tasks") \
-    E(CLARINET_EMFILE,          -37, "Too many files") \
-    E(CLARINET_ELIBACC,         -38, "Cannot access a needed shared library") \
-    E(CLARINET_ELIBBAD,         -39, "Accessing a corrupted shared library") \
+    E(CLARINET_EHOSTUNREACH,    -35, "No route to host")  \
+    E(CLARINET_EPROTO,          -36, "Protocol error") \
+    E(CLARINET_EPROCLIM,        -37, "Too many processes or tasks") \
+    E(CLARINET_EMFILE,          -38, "Too many files") \
+    E(CLARINET_ELIBACC,         -39, "Cannot access a needed shared library") \
+    E(CLARINET_ELIBBAD,         -40, "Accessing a corrupted shared library") \
 
 
 enum clarinet_error
@@ -357,7 +358,7 @@ clarinet_proto_description(int proto);
 
 /* endregion */
 
-/* region Feature flags */
+/* region Feature Flags */
 
 #define CLARINET_FEATURE_NONE       (0)         /**< None */
 #define CLARINET_FEATURE_DEBUG      (1 << 0)    /**< Debug information built-in */
@@ -379,7 +380,10 @@ clarinet_proto_description(int proto);
 
 /* region Socket Options (all socket options must have a unique integer identifier) */
 
-#define CLARINET_SO_NONBLOCK        1           /**< Enable/disable non-blocking mode */
+/**
+ * Enable/disable non-blocking mode. This option is write-only.
+ */
+#define CLARINET_SO_NONBLOCK        1
 
 /**
  * Controls how @c clarinet_socket_bind() should handle local address/port conflicts internally.
@@ -392,6 +396,9 @@ clarinet_proto_description(int proto);
  * not all underlying systems provide the same level of support to address/port reuse and a few discrepancies are
  * inevitable. Also note that even when disregarding broadcast and multicast, address reuse on UDP sockets have slightly
  * different implications than on TCP sockets because there is no TIME_WAIT state involved.
+ *
+ * @note For this option to have any effect it must be set before calling @c clarinet_socket_bind(), otherwise
+ * behaviour is undefined.
  *
  * @note For unicast UDP sockets, underlying implementations are known to operate as follows:
  *
@@ -824,18 +831,32 @@ clarinet_proto_description(int proto);
 
 #define CLARINET_SO_RCVTIMEO        6           /**< Receive buffer timeout */
 
-#define CLARINET_SO_KEEPALIVE       7           /**< Enable/disable keepalive (currently only supported by TCP) */
+/**
+ * Enable/disable keepalive if supported by the protocol
+ *
+ * @details Currently only supported by TCP sockets.
+ *
+ * @return CLARINET_EPROTONOSUPPORT Option is not supported by the socket protocol.
+ */
+#define CLARINET_SO_KEEPALIVE       7
 
 /**
- * Socket linger timeout. This option stores a @c clarinet_linger.
+ * Socket linger timeout. This option stores a @c clarinet_linger value.
  *
- * @details
+ * @details Currently only supported by TCP sockets.
  *
- * @note
+ * @return CLARINET_EPROTONOSUPPORT Option is not supported by the socket protocol.
  */
 #define CLARINET_SO_LINGER          8
 
-#define CLARINET_SO_DONTLINGER      9           /**< Enable/disable linger without affecting the timeout already configured */
+/**
+ * Enable/disable linger without affecting the timeout already configured.
+ *
+ * @details Currently only supported by TCP sockets.
+ *
+ * @return CLARINET_EPROTONOSUPPORT Option is not supported by the socket protocol.
+ */
+#define CLARINET_SO_DONTLINGER      9
 
 /**
  * Enable/Disable Dual Stack on an IPV6 socket. This option stores a 32-bit integer value. Valid values are limited
@@ -933,7 +954,7 @@ clarinet_proto_description(int proto);
 
 /* endregion */
 
-/* region Metadata */
+/* region Library Info */
 
 CLARINET_EXTERN
 uint32_t
@@ -957,7 +978,7 @@ clarinet_get_features(void);
 
 /* endregion */
 
-/* region Address Manipulation */
+/* region Address */
 
 /* Network layer address definitions and transport endpoint definitions are common to UDP and TCP.
  *
@@ -1350,7 +1371,7 @@ clarinet_make_endpoint(clarinet_addr addr,
 
 /* endregion */
 
-/* region Initialization (from this point on all macros and functions require library initialization) */
+/* region Library Initialization (from this point on all macros and functions require library initialization) */
 
 /**
  * Static initialization. Must be called once before any function that depends on the network subsystem. This is the
@@ -1376,12 +1397,11 @@ clarinet_finalize(void);
 
 struct clarinet_socket
 {
-    uint16_t family;            /**< Socket fammily (note that dual stack sockets must be INET6 by definition) */
-    uint16_t proto;             /**< Socket protocol */
-    union
+    uint16_t family;    /**< Socket address family (read-only) */
+    union clarinet_socket_data /* this name is just to satisfy C++ compilers that cannot handle unamed unions */
     {
-        int fd;                 /**< Used in platforms that identify sockets using descriptors (e.g. unix) */
-        void* handle;           /**< Used in platforms that identify sockets using handles (e.g. windows) or opaque structures (e.g. embedded systems) */
+        int descriptor; /**< Descriptor used in POSIX compatible platforms */
+        void* handle;   /**< Opaque handle used in non-POSIX platforms (e.g. Windows) */
     } u;
 };
 
@@ -1404,11 +1424,11 @@ struct clarinet_linger
 typedef struct clarinet_linger clarinet_linger;
 
 /**
- * Initialize a socket structure
+ * Initialize a sp structure
  *
- * @param [in, out] sp
+ * @param [in] sp Socket pointer
  *
- * @details The memory pointed to by @p sp must have been previously allocated by the user.
+ * @details The memory pointed to by @p sp must have been previously allocated.
  *
  */
 CLARINET_EXTERN
@@ -1416,9 +1436,9 @@ void
 clarinet_socket_init(clarinet_socket* sp);
 
 /** 
- * Create a new socket.
+ * Create a new sp.
  *
- * @param [in, out] sp
+ * @param [in] sp Socket pointer
  * @param [in] family
  * @param [in] proto
  *
@@ -1438,9 +1458,9 @@ clarinet_socket_open(clarinet_socket* sp,
                      int proto);
 
 /** 
- * Close the socket.
+ * Close the sp.
  *
- * @param [in] sp Pointer to a socket structure previously allocated.
+ * @param [in] sp Socket pointer
  *
  * @return @c CLARINET_ENONE on success
  * @return @c CLARINET_EINVAL
@@ -1449,24 +1469,23 @@ clarinet_socket_open(clarinet_socket* sp,
  * @return @c CLARINET_ENETDOWN
  * @return @c CLARINET_ELIBACC
  *
- * @details On success this function reinitializes the socket structure pointed to by @p sp. Otherwise an error code is
+ * @details On success this function reinitializes the sp structure pointed to by @p sp. Otherwise an error code is
  * returned and the memory is left unmodified. It is then up to the the user to call @c clarinet_socket_init() should
- * the same socket be reused. Therefore it is only safe to call @c clarinet_socket_close() successvely with the same
- * socket if a previous closing attempt did not fail. There might be specific situations on certain platforms in which a
- * socket could be safely closed again after a previously failed attempt but in general, unless explicitly stated
+ * the same sp be reused. Therefore it is only safe to call @c clarinet_socket_close() successvely with the same
+ * sp if a previous closing attempt did not fail. There might be specific situations on certain platforms in which a
+ * sp could be safely closed again after a previously failed attempt but in general, unless explicitly stated
  * otherwise, any closing operation is final and should not be re-tried in case of an error. Trying to close the same
- * socket twice like this may lead to a (reused) file descriptor in another thread being closed unintentionally. This
- * might occur because the system can release the descriptor associated with the socket early in a close operation,
+ * sp twice like this may lead to a (reused) file descriptor in another thread being closed unintentionally. This
+ * might occur because the system can release the descriptor associated with the sp early in a close operation,
  * freeing it for reuse by another thread. Still the steps that might produce an error, such as flushing data, could
  * occur much later in the closing process and eventually result in an error being returned.
  *
- * @note Behaviour is undefined if the socket pointed by sp is not initialized.
+ * @note Behaviour is undefined if the sp pointed by sp is not initialized.
  *
  */
 CLARINET_EXTERN
 int
 clarinet_socket_close(clarinet_socket* sp);
-
 
 CLARINET_EXTERN
 int
@@ -1474,12 +1493,21 @@ clarinet_socket_bind(clarinet_socket* restrict sp,
                      const clarinet_endpoint* restrict local);
 
 /** 
- * Get the local endpoint bound to the socket.
+ * Get the local endpoint bound to the sp.
  *
  * @details This is the local address previously passed to clarinet_socket_bind() or implicitly bound by 
  * clarinet_socket_connect(). This is not necessarily the same address used by a remote peer to send this host a packet 
  * because the local host could be behind a NAT and it may not even match the destination address in a received IP 
  * packet because the host can be bound multiple addresses using a wildcard address.
+ *clarinet_socket_bind()
+ *
+ * @return @c CLARINET_ENONE: Success
+ *
+ * @return @c CLARINET_EINVAL: @p sp is NULL
+ * @return @c CLARINET_EINVAL: @p local is NULL
+ * @return @c CLARINET_EINVAL: The sp pointed to by @p sp is invalid
+ * @return @c CLARINET_EINVAL: The sp pointed to by @p sp has not been bound to a local endpoint yet. A sp is
+ * only bound to a local endpoint after a successful call to @c clarinet_socket_bind() or @c clarinet_socket_connect().
  */
 CLARINET_EXTERN
 int
@@ -1487,14 +1515,14 @@ clarinet_socket_local_endpoint(clarinet_socket* restrict sp,
                                clarinet_endpoint* restrict local);
 
 /** 
- * Get the remote endpoint connected to the socket.
+ * Get the remote endpoint connected to the sp.
  *
- * @details For TCP sockets, once clarinet_socket_connect() has been performed, either socket can call 
- * clarinet_socket_remote_endpoint() to obtain the address of the peer socket.  On the other hand, UDP sockets are 
- * connectionless. Calling clarinet_socket_connect() on a UDP socket merely sets the peer address for outgoing datagrams 
+ * @details For TCP sockets, once clarinet_socket_connect() has been performed, either sp can call
+ * clarinet_socket_remote_endpoint() to obtain the address of the peer sp.  On the other hand, UDP sockets are
+ * connectionless. Calling clarinet_socket_connect() on a UDP sp merely sets the peer address for outgoing datagrams
  * sent with clarinet_socket_send() or clarinet_socket_recv(). The caller of clarinet_socket_connect(2) can use 
- * clarinet_socket_remote_endpoint() to obtain the peer address that it earlier set for the socket.  However, the peer
- * socket is unaware of this information, and calling clarinet_socket_remote_endpoint() on the peer socket will return 
+ * clarinet_socket_remote_endpoint() to obtain the peer address that it earlier set for the sp.  However, the peer
+ * sp is unaware of this information, and calling clarinet_socket_remote_endpoint() on the peer sp will return
  * no useful information (unless a clarinet_socket_connect() call was also executed on the peer).  Note also that the 
  * receiver of a datagram can obtain the address of the sender when using clarinet_socket_recvfrom().
  */
@@ -1532,14 +1560,14 @@ clarinet_socket_recvfrom(clarinet_socket* restrict sp,
                          clarinet_endpoint* restrict remote);
 
 /**
- * Set socket option.
+ * Set sp option.
  *
- * @details All socket options have a unique @p optname across all protocols. This is safer than allowing independent
+ * @details All sp options have a unique @p optname across all protocols. This is safer than allowing independent
  * numbering under each option level (i.e. protocol layer). The alternative of passing an <i>option level</i> as in @c
  * setsockopt(2) may lead to accidental modifications without warning when the user mistakes the protocol level and the
  * wrong level happens to have an option name with the same value
  *
- * @param [in] sp
+ * @param [in] sp Socket pointer
  * @param [in] optname
  * @param [in] optval
  * @param [in] optlen
@@ -1559,7 +1587,7 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                        size_t optlen);
 
 /**
- * Get socket option.
+ * Get sp option.
  *
  * @param [in] sp
  * @param [in] optname
@@ -1576,7 +1604,7 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                        size_t* restrict optlen);
 
 /**
- * Connects the socket to a remote host.
+ * Connects the sp to a remote host.
  *
  * @param sp
  * @param remote
@@ -1587,65 +1615,101 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
 CLARINET_EXTERN
 int
 clarinet_socket_connect(clarinet_socket* restrict sp,
-                        clarinet_endpoint* restrict remote);
+                        const clarinet_endpoint* restrict remote);
 
 /**
- * Listen for connections on a socket.
+ * Listen for connections on a sp.
  *
  * @param [in] sp Socket pointer
- * @param [in] backlog The maximum length of the queue of pending connections. Any value between 0 and 5 should work in
- * all platforms. Values greater than 5 may not be supported in platforms with severe resource constraints. A value of
- * -1 will use whatever is the platform's maximum backlog. Other negative values are undefined.
+ * @param [in] backlog Maximum length for the queue of pending connections. Must be greater than or equal to zero.
+ * Values between 0 and 5 should work in all platforms. Values greater than 5 may not be supported on platforms
+ * with particular resource constraints.
  *
- * @return
+ * @return @c CLARINET_ENONE: Success
  *
- * @details This function will fail if the socket is not from a compatible protocol. Compatible protocols are:
- * @c CLARINET_PROTO_TCP. The value provided by @p backlog is just a hint and the system is free to select a different
- * one. Calling @c clarinet_socket_listen() again on a listen socket with possibly a different @p backlog value will
- * not fail but the outcome will be platform dependent and the call may as well be entirely ignored.
+ * @return @c CLARINET_EINVAL: @p sp is NULL.
+ * @return @c CLARINET_EINVAL: The sp pointed by @p sp is invalid. The sp must be open and bound to a local
+ * endpoint.
+ * @return @c CLARINET_EINVAL: @p backlog is out of range.
  *
- * @note On Windows backlog values are clamped to the interval [200, 65535] and -1 is equivalent to 65535. A subsequent
- * call to @c clarinet_socket_listen() on the listening socket will return success without changing the value for the
- * backlog parameter. Setting the backlog parameter to 0 in a subsequent call to listen on a listening socket is not
- * considered a proper reset, especially if there are connections on the socket.
+ * @return @c CLARINET_EPROTONOSUPPORT: Operation is not supported by the sp protocol.
  *
- * @note On Linux the behavior of the backlog argument on TCP sockets changed with kernel 2.2.  Now it specifies the
- * queue length for completely established sockets waiting to be accepted, instead of the number of incomplete
- * connection requests.  The maximum length of the queue for incomplete sockets can be set using
- * /proc/sys/net/ipv4/tcp_max_syn_backlog.  When syncookies are enabled there is no logical maximum length and this
- * setting is ignored.  See tcp(7) for more information. If the backlog argument is greater than the value in
- * /proc/sys/net/core/somaxconn, then it is silently capped to that value.  Since Linux 5.4, the default in this file is
- * 4096; in earlier kernels, the default value is 128.  In kernels before 2.4.25, this limit was a hard coded value,
- * @c SOMAXCONN, with the value 128. A subsequent call to @c clarinet_socket_listen() on the listening socket will
- * adjust its backlog queue length using the new backlog value, but only for future connection requests. It does not
- * discard any pending connections already in the queue.
+ * @details This function will fail if the sp is not from a compatible protocol. Currently the only compatible
+ * protocol is @c CLARINET_PROTO_TCP. The value provided by @p backlog is just a hint and the system is free to adjust
+ * or ignore it. Calling @c clarinet_socket_listen() multiple times on a listen sp with possibly a different
+ * @p backlog value is not recommended. It should not fail but the behaviour is platform dependent and can vary
+ * considerably. Setting the @p backlog parameter to 0 in a subsequent call to @c clarinet_Socket_listen() on a
+ * listening sp is not considered a proper reset, especially if there are connections in the queue.
  *
- * @note On FreeBSD/Darwin the real maximum queue length will be 1.5 times more than the value specified in the backlog
- * argument. A subsequent call to @c clarinet_socket_listen() on the listening socket allows the caller to change the
- * maximum queue length using a new backlog argument.  If a connection request arrives with the queue full the client
- * may receive an error with an	indication of @c ECONNREFUSED, or,	in the case of TCP, the	connection will be silently
- * dropped. Current queue lengths of listening	sockets	can be queried using netstat(1)	command. Note that before
- * FreeBSD 4.5 and the introduction of the syncache, the backlog argument also determined the length of the	incomplete
+ * @note @b WINDOWS: The sp is considered invalid if not explicitly bound to a local endpoint first. The value of
+ * @p backlog is clamped to the interval [200, 65535]. Subsequent calls to @c clarinet_socket_listen() on the same
+ * listening sp with a valid @p backlog will ALWAYS succeed but the new @p backlog will be ignored by the system.
+ *
+ * @note @b LINUX: If the sp is not explicitly bound to a local endpoint, the system will implicitly assign a port
+ * and default binding like it does when one calls @c clarinet_socket_connect() without a previous call to
+ * @c clarinet_socket_bind(). The behavior of the @p backlog argument on TCP sockets changed with kernel 2.2. Now it
+ * specifies the queue length for completely established sockets waiting to be accepted, instead of the number of
+ * incomplete connection requests. The maximum length of the queue for incomplete sockets can be set using
+ * /proc/sys/net/ipv4/tcp_max_syn_backlog. When syncookies are enabled (net.ipv4.tcp_syncookies=1) there is no logical
+ * maximum length and this setting is ignored. See <a href="https://man7.org/linux/man-pages/man7/tcp.7.html">tcp(7)</a>
+ * for more information. If @p backlog is greater than the value in /proc/sys/net/core/somaxconn, then it is silently
+ * capped to that value. Since Linux 5.4, the default value in this file is 4096; in earlier kernels, the default value
+ * is 128. In kernels before 2.4.25, this limit was a hard coded constant, @c SOMAXCONN = 128. Subsequent calls to
+ * @c clarinet_socket_listen() on the listening sp will adjust the backlog queue length using the new @p backlog
+ * value, but only for future connection requests. It does not discard any pending connections already in the queue.
+ *
+ * @note @b BSD/DARWIN: If the sp is not explicitly bound to a local endpoint, the system will implicitly assign a
+ * port and default binding like it does when one calls @c clarinet_socket_connect() without a previous call to
+ * @c clarinet_socket_bind(). The real maximum queue length will be 1.5 times more than the value specified by
+ * @p backlog. Any subsequent call to @c clarinet_socket_listen() on the listening sp allows the caller to change
+ * the maximum queue length using a new @p backlog argument. If a connection request arrives with the queue full, the
+ * client may receive an error with an indication of @c CLARINET_ECONNREFUSED, or, in the case of TCP, the connection
+ * will be silently dropped. Current queue lengths of listening sockets can be queried using @c netstat(1) command. Note
+ * that before FreeBSD 4.5 and the introduction of the syncache, @p backlog also determined the length of the incomplete
  * connection queue, which held TCP sockets in the process of completing TCP's 3-way handshake. These incomplete
  * connections are now held entirely in the syncache, which is unaffected by queue lengths. Inflated backlog values to
- * help handle denial of service attacks are no longer necessary. The sysctl(3) MIB variable kern.ipc.soacceptqueue
- * specifies a hard	limit on backlog; if a value greater than kern.ipc.soacceptqueue or less than zero is specified,
- * backlog is silently forced to kern.ipc.soacceptqueue. If	the listen queue overflows, the	kernel will emit a
- * @c LOG_DEBUG syslog message. The sysctl(3) MIB variable kern.ipc.sooverinterval specifies a per-socket limit on how
- * often the kernel will emit	these messages.
- *
+ * help handle denial of service attacks are no longer necessary. The @c sysctl(3) MIB variable
+ * @c kern.ipc.soacceptqueue specifies a hard limit on backlog; if a value greater than kern.ipc.soacceptqueue or less
+ * than zero is specified, @p backlog is silently forced to @c kern.ipc.soacceptqueue. If the listen queue overflows,
+ * the kernel will emit a @c LOG_DEBUG syslog message. The @c sysctl(3) MIB variable kern.ipc.sooverinterval specifies a
+ * per-sp limit on how often the kernel will emit these messages.
  */
 CLARINET_EXTERN
 int
 clarinet_socket_listen(clarinet_socket* sp,
                        int backlog);
 
+/**
+ *
+ * @param ssp Server socket pointer
+ * @param csp Client socket pointer
+ * @param remote Remote end point of the client socket
+ * @return
+ *
+ * @note A failure to obtain the remote address of the connected socket is not considered an error because in theory a
+ * platform might not be able to provide that information immediately and would require an explicit call to
+ * @c clarinet_socket_remote_endpoint() for that purpose. There is currently no supported platform to which this is the
+ * case.
+ */
 CLARINET_EXTERN
 int
-clarinet_socket_accept(clarinet_socket* restrict server,
-                       clarinet_socket* restrict client,
+clarinet_socket_accept(clarinet_socket* restrict ssp,
+                       clarinet_socket* restrict csp,
                        clarinet_endpoint* restrict remote);
 
+/**
+ *
+ * @param sp
+ * @param flags
+ * @return @c CLARINET_ENONE
+ * @return @c CLARINET_ENOTCONN: The sp is not connected.
+ *
+ * @details Once the shutdown function is called to disable send, receive, or both, there is no method to re-enable that
+ * capability for the existing sp connection.
+ *
+ * @note @b WINDOWS: A UDP sp can be shutdown even when not connected so @c CLARINET_ENOTCONN will only be returned
+ * for TCP sockets.
+ */
 CLARINET_EXTERN
 int
 clarinet_socket_shutdown(clarinet_socket* restrict sp,

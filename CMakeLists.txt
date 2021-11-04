@@ -344,9 +344,12 @@ macro(target_compile_warnings _target)
         if(MSVC AND NOT CLANG)
             # Enable all warnings first
             target_compile_option(${_target} PRIVATE -Wall)
+            # Disable warnings about some enum value not handled in a switch/case block. Having a default for multiple
+            # enum values is perfectly valid and the developer is supposed to know better than the compile in this case.
+            target_compile_option(${_target} PRIVATE -wd4061)
             # In theory, we care whether somebody uses f() rather than f(void) to declare a function with no arguments,
-            # but, in practice, there are places in the Windows header files that appear to do that, so we squelch that
-            # warning.
+            # but, in practice, there are places in the Windows header files that do not use void, so we must squelch
+            # that warning.
             target_compile_option(${_target} PRIVATE -wd4255)
             # Windows FD_SET() generates this, so we suppress it.
             target_compile_option(${_target} PRIVATE -wd4548)
@@ -873,6 +876,14 @@ if(LINUX)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
             _FORTIFY_SOURCE=1
+    )
+endif()
+
+# Export a symbol to indicate that we are building in WSL and not a real Linux this is useful for tests.
+if (LINUX AND WSL)
+    target_compile_definitions(${PROJECT_NAME}
+        PRIVATE
+            __wsl__=1
     )
 endif()
 

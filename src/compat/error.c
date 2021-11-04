@@ -61,11 +61,6 @@ clarinet_error_from_sockapi_error(int err)
      * for udp sockets in calrinet_socket_setopt(), calrinet_socket_send() and calrinet_socket_recv().
      */
 
-    /* WSAEOPNOTSUPP should not be relayed directly to the user and represents an internal error. */
-
-    /* WSAENOPROTOOPT should not normally be relayed to the user and represents an internal error. All clarinet socket
-     * options are portable, uniquely identifiable and the translation to platform optlevel/optname should never fail.*/
-
     switch (err)
     {
         case 0:
@@ -77,17 +72,19 @@ clarinet_error_from_sockapi_error(int err)
         case WSAEAFNOSUPPORT:               /* Address/Protocol family not supported. */
         case WSAEPFNOSUPPORT:               /* Equivalent to WSAEAFNOSUPPORT */
             return CLARINET_EINVAL;
-        case WSA_NOT_ENOUGH_MEMORY:         /* Not enough memory. Not indicated by any specific function supposedly could be reported by any one. */
-            return CLARINET_ENOMEM;
-        case WSAEINTR:                      /* A blocking operation was interrupted. This error should not normally be relayed to the end-user. */
-            return CLARINET_EINTR;
-        case WSAESOCKTNOSUPPORT:            /* Socket type not suported. This error should not normally be relayed to the end-user. */
-        case WSAEPROTOTYPE:                 /* The specified protocol is the wrong type for this socket. This error should not normally be relayed to the end-user. */
-        case WSAEPROTONOSUPPORT:            /* Protocol not supported. This error should not normally be relayed to the end-user. */
-            return CLARINET_ENOTSUP;
-        case WSAEOPNOTSUPP:                 /* Internal socket mishandling. For example: trying to set/get an unsupported socket opt, calling accept() on a udp socket or using incompatible send/recv flags. */
-        case WSAENOPROTOOPT:                /* Bad protocol option. */
+        case WSASYSCALLFAILURE:             /* Syscall failed */
             return CLARINET_ESYS;
+        case WSA_NOT_ENOUGH_MEMORY:         /* Not enough memory. Not indicated by any specific function supposedly could be reported by anyone. */
+            return CLARINET_ENOMEM;
+        case WSAEINTR:                      /* A blocking operation was interrupted.*/
+            return CLARINET_EINTR;
+        case WSAEOPNOTSUPP:                 /* Internal socket mishandling. For example: trying to set/get an unsupported socket opt, calling accept() on a UDP socket or using incompatible send/recv flags. */
+        case WSAESOCKTNOSUPPORT:            /* Socket type not suported. This error should not normally be relayed to the end-user. */
+            return CLARINET_ENOTSUP;
+        case WSAEPROTOTYPE:                 /* The specified protocol is the wrong type for this socket. May be returned by connect(2). */
+        case WSAEPROTONOSUPPORT:            /* Protocol not supported. */
+        case WSAENOPROTOOPT:                /* Option is not supported by protocol. May be returned by setsockopt(2). */
+            return CLARINET_EPROTONOSUPPORT;
         case WSAEACCES:                     /* Permission denied */
             return CLARINET_EACCES;
         case WSAEMFILE:                     /* Too many open sockets */
@@ -173,12 +170,6 @@ clarinet_error_from_sockapi_error(const int err)
     /* EWOULDBLOCK and EAGAIN still have to be relayed to the user from send() and recv(). Both have the same value on
      * LINUX but not necessarily on other unix systems, although they should normally be interchangeable. */
 
-    /* EOPNOTSUPP should not be realyed directly to the user and represents an internal error. If an operation is 
-     * genuinely not supported it should return ENOTSUP instead. */
-
-    /* ENOPROTOOPT should not normally be relayed to the user and represents an internal error. All clarinet socket
-     * options are portable, uniquely identifiable and the translation to platform optlevel/optname should never fail.*/
-
     /* @formatter:off */
     switch (err)
     {
@@ -204,9 +195,11 @@ clarinet_error_from_sockapi_error(const int err)
         case EOPNOTSUPP:                    /* Internal socket mishandling. For example: trying to set/get an unsupported socket opt, calling accept() on a udp socket or using incompatible send/recv flags. */
         #endif
         case ESOCKTNOSUPPORT:               /* Socket type not suported. This error should not normally be relayed to the end-user. */
-        case EPROTOTYPE:                    /* The specified protocol is the wrong type for this socket. This error should not normally be relayed to the end-user. */
-        case EPROTONOSUPPORT:               /* Protocol not supported. This error should not normally be relayed to the end-user. */
             return CLARINET_ENOTSUP;
+        case EPROTOTYPE:                    /* The specified protocol is the wrong type for this socket. May be returned by connect(2). */
+        case EPROTONOSUPPORT:               /* Protocol not supported. This error should not normally be relayed to the end-user. */
+        case ENOPROTOOPT:                   /* Option is not supported by protocol. May be returned by setsockopt(2). */
+            return CLARINET_EPROTONOSUPPORT;
         case EACCES:                        /* Permission denied */
             return CLARINET_EACCES;
         case EMFILE:                        /* Too many open sockets */
@@ -223,8 +216,8 @@ clarinet_error_from_sockapi_error(const int err)
             return CLARINET_ENOTSOCK;
         case EMSGSIZE:                      /* Datagram is larger than the internal message buffer */
             return CLARINET_EMSGSIZE;
-        case ENOPROTOOPT:                   /* Bad protocol option. */
-            return CLARINET_ESYS;
+        case EPROTO:                        /* Protocol error */
+            return CLARINET_EPROTO;
         case EADDRINUSE:                    /* Address already in use. */
             return CLARINET_EADDRINUSE;
         case EADDRNOTAVAIL:                 /* This normally results from an attempt to bind to an address that is not valid for the local computer. */

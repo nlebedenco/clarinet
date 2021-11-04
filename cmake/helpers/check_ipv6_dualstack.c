@@ -36,7 +36,7 @@ int main(void)
             break;
         }
         
-        memset((char *) &addr, 0, sizeof(addr));	
+        memset((char *) &addr, 0, sizeof(addr));    
         addr.sin6_family = AF_INET6;   
         if(bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
         {
@@ -50,4 +50,3 @@ int main(void)
     
     return exitcode;
  }
-

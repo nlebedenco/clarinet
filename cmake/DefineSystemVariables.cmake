@@ -24,6 +24,12 @@ elseif (APPLE)
 else()
     if(CMAKE_SYSTEM_NAME STREQUAL Linux )
         set(LINUX TRUE)
+        # In theory, WSL builds should be the same as any other Linux but in practice WSL has many limitations that
+        # may affect tests, for example, although WSL supports IPV6 sockets it cannot reach to external IPV6 addresses
+        # because of Hyper-V limitations so connect(2) and sendto(2) always fail with ENETUNREACH.
+        if (CMAKE_SYSTEM MATCHES "^.*[Mm]icrosoft.*$")
+            set(WSL TRUE)
+        endif()
     elseif(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
         set(FREEBSD TRUE)
     elseif(CMAKE_SYSTEM_NAME STREQUAL Orbis)

@@ -90,9 +90,7 @@ clarinet_proto_description(int proto)
 
 /* endregion */
 
-/* region Metadata */
-
-/* @formatter:on */
+/* region Library Info */
 
 uint32_t
 clarinet_get_semver(void)
@@ -152,7 +150,7 @@ clarinet_get_features(void)
 
 /* endregion */
 
-/* region Address Manipulation */
+/* region Address */
 
 /* @formatter:off */
 

@@ -4,9 +4,7 @@
 
 static starter init([] // NOLINT(cert-err58-cpp)
 {
-    #if !CLARINET_ENABLE_IPV6
-    WARN("IPv6 suport is disabled. Some IPV6 tests may be skipped. ");
-    #endif
+    CLARINET_TEST_DEPENDS_ON_IPV6();
 });
 
 TEST_CASE("Address Init", "[address]")
@@ -431,31 +429,35 @@ TEST_CASE("Unspecified Address Is Equal", "[address]")
 
         FROM(sample);
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE(addr_is_equal);
     }
 
     SECTION("Check all but None IS NOT EQUAL to None")
     {
-        // using two distinct allocations for the same contant on purpose
-        int sample;
-        clarinet_addr a, b;
-
         // @formatter:off
-        std::tie(sample, a, b) = GENERATE(table<int, clarinet_addr, clarinet_addr>({
-            { 0, clarinet_addr_none, clarinet_addr_any_ipv4 },
-            { 1, clarinet_addr_none, clarinet_addr_loopback_ipv4 },
+        // Using two distinct allocations for the same contant on purpose
+        // Table index | address A | address B
+        std::vector<std::tuple<int, clarinet_addr, clarinet_addr>> samples = {
+            { 0, clarinet_addr_none, clarinet_addr_any_ipv4       },
+            { 1, clarinet_addr_none, clarinet_addr_loopback_ipv4  },
             { 2, clarinet_addr_none, clarinet_addr_broadcast_ipv4 },
         #if CLARINET_ENABLE_IPV6
-            { 3, clarinet_addr_none, clarinet_addr_any_ipv6 },
-            { 4, clarinet_addr_none, clarinet_addr_loopback_ipv6 },
+            { 3, clarinet_addr_none, clarinet_addr_any_ipv6       },
+            { 4, clarinet_addr_none, clarinet_addr_loopback_ipv6  },
         #endif
-        }));
+        };
         // @formatter:on
 
+        SAMPLES(samples);
+
+
+        int sample;
+        clarinet_addr a, b;
+        std::tie(sample, a, b) = GENERATE_REF(from_samples(samples));
         FROM(sample);
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE_FALSE(addr_is_equal);
     }
 }
@@ -478,7 +480,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
 
         FROM(sample);
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE(addr_is_equal);
     }
 
@@ -497,7 +499,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
 
         FROM(sample);
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE_FALSE(addr_is_equal);
     }
 
@@ -519,7 +521,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
         b.as.ipv4.u.byte[2] = 0x22;
         b.as.ipv4.u.byte[3] = 0x33;
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE(addr_is_equal);
     }
 
@@ -543,7 +545,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
             b.as.ipv4.u.byte[2] = 0x22;
             b.as.ipv4.u.byte[3] = 0x33;
 
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE_FALSE(addr_is_equal);
         }
 
@@ -579,7 +581,7 @@ TEST_CASE("IPv4 Address Is Equal", "[address][ipv4]")
             b.as.ipv6.u.byte[15] = 0x33;
             b.as.ipv6.scope_id = 0;
 
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE_FALSE(addr_is_equal);
         }
     }
@@ -603,7 +605,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
 
         FROM(sample);
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE(addr_is_equal);
     }
 
@@ -624,7 +626,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
 
         FROM(sample);
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE_FALSE(addr_is_equal);
     }
 
@@ -674,7 +676,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
         b.as.ipv6.u.byte[15] = 0xFF;
         b.as.ipv6.scope_id = 0xF1F2F3F4;
 
-        auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+        bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
         REQUIRE(addr_is_equal);
 
         clarinet_addr c = b;
@@ -732,7 +734,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             b.as.ipv6.u.byte[15] = 0xFF;
             b.as.ipv6.scope_id = 0xF1F2F3F4;
 
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE_FALSE(addr_is_equal);
         }
 
@@ -782,7 +784,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             b.as.ipv6.u.byte[15] = 0xFF;
             b.as.ipv6.scope_id = 0xF1F2F3F4;
 
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE_FALSE(addr_is_equal);
         }
 
@@ -832,7 +834,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             b.as.ipv6.u.byte[15] = 0xFF;
             b.as.ipv6.scope_id = 0xF1F2F3F4;
 
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE(addr_is_equal);
         }
 
@@ -882,7 +884,7 @@ TEST_CASE("IPv6 Address Is Equal", "[address][ipv6]")
             b.as.ipv6.u.byte[15] = 0xFF;
             b.as.ipv6.scope_id = 0xF1F2F3F4;
 
-            auto addr_is_equal = clarinet_addr_is_equal(&a, &b);
+            const bool addr_is_equal = clarinet_addr_is_equal(&a, &b);
             REQUIRE_FALSE(addr_is_equal);
         }
     }
@@ -1247,8 +1249,7 @@ TEST_CASE("Convert to IPv4", "[address][ipv4]")
     SECTION("VALID conversion to IPv4")
     {
         // @formatter:off
-        const std::vector<std::tuple<int, clarinet_addr, clarinet_addr>> data =
-        {
+        const std::vector<std::tuple<int, clarinet_addr, clarinet_addr>> samples = {
         #if CLARINET_ENABLE_IPV6
             { 0, clarinet_addr_loopback_ipv4mapped, clarinet_addr_loopback_ipv4 },
         #endif // CLARINET_ENABLE_IPV6
@@ -1256,25 +1257,24 @@ TEST_CASE("Convert to IPv4", "[address][ipv4]")
         };
         // @formatter:on
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         clarinet_addr src, expected;
-        std::tie(sample, src, expected) = GENERATE_REF(from_samples(data));
-
+        std::tie(sample, src, expected) = GENERATE_REF(from_samples(samples));
         FROM(sample);
 
         clarinet_addr dst;
         const int errcode = clarinet_addr_convert_to_ipv4(&dst, &src);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        auto addr_is_equal = clarinet_addr_is_equal(&dst, &expected);
+        const bool addr_is_equal = clarinet_addr_is_equal(&dst, &expected);
         REQUIRE(addr_is_equal);
     }
 
     SECTION("INVALID conversion To IPv4")
     {
         // @formatter:off
-        const std::vector<std::tuple<int, clarinet_addr>> data = {
+        const std::vector<std::tuple<int, clarinet_addr>> samples = {
         #if !CLARINET_ENABLE_IPV6
             { 0, clarinet_addr_loopback_ipv6       },
             { 1, clarinet_addr_loopback_ipv4mapped },
@@ -1283,11 +1283,11 @@ TEST_CASE("Convert to IPv4", "[address][ipv4]")
         };
         // @formatter:on
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         clarinet_addr src;
-        std::tie(sample, src) = GENERATE_REF(from_samples(data));
+        std::tie(sample, src) = GENERATE_REF(from_samples(samples));
 
         FROM(sample);
 
@@ -1318,7 +1318,7 @@ TEST_CASE("Convert to IPv6", "[address][ipv6]")
         clarinet_addr dst;
         const int errcode = clarinet_addr_convert_to_ipv6(&dst, &src);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        auto addr_is_equal = clarinet_addr_is_equal(&dst, &expected);
+        const bool addr_is_equal = clarinet_addr_is_equal(&dst, &expected);
         REQUIRE(addr_is_equal);
 
         #endif // CLARINET_ENABLE_IPV6
@@ -1327,7 +1327,7 @@ TEST_CASE("Convert to IPv6", "[address][ipv6]")
     SECTION("INVALID conversion To IPv6")
     {
         // @formatter:off
-        const std::vector<std::tuple<int, clarinet_addr>> data = {
+        const std::vector<std::tuple<int, clarinet_addr>> samples = {
         #if !CLARINET_ENABLE_IPV6
             { 1, clarinet_addr_loopback_ipv4mapped },
             { 2, clarinet_addr_loopback_ipv6 },
@@ -1336,12 +1336,11 @@ TEST_CASE("Convert to IPv6", "[address][ipv6]")
         };
         // @formatter:on
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         clarinet_addr src;
-        std::tie(sample, src) = GENERATE_REF(from_samples(data));
-
+        std::tie(sample, src) = GENERATE_REF(from_samples(samples));
         FROM(sample);
 
         clarinet_addr dst;
@@ -1433,7 +1432,7 @@ TEST_CASE("Address To String", "[address]")
             custom_none.family = CLARINET_AF_UNSPEC;
 
             // @formatter:off
-            const std::vector<std::tuple<int, clarinet_addr>> data = {
+            const std::vector<std::tuple<int, clarinet_addr>> samples = {
             #if !CLARINET_ENABLE_IPV6
                 { 0, custom_ipv6 },
             #endif // !CLARINET_ENABLE_IPV6
@@ -1441,12 +1440,11 @@ TEST_CASE("Address To String", "[address]")
             };
             // @formatter:on
 
-            SAMPLES(data);
+            SAMPLES(samples);
 
             int sample;
             clarinet_addr src;
-            std::tie(sample, src) = GENERATE_REF(from_samples(data));
-
+            std::tie(sample, src) = GENERATE_REF(from_samples(samples));
             FROM(sample);
 
             char dst[CLARINET_ADDR_STRLEN] = { 0 };
@@ -1577,7 +1575,7 @@ TEST_CASE("Address From String", "[address]")
 
     SECTION("With INVALID addresses")
     {
-        const std::vector<std::tuple<int, const char*>> data = {
+        const std::vector<std::tuple<int, const char*>> samples = {
             { 0, "" },
             { 1, "0" },
             { 2, "0." },
@@ -1622,11 +1620,11 @@ TEST_CASE("Address From String", "[address]")
             { 39, "127.0.0.1:12345" },
         };
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         const char* src;
-        std::tie(sample, src) = GENERATE_REF(from_samples(data));
+        std::tie(sample, src) = GENERATE_REF(from_samples(samples));
 
         FROM(sample);
 
@@ -1688,7 +1686,7 @@ TEST_CASE("Address From String", "[address]")
         #endif // CLARINET_ENABLE_IPV6
 
         // @formatter:off
-        const std::vector<std::tuple<int, const char*, const char*, clarinet_addr>> data = {
+        const std::vector<std::tuple<int, const char*, const char*, clarinet_addr>> samples = {
             {  0, "0.0.0.0",                                            "0.0.0.0",                                            clarinet_addr_any_ipv4            },
             {  1, "127.0.0.1",                                          "127.0.0.1",                                          clarinet_addr_loopback_ipv4       },
             {  2, "255.255.255.255",                                    "255.255.255.255",                                    clarinet_addr_broadcast_ipv4      },
@@ -1709,13 +1707,13 @@ TEST_CASE("Address From String", "[address]")
         };
         // @formatter:on
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         const char* src;
         const char* reconstruction;
         clarinet_addr expected;
-        std::tie(sample, src, reconstruction, expected) = GENERATE_REF(from_samples(data));
+        std::tie(sample, src, reconstruction, expected) = GENERATE_REF(from_samples(samples));
 
         FROM(sample);
 
@@ -1723,7 +1721,7 @@ TEST_CASE("Address From String", "[address]")
         memnoise(&dst, sizeof(dst));
         const int errcode = clarinet_addr_from_string(&dst, src, strlen(src));
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
-        auto addr_is_equal = clarinet_addr_is_equal(&dst, &expected);
+        const bool addr_is_equal = clarinet_addr_is_equal(&dst, &expected);
         REQUIRE(addr_is_equal);
 
         char s[CLARINET_ADDR_STRLEN] = { 0 };
@@ -1832,18 +1830,18 @@ TEST_CASE("Endpoint To String", "[endpoint]")
             clarinet_endpoint custom_none = custom_ipv6;
             custom_none.addr.family = CLARINET_AF_UNSPEC;
 
-            const std::vector<std::tuple<int, clarinet_endpoint>> data = {
+            const std::vector<std::tuple<int, clarinet_endpoint>> samples = {
             #if !CLARINET_ENABLE_IPV6
                 { 0, custom_ipv6 },
             #endif // !CLARINET_ENABLE_IPV6
                 { 1, custom_none }
             };
 
-            SAMPLES(data);
+            SAMPLES(samples);
 
             int sample;
             clarinet_endpoint src;
-            std::tie(sample, src) = GENERATE_REF(from_samples(data));
+            std::tie(sample, src) = GENERATE_REF(from_samples(samples));
 
             FROM(sample);
 
@@ -1983,7 +1981,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
 
     SECTION("With INVALID endpoints")
     {
-        const std::vector<std::tuple<int, const char*>> data = {
+        const std::vector<std::tuple<int, const char*>> samples = {
             { 0, "" },
             { 1, "0" },
             { 2, "0." },
@@ -2067,12 +2065,11 @@ TEST_CASE("Endpoint From string", "[endpoint]")
             { 76, "[b0b1:b2b3:b4b5:b6b7:b8b9:babb:bcbd:bebf%3233923779]:0012345" },
         };
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         const char* src;
-        std::tie(sample, src) = GENERATE_REF(from_samples(data));
-
+        std::tie(sample, src) = GENERATE_REF(from_samples(samples));
         FROM(sample);
 
         clarinet_endpoint dst = { { 0 } };
@@ -2120,7 +2117,7 @@ TEST_CASE("Endpoint From string", "[endpoint]")
         #endif // CLARINET_ENABLE_IPV6
 
         // @formatter:off
-        const std::vector<std::tuple<int, const char*, const char*, clarinet_endpoint>> data = {
+        const std::vector<std::tuple<int, const char*, const char*, clarinet_endpoint>> samples = {
             {  0, "0.0.0.0:0",                                                  "0.0.0.0:0",                                                  { clarinet_addr_any_ipv4,                0 } },
             {  1, "0.0.0.0:1234",                                               "0.0.0.0:1234",                                               { clarinet_addr_any_ipv4,             1234 } },
             {  2, "127.0.0.1:0",                                                "127.0.0.1:0",                                                { clarinet_addr_loopback_ipv4,           0 } },
@@ -2143,14 +2140,13 @@ TEST_CASE("Endpoint From string", "[endpoint]")
         };
         // @formatter:on
 
-        SAMPLES(data);
+        SAMPLES(samples);
 
         int sample;
         const char* src;
         const char* reconstruction;
         clarinet_endpoint expected;
-        std::tie(sample, src, reconstruction, expected) = GENERATE_REF(from_samples(data));
-
+        std::tie(sample, src, reconstruction, expected) = GENERATE_REF(from_samples(samples));
         FROM(sample);
 
         clarinet_endpoint dst = { { 0 } };

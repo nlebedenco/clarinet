@@ -39,7 +39,12 @@ macro(target_test _target)
         PRIVATE
             HAVE_CONFIG_H=1
     )
-        
+
+    # Export a symbol to indicate that we are building in Microsoft WSL
+    if (WSL)
+        target_compile_definitions(${_target} PRIVATE __wsl__=1 )
+    endif()
+
     target_profiler(${_target})
     target_static_runtime(${_target})
     target_stack_protection(${_target})
