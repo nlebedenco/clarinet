@@ -129,7 +129,7 @@ setnonblock(SOCKET sockfd,
 /* region Socket */
 
 /** Returns a handle for the socket pointed to by @p s */
-#define clarinet_socket_handle(s)           ((SOCKET)((s)->u.handle))
+#define clarinet_socket_handle(s)           ((SOCKET)((s)->handle))
 
 /**
  * Returns true (non-zero) if the socket pointed to by @p s is valid, otherwise false (0). We only compare to 0 (NULL)
@@ -157,8 +157,11 @@ clarinet_socket_open(clarinet_socket* sp,
      * even int (assuming sizeof(int) >= sizeof(intptr_t)). The fact that INVALID_SOCKET has always been defined as ~0
      * seems to support the notion that casting from SOCKET to int and back should not cause loss of data. Furthermore,
      * since SOCKET and HANDLE must adhere to the same underlying semantics, NULL can also be considered an invalid
-     * socket handle besides INVALID_SOCKET. Raymond Chen from MS gives a good overview on why Windows API treats
-     * handles so inconsistently in this article https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443. */
+     * socket handle besides INVALID_SOCKET. The description of WSAPOLLFD found at
+     * https://docs.microsoft.com/en-us/windows/win32/api/winsock2/ns-winsock2-wsapollfd also suggests SOCKET could
+     * be cast to a signed integer and negative values would be consideed invalid. Raymond Chen from MS gives a good
+     * overview on why Windows API treats handles so inconsistently in this article
+     * https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443. */
     if (!sp || sp->family != CLARINET_AF_UNSPEC || clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
@@ -240,7 +243,7 @@ clarinet_socket_open(clarinet_socket* sp,
     }
 
     sp->family = (uint16_t)family;
-    sp->u.handle = (void*)sockfd;
+    sp->handle = (void*)sockfd;
 
     return CLARINET_ENONE;
 }
@@ -898,6 +901,23 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                 return CLARINET_ENONE;
             }
             break;
+        case CLARINET_SO_ERROR:
+            if (*optlen >= sizeof(int32_t))
+            {
+                DWORD val = 0;
+                int len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&val, &len) == SOCKET_ERROR)
+                    return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)clarinet_error_from_sockapi_error((int)val);
+                *optlen = sizeof(int32_t);
+
+                return CLARINET_ENONE;
+            }
+            break;
         case CLARINET_IP_V6ONLY:
             #if CLARINET_ENABLE_IPV6
             if (*optlen >= sizeof(int32_t))
@@ -1159,7 +1179,7 @@ clarinet_socket_accept(clarinet_socket* restrict ssp,
     }
 
     client->family = ssp->family;
-    client->u.handle = (void*)clientfd;
+    client->handle = (void*)clientfd;
 
     const int errcode = clarinet_endpoint_from_sockaddr(remote, &ss);
     /* If the remote address cannot be decoded leave it unspecified but don't abort the operation. Leave it up to the
@@ -1186,15 +1206,15 @@ clarinet_socket_shutdown(clarinet_socket* restrict sp,
     const SOCKET sockfd = clarinet_socket_handle(sp);
 
     int sflags = 0;
-    if (flags & CLARINET_SD_RECV)
+    if (flags & CLARINET_SHUTDOWN_RECV)
     {
-        flags &= ~CLARINET_SD_RECV;
+        flags &= ~CLARINET_SHUTDOWN_RECV;
         sflags |= SD_RECEIVE;
     }
 
-    if (flags & CLARINET_SD_SEND)
+    if (flags & CLARINET_SHUTDOWN_SEND)
     {
-        flags &= ~CLARINET_SD_SEND;
+        flags &= ~CLARINET_SHUTDOWN_SEND;
         sflags |= SD_SEND;
     }
 
@@ -1206,6 +1226,45 @@ clarinet_socket_shutdown(clarinet_socket* restrict sp,
 
     return CLARINET_ENONE;
 }
+
+int
+clarinet_socket_poll_context_calcsize(size_t count)
+{
+    if (count > (INT_MAX / sizeof(struct pollfd)))
+        return CLARINET_EINVAL;
+
+    return (int)(count * sizeof(struct pollfd));
+}
+
+int
+clarinet_socket_poll_context_getstatus(const void* context,
+                                       size_t index,
+                                       uint16_t* restrict status)
+{
+    if (!context || index >= INT_MAX || !status)
+        return CLARINET_EINVAL;
+
+    const struct pollfd* pfd = (struct pollfd*)context;
+    *status = (uint16_t)pfd[index].revents;
+
+    return CLARINET_ENONE;
+}
+
+int
+clarinet_socket_poll(void* restrict context,
+                     const clarinet_socket_poll_target* restrict targets,
+                     size_t count,
+                     int timeout)
+{
+    if (!context || !targets || count == 0 || count > INT_MAX)
+        return CLARINET_EINVAL;
+
+    if (WSAPoll((struct pollfd*)context, (ULONG)count, timeout) == SOCKET_ERROR)
+        return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+    return CLARINET_ENONE;
+}
+
 
 
 /* endregion */

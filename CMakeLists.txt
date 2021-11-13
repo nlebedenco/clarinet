@@ -22,47 +22,47 @@
 cmake_minimum_required(VERSION 3.18)
 
 # For project version variables
-if(POLICY CMP0048)
+if (POLICY CMP0048)
     cmake_policy(SET CMP0048 NEW)
-endif()
+endif ()
 
 # Only interpret if() arguments as variables or keywords when unquoted.
-if(POLICY CMP0054)
+if (POLICY CMP0054)
     cmake_policy(SET CMP0054 NEW)
-endif()
+endif ()
 
 # Honor visibility properties for all target types.
-if(POLICY CMP0063)
+if (POLICY CMP0063)
     cmake_policy(SET CMP0063 NEW)
-endif()
+endif ()
 
 # We want find_file() and find_library() to honor {packagename}_ROOT, as that appears to be the only way, with the
 # Visual Studio 2019 IDE and its CMake support, to tell CMake where to look for dependencies.
-if(POLICY CMP0074)
+if (POLICY CMP0074)
     cmake_policy(SET CMP0074 NEW)
-endif()
+endif ()
 
 # Allow top project to override option() with a variable. This is important so forced options don't appear in the cache
 # and mislead the user into thinking they can be modified.
-if(POLICY CMP0077)
+if (POLICY CMP0077)
     cmake_policy(SET CMP0077 NEW)
-endif()
+endif ()
 
 # Enable MSVC_RUNTIME_LIBRARY property
-if(POLICY CMP0091)
+if (POLICY CMP0091)
     cmake_policy(SET CMP0091 NEW)
-endif()
+endif ()
 
 # For set(CACHE) not removing a variable of the same name
-if(POLICY CMP0126)
+if (POLICY CMP0126)
     cmake_policy(SET CMP0126 NEW)
-endif()
+endif ()
 
 # Add custom cmake modules path
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Set custom cmake helpers path
-set (CMAKE_HELPER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/helpers)
+set(CMAKE_HELPER_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/helpers)
 
 # Set name of folder used to group predefined targets in the Visual Studio solution
 set(CMAKE_PREDEFINED_TARGETS_FOLDER "CMakePredefinedTargets")
@@ -74,9 +74,9 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER ${CMAKE_PREDEFINED_TARGET
 
 # If we're building with Visual Studio, we require at least Visual Studio 2015, in order to get sufficient C99
 # compatibility.
-if(MSVC AND MSVC_VERSION LESS 1900)
+if (MSVC AND MSVC_VERSION LESS 1900)
     message(FATAL_ERROR "Visual Studio 2015 or later is required")
-endif()
+endif ()
 
 # Windows DLLs go into RUNTIME_OUTPUT_DIRECTORY so executables can find their libraries. Set output directories here
 # for all targets so we can find dynamic libraries when any of the executables are run.
@@ -93,29 +93,29 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib)
 # Description is exported in the DLL details (.rc file) and accessible to the user through the library API.
 project(clarinet
     VERSION 0.0.1
-    DESCRIPTION "Experimental network transport protocol stack"
+    DESCRIPTION "Portable socket library"
     HOMEPAGE_URL ""
-)
+    )
 
 # Require out-of-source builds. Technically the if(EXISTS ...) will return false if the file exists but is not
 # accessible by the user but in this case there is a good chance the directory is not writable either so something is
 # already wrong.
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" CMAKE_LISTS_FILE)
-if(EXISTS "${CMAKE_LISTS_FILE}")
+if (EXISTS "${CMAKE_LISTS_FILE}")
     message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file). Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
-endif()
+endif ()
 
 # Set installation prefix automatically to custom path if not explicitly specified on the command line
 if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) AND (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT))
-    set (CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE )
-endif()
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
+endif ()
 
 # Inform what we are configuring in case the output is stored in a log file.
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
 get_directory_property(PROJECT_HAS_PARENT PARENT_DIRECTORY)
-if(NOT PROJECT_HAS_PARENT)
+if (NOT PROJECT_HAS_PARENT)
     message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-endif()
+endif ()
 
 # Define API prefixes
 set(PROJECT_API_PREFIX ${PROJECT_NAME})
@@ -142,72 +142,72 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} PROJECT_SYSTEM_NAME)
 # to use an alternative socket library.
 if (WIN32)
     set(PROJECT_SYSTEM_FAMILY windows)
-elseif(UNIX)
+elseif (UNIX)
     set(PROJECT_SYSTEM_FAMILY unix)
-else()
+else ()
     set(PROJECT_SYSTEM_FAMILY undefined)
-endif()
+endif ()
 
 # Define original file name for dll details
-if(WIN32)
-    if(BUILD_SHARED_LIBS)
+if (WIN32)
+    if (BUILD_SHARED_LIBS)
         set(PROJECT_FILENAME ${PROJECT_NAME}.dll)
-    endif()
-endif(WIN32)
+    endif ()
+endif (WIN32)
 
 ########################################################################################################################
 #   Options
 ########################################################################################################################
 include(CMakeDependentOption)
 
-set(PROJECT_ENABLE_PROFILE          ${PROJECT_MACRO_PREFIX}_ENABLE_PROFILE)
-set(PROJECT_ENABLE_LOG              ${PROJECT_MACRO_PREFIX}_ENABLE_LOG)
-set(PROJECT_ENABLE_IPV6             ${PROJECT_MACRO_PREFIX}_ENABLE_IPV6)
-set(PROJECT_ENABLE_IPV6DUAL         ${PROJECT_MACRO_PREFIX}_ENABLE_IPV6DUAL)
+set(PROJECT_ENABLE_PROFILE ${PROJECT_MACRO_PREFIX}_ENABLE_PROFILE)
+set(PROJECT_ENABLE_LOG ${PROJECT_MACRO_PREFIX}_ENABLE_LOG)
+set(PROJECT_ENABLE_IPV6 ${PROJECT_MACRO_PREFIX}_ENABLE_IPV6)
+set(PROJECT_ENABLE_IPV6DUAL ${PROJECT_MACRO_PREFIX}_ENABLE_IPV6DUAL)
 
-set(PROJECT_USE_STATIC_RT           ${PROJECT_MACRO_PREFIX}_USE_STATIC_RT)
-set(PROJECT_USE_STACK_PROTECTION    ${PROJECT_MACRO_PREFIX}_USE_STACK_PROTECTION)
-set(PROJECT_USE_SPECTRE_MITIGATION  ${PROJECT_MACRO_PREFIX}_USE_SPECTRE_MITIGATION)
+set(PROJECT_USE_STATIC_RT ${PROJECT_MACRO_PREFIX}_USE_STATIC_RT)
+set(PROJECT_USE_STACK_PROTECTION ${PROJECT_MACRO_PREFIX}_USE_STACK_PROTECTION)
+set(PROJECT_USE_SPECTRE_MITIGATION ${PROJECT_MACRO_PREFIX}_USE_SPECTRE_MITIGATION)
 
-set(PROJECT_BUILD_TESTING           ${PROJECT_MACRO_PREFIX}_BUILD_TESTING)
-
-option(${PROJECT_ENABLE_PROFILE}                    "Enable Profile"                    OFF)
-option(${PROJECT_ENABLE_LOG}                        "Enable Log"                        ON)
-option(${PROJECT_ENABLE_IPV6}                       "Enable IPv6"                       ON)
-
-CMAKE_DEPENDENT_OPTION(${PROJECT_ENABLE_IPV6DUAL}   "Enable Dual Stack for IPv6"        ON  "${PROJECT_ENABLE_IPV6}"  OFF)
-
-option(${PROJECT_USE_STATIC_RT}                     "Use static runtime"                OFF)
-option(${PROJECT_USE_STACK_PROTECTION}              "Use stack protection"              ON)
-option(${PROJECT_USE_SPECTRE_MITIGATION}            "Use spectre mitigation"            OFF)
-
-option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." FALSE)
-if (${FORCE_COLORED_OUTPUT})
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        add_compile_options (-fdiagnostics-color=always)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        add_compile_options (-fcolor-diagnostics)
-        if (CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC") # clang-cl
-            add_compile_options (-fansi-escape-codes)
-        endif()
-    endif ()
-endif ()
+set(PROJECT_BUILD_TESTS ${PROJECT_MACRO_PREFIX}_BUILD_TESTS)
+set(PROJECT_BUILD_DOCS ${PROJECT_MACRO_PREFIX}_BUILD_DOCS)
 
 # Defaults to build testing only if this is the top cmake project.
 # The reason for this is that if someone else includes this package, and they use BUILD_TESTING, they probably do not
 # our tests to build. In the rare case that they really do want to enable testing on both packages, they can force
 # a cache override for this option.
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    set(DEFAULT_${PROJECT_BUILD_TESTING} ON)
-else()
-    set(DEFAULT_${PROJECT_BUILD_TESTING} OFF)
-endif()
+    set(DEFAULT_${PROJECT_BUILD_TESTS} ON)
+else ()
+    set(DEFAULT_${PROJECT_BUILD_TESTS} OFF)
+endif ()
 
-option(${PROJECT_BUILD_TESTING} "Build ${PROJECT_NAME} tests" ${DEFAULT_${PROJECT_BUILD_TESTING}})
+option(${PROJECT_ENABLE_PROFILE} "Enable Profile" OFF)
+option(${PROJECT_ENABLE_LOG} "Enable Log" ON)
+option(${PROJECT_ENABLE_IPV6} "Enable IPv6" ON)
 
+CMAKE_DEPENDENT_OPTION(${PROJECT_ENABLE_IPV6DUAL} "Enable Dual Stack for IPv6" ON "${PROJECT_ENABLE_IPV6}" OFF)
+
+option(${PROJECT_USE_STATIC_RT} "Use static runtime" OFF)
+option(${PROJECT_USE_STACK_PROTECTION} "Use stack protection" ON)
+option(${PROJECT_USE_SPECTRE_MITIGATION} "Use spectre mitigation" OFF)
+
+option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." FALSE)
+if (${FORCE_COLORED_OUTPUT})
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options(-fdiagnostics-color=always)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        add_compile_options(-fcolor-diagnostics)
+        if (CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC") # clang-cl
+            add_compile_options(-fansi-escape-codes)
+        endif ()
+    endif ()
+endif ()
+
+option(${PROJECT_BUILD_TESTS} "Build ${PROJECT_NAME} tests" ${DEFAULT_${PROJECT_BUILD_TESTS}})
+option(${PROJECT_BUILD_DOCS} "Build ${PROJECT_NAME} documentation" ON)
 # Automatically used by cmake to change the default for add_library()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static" OFF)
-
 
 ########################################################################################################################
 #   Macros
@@ -217,7 +217,7 @@ macro(check_required_include_file _file _variable)
     check_include_file(${_file} ${_variable})
     if (NOT ${_variable})
         message(FATAL_ERROR "Required include file not found!")
-    endif()
+    endif ()
 endmacro()
 
 # For checking if a compiler flag works and add to the target if it does.
@@ -239,109 +239,109 @@ macro(target_compile_option _target _scope _option)
         check_c_compiler_flag("${_safe_option}" ${_lang}_${_uppercase_option_variable})
     elseif (_lang STREQUAL "CXX")
         check_cxx_compiler_flag("${_safe_option}" ${_lang}_${_uppercase_option_variable})
-    else()
+    else ()
         message(FATAL_ERROR "Target LINKER_LANGUAGE is undefined")
-    endif()
-    if(${${_lang}_${_uppercase_option_variable}})
+    endif ()
+    if (${${_lang}_${_uppercase_option_variable}})
         target_compile_options(${_target} ${_scope} ${_option})
-    endif()
+    endif ()
 endmacro()
 
 # Profiler support.
 macro(target_profiler _target)
-    if(${PROJECT_ENABLE_PROFILE})
-        if(MSVC) # including MSVC/CL (clang-cl)
+    if (${PROJECT_ENABLE_PROFILE})
+        if (MSVC) # including MSVC/CL (clang-cl)
             target_link_options(${_target} PRIVATE /PROFILE)
-        else()
+        else ()
             target_compile_options(${_target} PRIVATE -pg)
             target_link_options(${_target} PRIVATE -pg)
-        endif()
-    endif()
+        endif ()
+    endif ()
 endmacro()
 
 # Static link to the system runtime library.
 macro(target_static_runtime _target)
-    if(${PROJECT_USE_STATIC_RT})
-        if(MSVC) # including MSVC/CL (clang-cl)
+    if (${PROJECT_USE_STATIC_RT})
+        if (MSVC) # including MSVC/CL (clang-cl)
             set_property(TARGET ${_target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        else()
+        else ()
             target_link_options(${_target} PRIVATE -static-libgcc)
-        endif()
-    endif()
+        endif ()
+    endif ()
 endmacro()
 
 # Runtime stack protection.
 macro(target_stack_protection _target)
-    if(${PROJECT_USE_STACK_PROTECTION})
-        if(MSVC) # including MSVC/CL (clang-cl)
+    if (${PROJECT_USE_STACK_PROTECTION})
+        if (MSVC) # including MSVC/CL (clang-cl)
             target_compile_options(${_target} PRIVATE /GS)
-        else()
+        else ()
             # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
             # We perform the test regardless but won't accept a positive if WIN32 until this bug is fixed.
             check_c_compiler_flag(-fstack-protector-strong WITH_STACK_PROTECTOR_STRONG)
-            if(WITH_STACK_PROTECTOR_STRONG AND NOT WIN32)
+            if (WITH_STACK_PROTECTOR_STRONG AND NOT WIN32)
                 target_compile_options(${_target} PRIVATE -fstack-protector-strong)
-            endif()
-        endif()
-    else()
-        if(MSVC) # including MSVC/CL (clang-cl)
+            endif ()
+        endif ()
+    else ()
+        if (MSVC) # including MSVC/CL (clang-cl)
             target_compile_options(${_target} PRIVATE /GS-)
-        else()
+        else ()
             # Use of -fstack-protector may cause segmentation faults in MinGW possibly on Cygwin too.
             # We perform the test regardless but won't accept a positive if WIN32 until this bug is fixed.
             check_c_compiler_flag(-fno-stack-protector WITH_NO_STACK_PROTECTOR)
-            if(WITH_NO_STACK_PROTECTOR AND NOT WIN32)
+            if (WITH_NO_STACK_PROTECTOR AND NOT WIN32)
                 target_compile_options(${_target} PRIVATE -fno-stack-protector-strong)
-            endif()
-        endif()
-    endif()
+            endif ()
+        endif ()
+    endif ()
 endmacro()
 
 # Runtime spectre mitigation
 macro(target_spectre_mitigation _target)
-    if(${PROJECT_USE_SPECTRE_MITIGATION})
-        if(MSVC) # including MSVC/CL (clang-cl)
+    if (${PROJECT_USE_SPECTRE_MITIGATION})
+        if (MSVC) # including MSVC/CL (clang-cl)
             check_c_compiler_flag(/guard:cf WITH_GUARD_CF)
-            if(WITH_GUARD_CF)
+            if (WITH_GUARD_CF)
                 target_compile_options(${_target} PRIVATE /guard:cf)
                 # For now we assume the liker also supports the complementary flag
                 target_link_options(${_target} PRIVATE /guard:cf)
-            endif()
+            endif ()
             check_c_compiler_flag(/Qspectre WITH_QSPECTRE)
-            if(WITH_QSPECTRE)
+            if (WITH_QSPECTRE)
                 target_compile_options(${_target} PRIVATE /Qspectre)
                 # For now we assume the liker also supports the complementary flag
                 target_link_options(${_target} PRIVATE /DYNAMICBASE)
-            endif()
-        else()
-            if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+            endif ()
+        else ()
+            if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
                 check_c_compiler_flag(-mretpoline WITH_RETPOLINE)
-                if(WITH_RETPOLINE)
+                if (WITH_RETPOLINE)
                     target_compile_options(${_target} PRIVATE -mretpoline)
-                endif()
-            else()
+                endif ()
+            else ()
                 check_c_compiler_flag(-mindirect-branch=thunk WITH_INDIRECT_BRANCH_THUNK)
-                if(WITH_INDIRECT_BRANCH_THUNK)
+                if (WITH_INDIRECT_BRANCH_THUNK)
                     target_compile_options(${_target} PRIVATE -mindirect-branch=thunk)
-                endif()
+                endif ()
                 check_c_compiler_flag(-mfunction-return=thunk WITH_FUNCTION_RETURN_THUNK)
-                if(WITH_FUNCTION_RETURN_THUNK)
+                if (WITH_FUNCTION_RETURN_THUNK)
                     target_compile_options(${_target} PRIVATE -mfunction-return=thunk)
-                endif()
+                endif ()
                 check_c_compiler_flag(-mindirect-branch-register WITH_INDIRECT_BRANCH_REGISTER)
-                if(WITH_INDIRECT_BRANCH_REGISTER)
+                if (WITH_INDIRECT_BRANCH_REGISTER)
                     target_compile_options(${_target} PRIVATE -mindirect-branch-register)
-                endif()
-            endif()
-        endif()
-    endif()
+                endif ()
+            endif ()
+        endif ()
+    endif ()
 endmacro()
 
 macro(target_compile_warnings _target)
-    if(HAVE_DEVEL)
+    if (HAVE_DEVEL)
         # "MSVC" is also set for Microsoft's compiler with a Clang front end and their code generator ("Clang/C2"), so
         # we check for clang and treat that differently.
-        if(MSVC AND NOT CLANG)
+        if (MSVC AND NOT CLANG)
             # Enable all warnings first
             target_compile_option(${_target} PRIVATE -Wall)
             # Disable warnings about some enum value not handled in a switch/case block. Having a default for multiple
@@ -369,7 +369,7 @@ macro(target_compile_warnings _target)
             target_compile_option(${_target} PRIVATE -wd5219)
             # Treat all (remaining) warnings as errors.
             target_compile_option(${_target} PRIVATE -WX)
-        else()
+        else ()
             # Other compilers, including MSVC with a Clang front end and Microsoft's code generator.  We currently treat
             # them as if they all support GCC-style -W options.
             target_compile_option(${_target} PRIVATE -Wall)
@@ -396,8 +396,8 @@ macro(target_compile_warnings _target)
             target_compile_option(${_target} PRIVATE -Wused-but-marked-unused)
             # Treat all (remaining) warnings as errors.
             target_compile_option(${_target} PRIVATE -Werror)
-        endif()
-    endif()
+        endif ()
+    endif ()
 endmacro()
 
 ########################################################################################################################
@@ -427,15 +427,15 @@ message(CHECK_START "Checking .devel file")
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.devel)
     set(DEVEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/.devel)
     set(HAVE_DEVEL YES)
-elseif(EXISTS ${CMAKE_BINARY_DIR}/.devel)
+elseif (EXISTS ${CMAKE_BINARY_DIR}/.devel)
     set(DEVEL_FILE ${CMAKE_BINARY_DIR}/.devel)
     set(HAVE_DEVEL YES)
-endif()
+endif ()
 if (HAVE_DEVEL)
     message(CHECK_PASS "found ${DEVEL_FILE}")
-else()
+else ()
     message(CHECK_FAIL "not found")
-endif()
+endif ()
 
 check_required_include_file(stdio.h HAVE_STDIO_H)
 check_required_include_file(stdlib.h HAVE_STDLIB_H)
@@ -451,7 +451,7 @@ check_include_file(inttypes.h HAVE_INTTYPES_H)
 check_include_file(stdnoreturn.h HAVE_STDNORETURN_H) # this is C11 not C99 header but is fairly common in many modern compilers
 
 # Tests are a bit expensive with Visual Studio, so we skip tests for UN*X-only headers and functions on Windows.
-if(UNIX)
+if (UNIX)
     check_required_include_file(unistd.h HAVE_UNISTD_H)
     check_required_include_file(errno.h HAVE_ERRNO_H)
     check_include_file(bitypes.h HAVE_SYS_BITYPES_H)
@@ -469,31 +469,31 @@ if(UNIX)
     # Check if ENOTSUP has the same value as EOPNOTSUPP
     file(READ ${CMAKE_HELPER_PATH}/check_enotsup.c C_SOURCE_ENOTSUP)
     check_c_source_runs("${C_SOURCE_ENOTSUP}" HAVE_ENOTSUP_EQUAL_TO_EOPNOTSUPP)
-endif()
+endif ()
 
 # Check for __atomic_load_n() and __atomic_store_n() builtins.
 # We can't use check_function_exists(), as it tries to declare the function, and attempting to declare a compiler
 # builtin can produce an error. We don't use check_symbol_exists() as it expects a header file to be specified to
 # declare the function, but there isn't such a header file. Hence we use check_c_source_compiles().
 check_c_source_compiles("int main(void) { int i = 17; return __atomic_load_n(&i, __ATOMIC_RELAXED); }"
-                        HAVE___ATOMIC_LOAD_N)
+    HAVE___ATOMIC_LOAD_N)
 check_c_source_compiles("int main(void) { int i; __atomic_store_n(&i, 17, __ATOMIC_RELAXED); return 0; }"
-                        HAVE___ATOMIC_STORE_N)
+    HAVE___ATOMIC_STORE_N)
 
 # Check Un*x only functions
-if(NOT WIN32)
+if (NOT WIN32)
     check_function_exists(fcntl HAVE_FCNTL)
     check_function_exists(poll HAVE_POLL)
 
     # Check if we have ffs() and if it is declared in <strings.h>
     check_function_exists(ffs HAVE_FFS)
-    if(HAVE_FFS)
-    # OK, we have ffs(). Is it declared in <strings.h>? This test fails if we don't have <strings.h> or if we do
-    # but it doesn't declare ffs().
-    check_symbol_exists(ffs strings.h HAVE_FFS_IN_STRINGS_H)
-endif()
+    if (HAVE_FFS)
+        # OK, we have ffs(). Is it declared in <strings.h>? This test fails if we don't have <strings.h> or if we do
+        # but it doesn't declare ffs().
+        check_symbol_exists(ffs strings.h HAVE_FFS_IN_STRINGS_H)
+    endif ()
 
-endif()
+endif ()
 
 # We require getaddrinfo(), inet_ntop() and inet_pton(). On UN*X systems, we also prefer versions of recvmsg() that
 # conform to the Single UNIX Specification, so that we can check whether a datagram received with recvmsg() was
@@ -509,106 +509,106 @@ endif()
 #
 # NOTE: if you hand check_library_exists a variable that's been set as the last argument, it skips the test, so we need
 # different variables.
-if(WIN32)
+if (WIN32)
     # We need winsock2.h and ws2tcpip.h
     cmake_push_check_state()
-        set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-        list(APPEND CMAKE_REQUIRED_LIBRARIES ws2_32)
-        check_symbol_exists(getaddrinfo "winsock2.h;ws2tcpip.h" LIBWS2_32_HAS_GETADDRINFO)
-        check_symbol_exists(inet_pton "winsock2.h;ws2tcpip.h" LIBWS2_32_HAS_INET_PTON)
-        check_symbol_exists(inet_ntop "winsock2.h;ws2tcpip.h" LIBWS2_32_HAS_INET_NTOP)
+    set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
+    list(APPEND CMAKE_REQUIRED_LIBRARIES ws2_32)
+    check_symbol_exists(getaddrinfo "winsock2.h;ws2tcpip.h" LIBWS2_32_HAS_GETADDRINFO)
+    check_symbol_exists(inet_pton "winsock2.h;ws2tcpip.h" LIBWS2_32_HAS_INET_PTON)
+    check_symbol_exists(inet_ntop "winsock2.h;ws2tcpip.h" LIBWS2_32_HAS_INET_NTOP)
     cmake_pop_check_state()
-    if(LIBWS2_32_HAS_GETADDRINFO AND LIBWS2_32_HAS_INET_PTON AND LIBWS2_32_HAS_INET_NTOP)
+    if (LIBWS2_32_HAS_GETADDRINFO AND LIBWS2_32_HAS_INET_PTON AND LIBWS2_32_HAS_INET_NTOP)
         list(APPEND PRIVATE_LINK_LIBRARIES ws2_32)
-    elseif(NOT LIBWS2_32_HAS_GETADDRINFO)
+    elseif (NOT LIBWS2_32_HAS_GETADDRINFO)
         message(FATAL_ERROR "getaddrinfo is required, but was not found")
-    elseif(NOT LIBWS2_32_HAS_INET_PTON)
+    elseif (NOT LIBWS2_32_HAS_INET_PTON)
         message(FATAL_ERROR "inet_pton is required, but was not found")
-    elseif(NOT LIBWS2_32_HAS_INET_NTOP)
+    elseif (NOT LIBWS2_32_HAS_INET_NTOP)
         message(FATAL_ERROR "inet_ntop is required, but was not found")
-    endif()
+    endif ()
     list(APPEND PRIVATE_LINK_LIBRARIES ws2_32)
-else()
+else ()
     # On UN*X first try the system libraries, then try the libraries for Solaris and possibly other systems that picked
     # up the System V library split.
     check_function_exists(getaddrinfo STDLIBS_HAVE_GETADDRINFO)
-    if(NOT STDLIBS_HAVE_GETADDRINFO)
+    if (NOT STDLIBS_HAVE_GETADDRINFO)
         # Not found in the standard system libraries. Try libsocket, which requires libnsl.
         cmake_push_check_state()
-            set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-            list(APPEND CMAKE_REQUIRED_LIBRARIES nsl)
-            check_library_exists(socket getaddrinfo "" LIBSOCKET_HAS_GETADDRINFO)
+        set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
+        list(APPEND CMAKE_REQUIRED_LIBRARIES nsl)
+        check_library_exists(socket getaddrinfo "" LIBSOCKET_HAS_GETADDRINFO)
         cmake_pop_check_state()
-        if(LIBSOCKET_HAS_GETADDRINFO)
+        if (LIBSOCKET_HAS_GETADDRINFO)
             # OK, we found it in libsocket.
             list(APPEND PRIVATE_LINK_LIBRARIES socket nsl)
-        else()
+        else ()
             check_library_exists(network getaddrinfo "" LIBNETWORK_HAS_GETADDRINFO)
-            if(LIBNETWORK_HAS_GETADDRINFO)
+            if (LIBNETWORK_HAS_GETADDRINFO)
                 # OK, we found it in libnetwork (Haiku).
                 list(APPEND PRIVATE_LINK_LIBRARIES network)
-            else()
+            else ()
                 # We didn't find anything.
                 message(FATAL_ERROR "getaddrinfo is required, but was not found")
-            endif()
-        endif()
+            endif ()
+        endif ()
 
         # OK, do we have recvmsg() in libxnet?
         # We also link with libsocket and libnsl.
         cmake_push_check_state()
-            set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-            list(APPEND CMAKE_REQUIRED_LIBRARIES socket nsl)
-            check_library_exists(xnet recvmsg "" LIBXNET_HAS_RECVMSG)
+        set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
+        list(APPEND CMAKE_REQUIRED_LIBRARIES socket nsl)
+        check_library_exists(xnet recvmsg "" LIBXNET_HAS_RECVMSG)
         cmake_pop_check_state()
-        if(LIBXNET_HAS_RECVMSG)
+        if (LIBXNET_HAS_RECVMSG)
             # Yes - link with it as well.
             list(APPEND PRIVATE_LINK_LIBRARIES xnet)
-        endif()
-    endif()
+        endif ()
+    endif ()
 
     # Requires inet_pton
     check_function_exists("inet_pton" HAS_INET_PTON)
     if (NOT HAS_INET_PTON)
         message(FATAL_ERROR "inet_pton is required, but was not found")
-    endif()
+    endif ()
 
     # Requires inet_ntop
     check_function_exists("inet_ntop" HAS_INET_NTOP)
     if (NOT HAS_INET_NTOP)
         message(FATAL_ERROR "inet_ntop is required, but was not found")
-    endif()
-endif()
+    endif ()
+endif ()
 
 # Check for reentrant versions of getnetbyname_r() as provided by Linux (glibc).
 # Only do the check if we have a declaration of getnetbyname_r(); without it, we can't check which API it has.
 # (We assume that if there's a declaration, it has a prototype, so that the API can be checked.)
-if(NOT WIN32)
+if (NOT WIN32)
     cmake_push_check_state()
-        set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-        check_symbol_exists(getnetbyname_r netdb.h NETDB_H_DECLARES_GETNETBYNAME_R)
-        if(NETDB_H_DECLARES_GETNETBYNAME_R)
-            file(READ ${CMAKE_HELPER_PATH}/check_getnetbyname_r.c C_SOURCE_GETNETBYNAME_R)
-            check_c_source_compiles("${C_SOURCE_GETNETBYNAME_R}" HAVE_GETNETBYNAME_R)
-        endif()
+    set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
+    check_symbol_exists(getnetbyname_r netdb.h NETDB_H_DECLARES_GETNETBYNAME_R)
+    if (NETDB_H_DECLARES_GETNETBYNAME_R)
+        file(READ ${CMAKE_HELPER_PATH}/check_getnetbyname_r.c C_SOURCE_GETNETBYNAME_R)
+        check_c_source_compiles("${C_SOURCE_GETNETBYNAME_R}" HAVE_GETNETBYNAME_R)
+    endif ()
     cmake_pop_check_state()
-endif()
+endif ()
 
 # Check for time functions.
-if(WIN32)
+if (WIN32)
     # Check for timeGetTime on winmm. It is not affected by ACPI and process migration between multiple CPUs like
     # QueryPerformanceCounter. It can have a better resolution than GetTickCount (up to 1ms) and it is not affected by
     # system time changes.
     cmake_push_check_state()
-        set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-        list(APPEND CMAKE_REQUIRED_LIBRARIES winmm)
-        check_symbol_exists(timeGetTime "windows.h;timeapi.h" LIBWINMM_HAS_TIMEGETTIME)
+    set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
+    list(APPEND CMAKE_REQUIRED_LIBRARIES winmm)
+    check_symbol_exists(timeGetTime "windows.h;timeapi.h" LIBWINMM_HAS_TIMEGETTIME)
     cmake_pop_check_state()
-    if(LIBWINMM_HAS_TIMEGETTIME)
+    if (LIBWINMM_HAS_TIMEGETTIME)
         list(APPEND PRIVATE_LINK_LIBRARIES winmm)
-    else()
+    else ()
         message(FATAL_ERROR "timeGetTime is required, but was not found")
-    endif()
-elseif(UNIX)
+    endif ()
+elseif (UNIX)
     # Check for clock_gettime in librt. Note that Linux/Android behaviour is different than iOS (and possibly macOS).
     # To get elapsed realtime (including any time that the system is suspended)
     #   iOS : CLOCK_MONOTONIC
@@ -617,92 +617,92 @@ elseif(UNIX)
     #   iOS : CLOCK_UPTIME_RAW
     #   Linux/Android : CLOCK_MONOTONIC
     cmake_push_check_state()
-        set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-        list(APPEND CMAKE_REQUIRED_LIBRARIES rt)
-        check_symbol_exists(clock_gettime "time.h" LIBRT_HAS_CLOCK_GETTIME)
-        if (LIBRT_HAS_CLOCK_GETTIME)
-            set(HAVE_CLOCK_GETTIME TRUE)
-            list(APPEND PRIVATE_LINK_LIBRARIES rt)
-        endif()
+    set(CMAKE_REQUIRED_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
+    list(APPEND CMAKE_REQUIRED_LIBRARIES rt)
+    check_symbol_exists(clock_gettime "time.h" LIBRT_HAS_CLOCK_GETTIME)
+    if (LIBRT_HAS_CLOCK_GETTIME)
+        set(HAVE_CLOCK_GETTIME TRUE)
+        list(APPEND PRIVATE_LINK_LIBRARIES rt)
+    endif ()
     cmake_pop_check_state()
-endif()
+endif ()
 
 # Check for sockaddr_storage and socklen_t.
 # There's no check_type() macro that it only checks for the existence of the structure type so we use check_type_size()
 # and ignore the size.
 cmake_push_check_state()
-    if(WIN32)
-        set(CMAKE_EXTRA_INCLUDE_FILES ws2tcpip.h winsock2.h)
-    else()
-        set(CMAKE_EXTRA_INCLUDE_FILES unistd.h sys/socket.h)
-    endif()
-    check_type_size("socklen_t" SOCKLEN_T)
-    check_type_size("struct sockaddr_storage" STRUCT_SOCKADDR_STORAGE)
+if (WIN32)
+    set(CMAKE_EXTRA_INCLUDE_FILES ws2tcpip.h winsock2.h)
+else ()
+    set(CMAKE_EXTRA_INCLUDE_FILES unistd.h sys/socket.h)
+endif ()
+check_type_size("socklen_t" SOCKLEN_T)
+check_type_size("struct sockaddr_storage" STRUCT_SOCKADDR_STORAGE)
 cmake_pop_check_state()
 
 # Check if sockaddr has sa_len.
-if(WIN32)
+if (WIN32)
     check_struct_has_member("struct sockaddr" sa_len winsock2.h HAVE_STRUCT_SOCKADDR_SA_LEN)
-else()
+else ()
     check_struct_has_member("struct sockaddr" sa_len sys/socket.h HAVE_STRUCT_SOCKADDR_SA_LEN)
-endif()
+endif ()
 
 # Check SO_REUSEPORT support
-if(NOT WIN32)
+if (NOT WIN32)
     file(READ ${CMAKE_HELPER_PATH}/check_so_reuseport.c C_SOURCE_SO_REUSEPORT)
     check_c_source_compiles("${C_SOURCE_SO_REUSEPORT}" HAVE_SO_REUSEPORT)
-endif()
+endif ()
 
 # Check for IPv6 support by checking if sockaddr_in6 exists and has sin6_addr.
-if(${PROJECT_ENABLE_IPV6})
-    if(WIN32)
+if (${PROJECT_ENABLE_IPV6})
+    if (WIN32)
         check_struct_has_member("struct sockaddr_in6" sin6_addr ws2tcpip.h
-                          HAVE_SOCKADDR_IN6_SIN6_ADDR)
+            HAVE_SOCKADDR_IN6_SIN6_ADDR)
         check_struct_has_member("struct sockaddr_in6" sin6_scope_id ws2tcpip.h
-                          HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
-    else()
+            HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
+    else ()
         check_struct_has_member("struct sockaddr_in6" sin6_addr "sys/socket.h;netinet/in.h"
-                          HAVE_SOCKADDR_IN6_SIN6_ADDR)
+            HAVE_SOCKADDR_IN6_SIN6_ADDR)
         check_struct_has_member("struct sockaddr_in6" sin6_scope_id "sys/socket.h;netinet/in.h"
-                          HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
-    endif()
-    if(NOT HAVE_SOCKADDR_IN6_SIN6_ADDR)
+            HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
+    endif ()
+    if (NOT HAVE_SOCKADDR_IN6_SIN6_ADDR)
         message(STATUS "struct sockaddr_in6 not available, disabling IPv6 support")
         set(${PROJECT_ENABLE_IPV6} OFF CACHE BOOL "Enable IPv6" FORCE)
         set(${PROJECT_ENABLE_IPV6DUAL} OFF CACHE BOOL "Enable Dual Stack for IPv6" FORCE)
-    endif()
-endif()
+    endif ()
+endif ()
 
-if(${PROJECT_ENABLE_IPV6} AND ${PROJECT_ENABLE_IPV6DUAL})
-    if(WIN32)
+if (${PROJECT_ENABLE_IPV6} AND ${PROJECT_ENABLE_IPV6DUAL})
+    if (WIN32)
         # Windows Vista and later should support IPv6 dual stack so if IPv6 itself is supported we are good.
         set(HAVE_IPV6DUAL TRUE)
-    else() #UN*X
+    else () #UN*X
         file(READ ${CMAKE_HELPER_PATH}/check_ipv6_dualstack.c C_SOURCE_IPV6_DUALSTACK)
         cmake_push_check_state()
-            if(HAVE_SOCKLEN_T)
-                set(CMAKE_REQUIRED_DEFINITIONS -DHAVE_SOCKLEN_T)
-            endif()
-            check_c_source_runs("${C_SOURCE_IPV6_DUALSTACK}" HAVE_IPV6DUAL)
+        if (HAVE_SOCKLEN_T)
+            set(CMAKE_REQUIRED_DEFINITIONS -DHAVE_SOCKLEN_T)
+        endif ()
+        check_c_source_runs("${C_SOURCE_IPV6_DUALSTACK}" HAVE_IPV6DUAL)
         cmake_pop_check_state()
-    endif()
+    endif ()
     if (NOT HAVE_IPV6DUAL)
         message(STATUS "IPv6 Dual Stack is not available, disabling IPv6 Dual Stack support")
         set(${PROJECT_ENABLE_IPV6DUAL} OFF CACHE BOOL "Enable Dual Stack for IPv6" FORCE)
-    endif()
-endif()
+    endif ()
+endif ()
 
 # Check pthreads.
 # We might need it, because some libraries we use might use them, but we don't necessarily depend on them.
 # That's only on UN*X; on Windows, if they use threads, we assume they're native Windows threads.
-if(NOT WIN32)
-  set(CMAKE_THREAD_PREFER_PTHREAD ON)
-  find_package(Threads)
-  if(NOT CMAKE_USE_PTHREADS_INIT)
-    # If it's not pthreads, we won't use it; we use it for libraries that require it.
-    set(CMAKE_THREAD_LIBS_INIT "")
-  endif(NOT CMAKE_USE_PTHREADS_INIT)
-endif(NOT WIN32)
+if (NOT WIN32)
+    set(CMAKE_THREAD_PREFER_PTHREAD ON)
+    find_package(Threads)
+    if (NOT CMAKE_USE_PTHREADS_INIT)
+        # If it's not pthreads, we won't use it; we use it for libraries that require it.
+        set(CMAKE_THREAD_LIBS_INIT "")
+    endif (NOT CMAKE_USE_PTHREADS_INIT)
+endif (NOT WIN32)
 
 
 ########################################################################################################################
@@ -727,68 +727,68 @@ add_library(${PROJECT_NAME_CAPITALIZED}::${PROJECT_NAME_CAPITALIZED} ALIAS ${PRO
 # correct path depending on the situation.
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig
-)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig
+    )
 
 target_sources(${PROJECT_NAME}
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h>
-        $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}/${PROJECT_NAME}.h>
     PRIVATE
-        src/${PROJECT_NAME}.c
-        src/protocols/dtlc.c
-        src/protocols/dtls.c
-)
+    src/${PROJECT_NAME}.c
+    src/protocols/dtlc.c
+    src/protocols/dtls.c
+    )
 
 # Add compatible sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
-        src/compat/compat.h
-        src/compat/error.h
-        src/compat/error.c
-        src/compat/addr.h
-        src/compat/addr.c
-        src/compat/fallback/ffs.c
-)
+    src/compat/compat.h
+    src/compat/error.h
+    src/compat/error.c
+    src/compat/addr.h
+    src/compat/addr.c
+    src/compat/fallback/ffs.c
+    )
 
 # Add system family sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
-        src/platforms/${PROJECT_SYSTEM_FAMILY}/socket.c
-)
+    src/platforms/${PROJECT_SYSTEM_FAMILY}/socket.c
+    )
 
 # Add system specific sources.
 target_sources(${PROJECT_NAME}
     PRIVATE
-        # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.h
-        # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.c
-)
+    # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.h
+    # src/platforms/${PROJECT_SYSTEM_NAME}/dummy.c
+    )
 
 if (BUILD_SHARED_LIBS)
     # Set EXPORT/IMPORT macros for the header
     target_compile_definitions(uv
         INTERFACE
-            ${PROJECT_MACRO_PREFIX}_IMPORT
+        ${PROJECT_MACRO_PREFIX}_IMPORT
         PRIVATE
-            ${PROJECT_MACRO_PREFIX}_EXPORT
-    )
+        ${PROJECT_MACRO_PREFIX}_EXPORT
+        )
     # Add DLL resource file. Only applies to Windows.
     if (WIN32)
         target_sources(${PROJECT_NAME}
             PRIVATE
-                ${${PROJECT_NAME}_SOURCE_DIR}/src/platforms/${PROJECT_SYSTEM_FAMILY}/${PROJECT_NAME}.rc
-        )
-    endif()
+            ${${PROJECT_NAME}_SOURCE_DIR}/src/platforms/${PROJECT_SYSTEM_FAMILY}/${PROJECT_NAME}.rc
+            )
+    endif ()
     # Hide symbols only if building shared libs so gdb can be of any use
     set(${PROJECT_MACRO_PREFIX}_VISIBILITY_PRESET hidden)
-else()
+else ()
     # Don't hide symbols if not building a shared lib so gdb can be of any use
     set(${PROJECT_MACRO_PREFIX}_VISIBILITY_PRESET default)
-endif()
+endif ()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     # Set linker language for proper linker param checks
@@ -802,90 +802,90 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     PUBLIC_HEADER include/${PROJECT_NAME}/${PROJECT_NAME}.h
     # Enable position independent code (i.e. -fPIC) if building a shared lib.
     POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
-)
+    )
 
 # Main target requires C99
 target_compile_features(${PROJECT_NAME}
     PUBLIC
-        c_std_99
-        c_function_prototypes
-        c_restrict
+    c_std_99
+    c_function_prototypes
+    c_restrict
     PRIVATE
-        c_variadic_macros
-)
+    c_variadic_macros
+    )
 
 # Treat source files as being in UTF-8 with MSVC if it's not using the Clang front end. We assume that UTF-8 source is
 # OK with other compilers and with MSVC if it's using the Clang front end.
-if(MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
+if (MSVC AND NOT ${CMAKE_C_COMPILER} MATCHES "clang*")
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8)
-endif()
+endif ()
 
 # Make sure to disable strict aliasing rules, trapping math and math errno. We use "restrict" when aliasing is not
 # appropriate and only rely on NaN/Inf propagation.
-if(NOT MSVC)
+if (NOT MSVC)
     target_compile_options(${PROJECT_NAME}
         PRIVATE
-            -fno-strict-aliasing
-            -fno-trapping-math
-            -fno-math-errno
-    )
-endif()
+        -fno-strict-aliasing
+        -fno-trapping-math
+        -fno-math-errno
+        )
+endif ()
 
 # Set output name
-if(WIN32)
-    if(MSVC)
+if (WIN32)
+    if (MSVC)
         set_target_properties(${PROJECT_NAME} PROPERTIES
             COMPILE_PDB_NAME ${PROJECT_NAME}
             OUTPUT_NAME "${PROJECT_NAME}"
-        )
-    elseif(MINGW)
+            )
+    elseif (MINGW)
         # For compatibility, build the shared library without the "lib" prefix on MinGW as well.
         set_target_properties(${PROJECT_NAME} PROPERTIES
             PREFIX ""
             OUTPUT_NAME "${PROJECT_NAME}"
-        )
-    endif()
-else() # UN*X
+            )
+    endif ()
+else () # UN*X
     set_target_properties(${PROJECT_NAME} PROPERTIES
         OUTPUT_NAME "${PROJECT_NAME}"
-    )
-    if(BUILD_SHARED_LIBS)
-        if(APPLE)
+        )
+    if (BUILD_SHARED_LIBS)
+        if (APPLE)
             set_target_properties(${PROJECT_NAME} PROPERTIES
                 SOVERSION A
-            )
-        else()
+                )
+        else ()
             set_target_properties(${PROJECT_NAME} PROPERTIES
                 SOVERSION ${PROJECT_VERSION_MAJOR}
-            )
-        endif()
-    endif(BUILD_SHARED_LIBS)
-endif()
+                )
+        endif ()
+    endif (BUILD_SHARED_LIBS)
+endif ()
 
 # Export a symbol to indicate that we have a config.h auto generated.
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
-        HAVE_CONFIG_H=1
-)
+    HAVE_CONFIG_H=1
+    )
 
 # Defining this macro on LINUX causes some lightweight checks to be performed to detect some buffer overflow errors when
 # employing various string and memory manipulation functions (for example, memcpy(3), memset(3), stpcpy(3), strcpy(3),
 # strncpy(3), strcat(3), strncat(3), sprintf(3), snprintf(3), vsprintf(3), vsnprintf(3), gets(3), and wide character
 # variants thereof).
-if(LINUX)
+if (LINUX)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
-            _FORTIFY_SOURCE=1
-    )
-endif()
+        _FORTIFY_SOURCE=1
+        )
+endif ()
 
 # Export a symbol to indicate that we are building in WSL and not a real Linux this is useful for tests.
 if (LINUX AND WSL)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
-            __wsl__=1
-    )
-endif()
+        __wsl__=1
+        )
+endif ()
 
 # If we're building with MinGW, we need to specify _WIN32_WINNT as 0x0600 ("NT 6.0", a/k/a Vista/Windows Server 2008)
 # or higher in order to get the full IPv6 API, including inet_ntop(), and we need to specify it as 0x0601 ("NT 6.1",
@@ -893,19 +893,19 @@ endif()
 #
 # NOTE: clarinet does *NOT* work with msvcrt.dll; it must link with a newer version of the C library,
 # i.e. Visual Studio 2015 or later, as it depends on C99 features introduced in VS 2015.
-if(MINGW)
+if (MINGW)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
-            _WIN32_WINNT=0x0601
-    )
-endif()
+        _WIN32_WINNT=0x0601
+        )
+endif ()
 
 # Report target library type
 if (BUILD_SHARED_LIBS)
     message(STATUS "BUILD_SHARED_LIBS is ${BUILD_SHARED_LIBS} (building ${PROJECT_NAME} as a shared lib)")
-else()
+else ()
     message(STATUS "BUILD_SHARED_LIBS is ${BUILD_SHARED_LIBS} (building ${PROJECT_NAME} as a static lib)")
-endif()
+endif ()
 
 # Setup profiler instrumentation
 message(STATUS "Profiler instrumentation is ${${PROJECT_ENABLE_PROFILE}}")
@@ -913,9 +913,9 @@ target_profiler(${PROJECT_NAME})
 
 # Setup system runtime linkage
 message(STATUS "Static runtime is ${${PROJECT_USE_STATIC_RT}}")
-if(BUILD_SHARED_LIBS)
+if (BUILD_SHARED_LIBS)
     target_static_runtime(${PROJECT_NAME})
-else()
+else ()
     message(STATUS "Ignoring option ${PROJECT_USE_STATIC_RT} for target ${PROJECT_NAME} (irrelevant when BUILD_SHARED_LIBS is OFF).")
 endif ()
 
@@ -959,81 +959,81 @@ add_submodule(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mbedtls)
 set(HAVE_MBEDTLS YES)
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        mbedtls
-        mbedx509
-        mbedcrypto
-)
+    mbedtls
+    mbedx509
+    mbedcrypto
+    )
 
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 message(CHECK_PASS "done")
 
 # On macOS, build target for the appropriate architectures, if CMAKE_OSX_ARCHITECTURES isn't set (if it is, let that
 # control the architectures for which to build it).
-if(APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
+if (APPLE AND "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
     # Get the major version of Darwin.
     string(REGEX MATCH "^([0-9]+)" SYSTEM_VERSION_MAJOR "${CMAKE_SYSTEM_VERSION}")
 
-    if(SYSTEM_VERSION_MAJOR LESS 8)
+    if (SYSTEM_VERSION_MAJOR LESS 8)
         # Pre-Tiger.  Build only for 32-bit PowerPC.
         set(OSX_LIBRARY_ARCHITECTURES "ppc")
-    elseif(SYSTEM_VERSION_MAJOR EQUAL 8)
+    elseif (SYSTEM_VERSION_MAJOR EQUAL 8)
         # Tiger.  Is this prior to, or with, Intel support?
         # Get the minor version of Darwin.
         string(REPLACE "${SYSTEM_VERSION_MAJOR}." "" SYSTEM_MINOR_AND_PATCH_VERSION ${CMAKE_SYSTEM_VERSION})
         string(REGEX MATCH "^([0-9]+)" SYSTEM_VERSION_MINOR "${SYSTEM_MINOR_AND_PATCH_VERSION}")
-        if(SYSTEM_VERSION_MINOR LESS 4)
+        if (SYSTEM_VERSION_MINOR LESS 4)
             # Prior to Intel support.  Build for 32-bit PowerPC and 64-bit PowerPC, with 32-bit PowerPC first.
             # (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64")
-        elseif(SYSTEM_VERSION_MINOR LESS 7)
+        elseif (SYSTEM_VERSION_MINOR LESS 7)
             # With Intel support but prior to x86-64 support. Build for 32-bit PowerPC, 64-bit PowerPC, and 32-bit x86,
             # with 32-bit PowerPC first. (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386")
-        else()
+        else ()
             # With Intel support including x86-64 support. Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86,
             # and x86-6add_dependencie4, with 32-bit PowerPC first. (I'm guessing that's what Apple does.)
             set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
-        endif()
-    elseif(SYSTEM_VERSION_MAJOR EQUAL 9)
+        endif ()
+    elseif (SYSTEM_VERSION_MAJOR EQUAL 9)
         # Leopard.  Build for 32-bit PowerPC, 64-bit PowerPC, 32-bit x86, and x86-64, with 32-bit PowerPC first.
         # (That's what Apple does.)
         set(OSX_LIBRARY_ARCHITECTURES "ppc;ppc64;i386;x86_64")
-    elseif(SYSTEM_VERSION_MAJOR EQUAL 10)
+    elseif (SYSTEM_VERSION_MAJOR EQUAL 10)
         # Snow Leopard.  Build for x86-64, 32-bit x86, and 32-bit PowerPC, with x86-64 first.  (That's what Apple does,
         # even though Snow Leopard doesn't run on PPC, so PPC libclarinet runs under Rosetta, and Rosetta doesn't
         # support BPF ioctls, so PPC programs can't do live captures.)
         set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386;ppc")
-    else()
+    else ()
         # Post-Snow Leopard.  Build for x86-64 and 32-bit x86, with x86-64 first. (That's what Apple does)
         # Update if and when Apple drops support for 32-bit x86 code and if and when Apple adds ARM-based Macs.
         # TODO: what about iOS, tvOS, watchOS ?
         # Check whether we're building with MbedTLS. If so, don't bother trying to build fat.
-        if(HAVE_MBEDTLS)
-          set(X86_32_BIT_SUPPORTED NO)
-          set(OSX_LIBRARY_ARCHITECTURES "x86_64")
-          message(STATUS "Assuming MbedTLS libraries are 64-bit only therefore not compiling for 32-bit x86")
-        else()
-          # Now, check whether we *can* build for i386.
-          cmake_push_check_state()
-          set(CMAKE_REQUIRED_FLAGS "-arch i386")
-          check_c_source_compiles("int main(void) { return 0; }" X86_32_BIT_SUPPORTED)
-          cmake_pop_check_state()
-          if(X86_32_BIT_SUPPORTED)
-              set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386")
-          else()
-              set(OSX_LIBRARY_ARCHITECTURES "x86_64")
-              # We can't build fat; suggest that the user install the /usr/include headers if they want to build fat.
-              if(SYSTEM_VERSION_MAJOR LESS 18)
-                  # Pre-Mojave; the command-line tools should be sufficient to enable 32-bit x86 builds.
-                  message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools")
-              else()
-                  message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools and, after that, installing the /usr/include headers from the /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg package")
-              endif()
-          endif()
-        endif()
-    endif()
+        if (HAVE_MBEDTLS)
+            set(X86_32_BIT_SUPPORTED NO)
+            set(OSX_LIBRARY_ARCHITECTURES "x86_64")
+            message(STATUS "Assuming MbedTLS libraries are 64-bit only therefore not compiling for 32-bit x86")
+        else ()
+            # Now, check whether we *can* build for i386.
+            cmake_push_check_state()
+            set(CMAKE_REQUIRED_FLAGS "-arch i386")
+            check_c_source_compiles("int main(void) { return 0; }" X86_32_BIT_SUPPORTED)
+            cmake_pop_check_state()
+            if (X86_32_BIT_SUPPORTED)
+                set(OSX_LIBRARY_ARCHITECTURES "x86_64;i386")
+            else ()
+                set(OSX_LIBRARY_ARCHITECTURES "x86_64")
+                # We can't build fat; suggest that the user install the /usr/include headers if they want to build fat.
+                if (SYSTEM_VERSION_MAJOR LESS 18)
+                    # Pre-Mojave; the command-line tools should be sufficient to enable 32-bit x86 builds.
+                    message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools")
+                else ()
+                    message(STATUS "Compiling for 32-bit x86 gives an error; try installing the command-line tools and, after that, installing the /usr/include headers from the /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg package")
+                endif ()
+            endif ()
+        endif ()
+    endif ()
     set_target_properties(${LIBRARY_NAME} PROPERTIES OSX_ARCHITECTURES "${OSX_LIBRARY_ARCHITECTURES}")
-endif()
+endif ()
 
 ########################################################################################################################
 # Extra target options
@@ -1044,34 +1044,34 @@ endif()
 list(REMOVE_DUPLICATES PRIVATE_LINK_LIBRARIES)
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        ${PRIVATE_LINK_LIBRARIES}
-)
+    ${PRIVATE_LINK_LIBRARIES}
+    )
 
 # Extra compiler options for targets to request -Werror or its equivalent if required.
 # The CMake variable name cannot be CFLAGS because that is already used for a different purpose in CMake.
 # usage: cmake -DEXTRA_CFLAGS='-Wall -Wextra -Werror' ...
-if(NOT "${EXTRA_CFLAGS}" STREQUAL "")
-    foreach(_extra_cflag ${EXTRA_CFLAGS})
+if (NOT "${EXTRA_CFLAGS}" STREQUAL "")
+    foreach (_extra_cflag ${EXTRA_CFLAGS})
         target_compile_option(${PROJECT_NAME} PRIVATE "${_extra_cflag}")
-    endforeach(_extra_cflag)
+    endforeach (_extra_cflag)
     message(STATUS "Extra compile options: (${EXTRA_CFLAGS})")
-endif()
+endif ()
 
 if (APPLE)
     # tell ranlib to ignore empty compilation units
-    set(CMAKE_C_ARCHIVE_FINISH   "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
+    set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
     set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
     # prevents ar from invoking ranlib, let CMake do it
-    set(CMAKE_C_ARCHIVE_CREATE   "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
     set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc -S <TARGET> <LINK_FLAGS> <OBJECTS>")
-endif()
+endif ()
 
 # Generate config.h
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/CMakeConfig/config.h)
 # Generate catch2 settings for Visual Studio's test adapter
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/catch2.runsettings.in ${CMAKE_CURRENT_BINARY_DIR}/.runsettings)
-endif()
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/catch2.runsettings.in ${CMAKE_CURRENT_BINARY_DIR}/.runsettings)
+endif ()
 
 ########################################################################################################################
 # Report Features
@@ -1108,7 +1108,7 @@ install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-)
+    )
 
 # We need to install static libraries manually when configured to produce a static lib while taking care to NOT include
 # header files (or cmake files). Static library dependencies are not *automagically* installed and with EXCLUDE_FROM_ALL
@@ -1118,23 +1118,23 @@ install(TARGETS ${PROJECT_NAME}
 # from other directories are up-to-date.
 if (NOT BUILD_SHARED_LIBS)
     # Install MbedTLS static libs
-    if(HAVE_MBEDTLS)
+    if (HAVE_MBEDTLS)
         install(TARGETS mbedtls mbedx509 mbedcrypto
             EXPORT ${PROJECT_NAME}-targets
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        )
-    endif()
-endif()
+            )
+    endif ()
+endif ()
 
 # Export the targets to a script
 install(EXPORT ${PROJECT_NAME}-targets
     FILE
-        ${PROJECT_NAME_CAPITALIZED}Targets.cmake
+    ${PROJECT_NAME_CAPITALIZED}Targets.cmake
     NAMESPACE
-        ${PROJECT_NAME_CAPITALIZED}::
+    ${PROJECT_NAME_CAPITALIZED}::
     DESTINATION
-        ${INSTALL_CONFIGDIR}
-)
+    ${INSTALL_CONFIGDIR}
+    )
 
 # Create a ConfigVersion.cmake file
 include(CMakePackageConfigHelpers)
@@ -1148,19 +1148,19 @@ write_basic_package_version_file(
 configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/templates/config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Config.cmake
     INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
-)
+    )
 
 # Create pkg-config file
-set (PKG_CONFIG_DEFINES "")
+set(PKG_CONFIG_DEFINES "")
 if (BUILD_SHARED_LIBS)
-    set (PKG_CONFIG_DEFINES "-D${PROJECT_MACRO_PREFIX}_IMPORT")
-endif()
+    set(PKG_CONFIG_DEFINES "-D${PROJECT_MACRO_PREFIX}_IMPORT")
+endif ()
 set(PKG_CONFIG_LINK_LIBRARIES "")
 get_target_property(PKG_CONFIG_LINK_LIBRARIES ${PROJECT_NAME} INTERFACE_LINK_LIBRARIES)
 string(REPLACE "PKG_CONFIG_LINK_LIBRARIES-NOTFOUND" "" PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES})
 if (NOT PKG_CONFIG_LINK_LIBRARIES STREQUAL "")
     string(REGEX REPLACE "\\$\\<LINK_ONLY:([^>]*)\\>" "-l\\1 " PKG_CONFIG_LINK_LIBRARIES ${PKG_CONFIG_LINK_LIBRARIES})
-endif()
+endif ()
 string(PREPEND PKG_CONFIG_LINK_LIBRARIES "-l${PROJECT_NAME} ")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/${PROJECT_NAME}.pc.in ${PROJECT_NAME}.pc @ONLY)
 
@@ -1169,21 +1169,21 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}ConfigVersion.cmake
     DESTINATION
-        ${INSTALL_CONFIGDIR}
-)
+    ${INSTALL_CONFIGDIR}
+    )
 
 # Install pkgconfig file
 install(FILES
     ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc
     DESTINATION
-        ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
-)
+    ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig
+    )
 
 # Export from the build tree
 export(EXPORT ${PROJECT_NAME}-targets
     FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_CAPITALIZED}Targets.cmake
     NAMESPACE ${PROJECT_NAME_CAPITALIZED}::
-)
+    )
 
 # Do not export the package by default
 cmake_policy(SET CMP0090 NEW)
@@ -1192,16 +1192,16 @@ cmake_policy(SET CMP0090 NEW)
 export(PACKAGE ${PROJECT_NAME_CAPITALIZED})
 
 ########################################################################################################################
-#   Tests
+# Tests
 ########################################################################################################################
 include(CTest)
-if (${PROJECT_BUILD_TESTING} AND BUILD_TESTING)
+if (${PROJECT_BUILD_TESTS} AND BUILD_TESTING)
     set(HAVE_UNIT_TESTS ON)
-else()
+else ()
     set(HAVE_UNIT_TESTS OFF)
-endif()
+endif ()
 message(STATUS "Unit testing is ${HAVE_UNIT_TESTS}")
-if(HAVE_UNIT_TESTS)
+if (HAVE_UNIT_TESTS)
     # Add Catch2
     message(CHECK_START "Adding Catch2")
     list(APPEND CMAKE_MESSAGE_INDENT "  ")
@@ -1225,5 +1225,66 @@ if(HAVE_UNIT_TESTS)
     message(CHECK_PASS "done")
 
     # Add tests
-    add_subdirectory(tests)
-endif()
+    add_subdirectory(tests Testing)
+endif ()
+
+########################################################################################################################
+# Docs
+########################################################################################################################
+if (${PROJECT_BUILD_DOCS})
+    find_package(Doxygen)
+    if (DOXYGEN_FOUND)
+        set(DOXYGEN_PROJECT_NAME ${PROJECT_NAME_UPPERCASE})
+        set(DOXYGEN_PROJECT_NUMBER "version ${PROJECT_VERSION}")
+        set(DOXYGEN_PROJECT_BRIEF "")
+        set(DOXYGEN_ALPHABETICAL_INDEX NO)
+        set(DOXYGEN_SORT_MEMBER_DOCS NO)
+        set(DOXYGEN_SOURCE_BROWSER NO)
+        set(DOXYGEN_SEARCHENGINE NO)
+        set(DOXYGEN_VERBATIM_HEADERS NO)
+        set(DOXYGEN_HTML_TIMESTAMP YES)
+        set(DOXYGEN_SHOW_GROUPED_MEMB_INC YES)
+        set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
+        list(APPEND DOXYGEN_SOURCES
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}.h
+            )
+        set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Documentation)
+        set(DOXYGEN_ENABLE_PREPROCESSING YES)
+        set(DOXYGEN_MACRO_EXPANSION YES)
+        set(DOXYGEN_EXPAND_ONLY_PREDEF YES)
+        list(APPEND DOXYGEN_PREDEFINED
+            DOXYGEN
+            "CLARINET_EXTERN="
+            "CLARINET_UNUSED="
+            )
+        list(APPEND DOXYGEN_EXPAND_AS_DEFINED
+            CLARINET_SOCKET_HANDLE_TYPE
+            CLARINET_ERRORS
+            CLARINET_PROTOS
+            CLARINET_FAMILIES
+            )
+        list(APPEND DOXYGEN_EXCLUDE_SYMBOLS
+            CLARINET_H
+            CLARINET_STR
+            CLARINET_XSTR
+            CLARINET_IS_AT_LEAST_GNUC_VERSION
+            CLARINET_IS_AT_LEAST_CLANG_VERSION
+            CLARINET_UNUSED
+            CLARINET_VISIBLITY
+            CLARINET_EXTERN
+            CLARINET_CALLBACK
+            CLARINET_DECLARE_ENUM_ITEM
+            CLARINET_ERRORS
+            CLARINET_FAMILIES
+            CLARINET_PROTOS
+            CLARINET_SOCKET_HANDLE_TYPE
+            )
+        doxygen_add_docs(docs
+            ${DOXYGEN_SOURCES}
+            ALL
+            COMMENT "Generate API documentation with Doxygen"
+            )
+    else ()
+        message(WARNING "Doxygen must be installed to generate documentation")
+    endif ()
+endif ()

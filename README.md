@@ -51,8 +51,7 @@ As far as compilers go any of MSVC >= 1900, GCC >= 4.6 or CLANG >= 3.0 should do
 if you are interested in building MbedTLS tests and sample programs. By default, only the target libraries are built 
 with static linking.
 
-[libasr](https://github.com/OpenSMTPD/libasr) is a library used for asynchronous name resolution (NSS/DNS) on Un\*x 
-systems. Windows 8+ already supports asynchronous name resolution via WSA and does not require an additional library.
+[libuv](https://github.com/libuv/libuv) is a library used exclusively for integration tests and prototyping.
 
 All library submodules are configured to be statically linked into the main target. Not only it simplifies installation
 but also contributes to keep functionality consistent regardless of the state of the system we deploy into.
@@ -241,13 +240,12 @@ rebuild if the executable is out-of-date.
 
 ## TODO
 
+- Integration tests using libuv (uv_poll_t) 
 - Export a conscise .editorconfig
 - Implement Logging
 - Add feature to enable/disable ipv6 scope id: CL_ENABLE_IPV6_SCOPE_ID/CL_FEATURE_IPV6_SCOPE_ID dependent on 
   HAVE_SOCKADDR_IN6_SCOPE_ID. Adjust functions and tests accordingly.
 - Support IPv4 broadcast and IPv4/IPv6 multicast in the udp interface or define a bcast/mcast interface
-- Support PMTUD on TCP depending on platform support (possibly only a matter of defining the right socket flags). May be
-  unsafe due to the possibility of ICMP spoofing.
 - Support PMTUD on UDP sockets with multiple destinations. This is not trivial because every destination has a different  
   path so not only the host will have to handle multiple concurrent MTU estimates it will also have to rely on the 
   socket error queue to determine which destination had a packet dropped due to MTU changes. The host will also have to 
@@ -255,9 +253,6 @@ rebuild if the executable is out-of-date.
   a different value, probably conflicting. Linux supports an error queue per destination using IP_RECVERR but the case 
   is not clear for Windows and BSD/Darwin.
 - Support WebSockets (ws and wss) on top of TCP and TLS, client and server.
-- Support custom memory allocator callbacks (malloc, free and nomem). Perhaps not worth the trouble unless we plan to 
-  support embedded devices in which case libasr will have to be completely assimilated. Catch2 tests in C++ would also 
-  have to be taken into account but custom memory allocators in C++11 is a pandora's box.
 - Test cmake generator using "-T ClangCL" on Windows to ensure all conditions on MSVC are supported by the clang-cl too
 - Add a C# wrapper
 - Add a python wrapper 

@@ -9,16 +9,16 @@
 #define CLARINET_DECLARE_ENUM_DESC(e, v, s) case (e): return (s);
 
 const char*
-clarinet_error_name(int err)
+clarinet_error_name(int errcode)
 {
-    if (err > 0)
-        return "(invalid)";
+    if (errcode > 0)
+        return CLARINET_ERROR_NAME_INVALID;
 
-    switch (err)
+    switch (errcode)
     {
         CLARINET_ERRORS(CLARINET_DECLARE_ENUM_NAME)
         default:
-            return "(undefined)";
+            return CLARINET_ERROR_NAME_UNDEFINED;
     }
 }
 
@@ -26,13 +26,13 @@ const char*
 clarinet_error_description(int err)
 {
     if (err > 0)
-        return "Invalid error code";
+        return CLARINET_ERROR_DESC_INVALID;
 
     switch (err)
     {
         CLARINET_ERRORS(CLARINET_DECLARE_ENUM_DESC)
         default:
-            return "Undefined error code";
+            return CLARINET_ERROR_DESC_UNDEFINED;
     }
 }
 
@@ -58,7 +58,7 @@ clarinet_family_description(int family)
     {
         CLARINET_FAMILIES(CLARINET_DECLARE_ENUM_DESC)
         default:
-            return "Invalid protocol code";
+            return "Invalid family code";
     }
 }
 

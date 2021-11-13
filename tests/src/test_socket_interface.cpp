@@ -1817,10 +1817,10 @@ TEST_CASE("Socket Listen")
         });
 
         errcode = clarinet_socket_listen(sp, backlog);
-        #if (_WIN32)
-            REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+        #if defined(_WIN32)
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
         #else
-            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         #endif
     }
 
@@ -2340,7 +2340,7 @@ TEST_CASE("Socket Accept")
     }
 }
 
-TEST_CASE("Socket Get local endpoint")
+TEST_CASE("Socket Get Local Endpoint")
 {
     SECTION("With NULL socket")
     {
@@ -2533,7 +2533,7 @@ TEST_CASE("Socket Get local endpoint")
     }
 }
 
-TEST_CASE("Socket Get remote endpoint")
+TEST_CASE("Socket Get Remote Endpoint")
 {
     SECTION("With NULL socket")
     {
@@ -2842,7 +2842,205 @@ TEST_UDP_SENDTO(const clarinet_endpoint* local,
 
 TEST_CASE("Socket Send To")
 {
-    CLARINET_TEST_CASE_LIMITED_BY_WSL();
+    CLARINET_TEST_CASE_LIMITED_ON_WSL();
+
+    SECTION("With NULL socket")
+    {
+        const uint8_t buf[] = { 0xAA, 0xBB, 0xCC, 0XDD, 0xEE, 0xFF };
+        const clarinet_endpoint remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 9);
+
+        int errcode = clarinet_socket_sendto(nullptr, buf, sizeof(buf), &remote);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With UNOPEN socket")
+    {
+        const uint8_t buf[] = { 0xAA, 0xBB, 0xCC, 0XDD, 0xEE, 0xFF };
+        const clarinet_endpoint remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 9);
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_sendto(sp, buf, sizeof(buf), &remote);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With NULL buffer")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+        FROM(family);
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+        FROM(proto);
+
+        clarinet_endpoint remote;
+        switch (family)
+        {
+            case CLARINET_AF_INET:
+                remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 9);
+                break;
+            case CLARINET_AF_INET6:
+                remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv6, 9);
+                break;
+            default:
+                FAIL();
+        }
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        // A NULL buffer is when buflen=0 so skip 0 here
+        int target = GENERATE(range(1, 6));
+        errcode = clarinet_socket_sendto(sp, nullptr, (size_t)target, &remote);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With INVALID buffer length")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+        FROM(family);
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+        FROM(proto);
+
+        clarinet_endpoint remote;
+        switch (family)
+        {
+            case CLARINET_AF_INET:
+                remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 9);
+                break;
+            case CLARINET_AF_INET6:
+                remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv6, 9);
+                break;
+            default:
+                FAIL();
+        }
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        const uint8_t buf[] = { 0xAA, 0xBB, 0xCC, 0XDD, 0xEE, 0xFF };
+
+        errcode = clarinet_socket_sendto(sp, buf, (size_t)-1, &remote);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+
+        #if (SIZE_MAX > INT_MAX)
+        errcode = clarinet_socket_sendto(sp, buf, (size_t)INT_MAX + 1, &remote);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+        #endif
+    }
+
+    SECTION("With NULL endpoint")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+        FROM(family);
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+        FROM(proto);
+
+        const uint8_t buf[] = { 0xAA, 0xBB, 0xCC, 0XDD, 0xEE, 0xFF };
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        errcode = clarinet_socket_sendto(sp, buf, sizeof(buf), nullptr);
+        REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
+    }
+
+    SECTION("With UNBOUND socket")
+    {
+        clarinet_family family = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_AF_LIST
+        }));
+        FROM(family);
+
+        clarinet_proto proto = GENERATE(values({
+            CLARINET_TEST_SOCKET_OPEN_SUPPORTED_PROTO_LIST
+        }));
+        FROM(proto);
+
+        clarinet_endpoint remote;
+        switch (family)
+        {
+            case CLARINET_AF_INET:
+                remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv4, 9);
+                break;
+            case CLARINET_AF_INET6:
+                remote = clarinet_make_endpoint(clarinet_addr_loopback_ipv6, 9);
+                break;
+            default:
+                FAIL();
+        }
+
+        const uint8_t buf[] = { 0xAA, 0xBB, 0xCC, 0XDD, 0xEE, 0xFF };
+
+        clarinet_socket socket;
+        clarinet_socket* sp = &socket;
+        clarinet_socket_init(sp);
+
+        int errcode = clarinet_socket_open(sp, family, proto);
+        REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+        const auto onexit = finalizer([&sp]
+        {
+            clarinet_socket_close(sp);
+        });
+
+        errcode = clarinet_socket_sendto(sp, buf, sizeof(buf), &remote);
+        if (proto == CLARINET_PROTO_UDP)
+        {
+            // An unbound UDP socket is implicitly bound to the default bind address which should be a wildcard
+            REQUIRE(Error(errcode) == sizeof(buf));
+
+            clarinet_endpoint local;
+            errcode = clarinet_socket_local_endpoint(sp, &local);
+            REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
+            const bool addr_is_any_ip = clarinet_addr_is_any_ip(&local.addr);
+            REQUIRE(addr_is_any_ip);
+            REQUIRE(local.port > 0);
+        }
+        else
+        {
+            // An unbound TCP socket always fails with CLARINET_ENOTCONN
+            REQUIRE(Error(errcode) == Error(CLARINET_ENOTCONN));
+        }
+    }
 
     SECTION("With UDP socket")
     {
@@ -2917,13 +3115,8 @@ TEST_CASE("Socket Send To")
 
         TEST_UDP_SENDTO(&local, &remote, send_buffer_size, send_length, 1, CLARINET_ENONE);
     }
-}
 
-TEST_CASE("Socket Send To on " CONFIG_SYSTEM_NAME, "[!nonportable]")
-{
-    CLARINET_TEST_CASE_LIMITED_BY_WSL();
-
-    SECTION("With UDP socket")
+    SECTION("With UDP socket ON " CONFIG_SYSTEM_NAME)
     {
         // Send may have specific characteristics in different platforms such as distinct buffer size overheads so this
         // test case serves to validate assumptions with a dataset for each platform.
@@ -3340,19 +3533,19 @@ TEST_CASE("Socket Recv")
 
 TEST_CASE("Socket Recv From")
 {
+    CLARINET_TEST_CASE_LIMITED_ON_WSL();
 
-}
+    SECTION("With UDP socket ON " CONFIG_SYSTEM_NAME)
+    {
 
-TEST_CASE("Socket Recv From on " CONFIG_SYSTEM_NAME)
-{
-
+    }
 }
 
 TEST_CASE("Socket Shutdown")
 {
     SECTION("With NULL socket")
     {
-        int errcode = clarinet_socket_shutdown(nullptr, CLARINET_SD_BOTH);
+        int errcode = clarinet_socket_shutdown(nullptr, CLARINET_SHUTDOWN_BOTH);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
@@ -3362,7 +3555,7 @@ TEST_CASE("Socket Shutdown")
         clarinet_socket* sp = &socket;
         clarinet_socket_init(sp);
 
-        int errcode = clarinet_socket_shutdown(nullptr, CLARINET_SD_BOTH);
+        int errcode = clarinet_socket_shutdown(nullptr, CLARINET_SHUTDOWN_BOTH);
         REQUIRE(Error(errcode) == Error(CLARINET_EINVAL));
     }
 
@@ -3386,7 +3579,7 @@ TEST_CASE("Socket Shutdown")
         int errcode = clarinet_socket_open(sp, family, proto);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
-        errcode = clarinet_socket_shutdown(sp, CLARINET_SD_BOTH);
+        errcode = clarinet_socket_shutdown(sp, CLARINET_SHUTDOWN_BOTH);
         #if defined(_WIN32)
         // On Windows, unconnected UDP sockets can be shutdown
         if (proto == CLARINET_PROTO_UDP)
@@ -3547,7 +3740,7 @@ TEST_CASE("Socket Shutdown")
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
         // Shutdown socket before being accepted (for protocols that can accept)
-        errcode = clarinet_socket_shutdown(csp[0], CLARINET_SD_BOTH);
+        errcode = clarinet_socket_shutdown(csp[0], CLARINET_SHUTDOWN_BOTH);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
 
         if (proto & CLARINET_TEST_SOCKET_ACCEPT_PROTO_BSET)
@@ -3564,12 +3757,12 @@ TEST_CASE("Socket Shutdown")
                 clarinet_socket_close(asp);
             });
 
-            errcode = clarinet_socket_shutdown(asp, CLARINET_SD_BOTH);
+            errcode = clarinet_socket_shutdown(asp, CLARINET_SHUTDOWN_BOTH);
             REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
         }
 
         // Shutdown socket after being accepted (for protocols that can accept)
-        errcode = clarinet_socket_shutdown(csp[1], CLARINET_SD_BOTH);
+        errcode = clarinet_socket_shutdown(csp[1], CLARINET_SHUTDOWN_BOTH);
         REQUIRE(Error(errcode) == Error(CLARINET_ENONE));
     }
 }

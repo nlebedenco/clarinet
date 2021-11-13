@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <poll.h>
 
 /* region Library Initialization */
 
@@ -65,7 +66,10 @@ setnonblock(int sockfd,
  * Returns true (non-zero) if the socket pointed to by @p s is valid. All negative descriptors are invalid and values
  * 0, 1 and 2 are reserved for stdin, stdout and stderr respectively so valid descriptors start at 3.
  */
-#define clarinet_socket_handle_is_valid(s)     ((s)->u.descriptor > 2)
+#define clarinet_socket_handle_is_valid(s)      ((s)->handle > 2)
+
+/** Returns a handle for the socket pointed to by @p s */
+#define clarinet_socket_handle(s)               ((s)->handle)
 
 /** Check the socket is of the expected type. */
 #define CLARINET_SOCKET_CHECK_TYPE(S, V, L, T) do { \
@@ -91,7 +95,7 @@ clarinet_socket_open(clarinet_socket* sp,
     /* On Unix, file descriptors 0, 1 and 2 are reserved for stdin, stdout and stderr respectively and will never be
      * valid in a sp structure. We can safely assume that any non-zero descriptor indicates that the sp
      * structure is either already in use or uninitialized. */
-    if (!sp || sp->family != CLARINET_AF_UNSPEC || sp->u.descriptor != 0)
+    if (!sp || sp->family != CLARINET_AF_UNSPEC || clarinet_socket_handle(sp) != 0)
         return CLARINET_EINVAL;
 
     int sfamily;
@@ -161,7 +165,7 @@ clarinet_socket_open(clarinet_socket* sp,
     }
 
     sp->family = (uint16_t)family;
-    sp->u.descriptor = sockfd;
+    sp->handle = sockfd;
 
     return CLARINET_ENONE;
 }
@@ -175,7 +179,7 @@ clarinet_socket_close(clarinet_socket* sp)
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     /* close(2) MAY only fail with  EBADF, EINTR and EIO. Both ENOSPC, EDQUOT only apply to actual files.
      * On Linux close(2) is expected to block even on non-blocking sockets with data to flush and a non-zero
@@ -235,7 +239,7 @@ clarinet_socket_bind(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     struct sockaddr_storage ss;
     socklen_t sslen;
@@ -259,7 +263,7 @@ clarinet_socket_local_endpoint(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     struct sockaddr_storage ss = { 0 };
     socklen_t length = sizeof(ss);
@@ -294,7 +298,7 @@ clarinet_socket_remote_endpoint(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     struct sockaddr_storage ss = { 0 };
     socklen_t length = sizeof(ss);
@@ -316,9 +320,18 @@ clarinet_socket_send(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
-    if (send(sockfd, buf, buflen, 0) == SOCKET_ERROR)
+    #if defined(__linux__)
+    /**
+     * @c MSG_NOSIGNAL (since Linux 2.2) Requests not to send @c SIGPIPE on errors on stream oriented sockets when the
+     * other end breaks the connection. The @c EPIPE error is still returned.
+     */
+    const int flags = MSG_NOSIGNAL;
+    #else
+    const int flags = 0;
+    #endif
+    if (send(sockfd, buf, buflen, flags) == SOCKET_ERROR)
         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
     return CLARINET_ENONE;
@@ -336,7 +349,7 @@ clarinet_socket_sendto(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     struct sockaddr_storage ss;
     socklen_t sslen;
@@ -344,7 +357,17 @@ clarinet_socket_sendto(clarinet_socket* restrict sp,
     if (errcode != CLARINET_ENONE)
         return errcode;
 
-    const ssize_t n = sendto(sockfd, buf, buflen, 0, (struct sockaddr*)&ss, sslen);
+    #if defined(__linux__)
+    /**
+     * @c MSG_NOSIGNAL (since Linux 2.2) Requests not to send @c SIGPIPE on errors on stream oriented sockets when the
+     * other end breaks the connection. The @c EPIPE error is still returned.
+     */
+    const int flags = MSG_NOSIGNAL;
+    #else
+    const int flags = 0;
+    #endif
+
+    const ssize_t n = sendto(sockfd, buf, buflen, flags, (struct sockaddr*)&ss, sslen);
     if (n < 0)
         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
@@ -362,7 +385,7 @@ clarinet_socket_recv(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     const ssize_t n = recv(sockfd, buf, buflen, 0);
     if (n < 0)
@@ -383,7 +406,7 @@ clarinet_socket_recvfrom(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     struct sockaddr_storage ss;
     const socklen_t sslen = sizeof(ss);
@@ -445,7 +468,7 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     switch (optname)
     {
@@ -737,7 +760,7 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     switch (optname)
     {
@@ -897,6 +920,23 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
 
                 *(int32_t*)optval = linger.l_onoff ? 0 : 1;
                 *optlen = sizeof(int32_t);
+                return CLARINET_ENONE;
+            }
+            break;
+        case CLARINET_SO_ERROR:
+            if (*optlen >= sizeof(int32_t))
+            {
+                int val = 0;
+                socklen_t len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &val, &len) == SOCKET_ERROR)
+                    return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)clarinet_error_from_sockapi_error(val);
+                *optlen = sizeof(int32_t);
+
                 return CLARINET_ENONE;
             }
             break;
@@ -1099,7 +1139,7 @@ clarinet_socket_connect(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     struct sockaddr_storage ss;
     socklen_t sslen;
@@ -1123,7 +1163,7 @@ clarinet_socket_listen(clarinet_socket* sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     if (listen(sockfd, backlog) == SOCKET_ERROR)
     {
@@ -1148,7 +1188,7 @@ clarinet_socket_accept(clarinet_socket* restrict ssp,
     if (!clarinet_socket_handle_is_valid(ssp))
         return CLARINET_EINVAL;
 
-    const int serverfd = ssp->u.descriptor;
+    const int serverfd = clarinet_socket_handle(ssp);
 
     struct sockaddr_storage ss;
     socklen_t sslen = sizeof(ss);
@@ -1164,7 +1204,7 @@ clarinet_socket_accept(clarinet_socket* restrict ssp,
     }
 
     csp->family = ssp->family;
-    csp->u.descriptor = clientfd;
+    csp->handle = clientfd;
 
     const int errcode = clarinet_endpoint_from_sockaddr(remote, &ss);
     /* If the remote address cannot be decoded leave it unspecified but don't abort the operation. Leave it up to the 
@@ -1188,18 +1228,18 @@ clarinet_socket_shutdown(clarinet_socket* restrict sp,
     if (!clarinet_socket_handle_is_valid(sp))
         return CLARINET_EINVAL;
 
-    const int sockfd = sp->u.descriptor;
+    const int sockfd = clarinet_socket_handle(sp);
 
     int sflags = 0;
-    if (flags & CLARINET_SD_RECV)
+    if (flags & CLARINET_SHUTDOWN_RECV)
     {
-        flags &= ~CLARINET_SD_RECV;
+        flags &= ~CLARINET_SHUTDOWN_RECV;
         sflags |= SHUT_RD;
     }
 
-    if (flags & CLARINET_SD_SEND)
+    if (flags & CLARINET_SHUTDOWN_SEND)
     {
-        flags &= ~CLARINET_SD_SEND;
+        flags &= ~CLARINET_SHUTDOWN_SEND;
         sflags |= SHUT_WR;
     }
 
@@ -1207,6 +1247,44 @@ clarinet_socket_shutdown(clarinet_socket* restrict sp,
         return CLARINET_EINVAL;
 
     if (shutdown(sockfd, sflags) == SOCKET_ERROR)
+        return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+    return CLARINET_ENONE;
+}
+
+int
+clarinet_socket_poll_context_calcsize(size_t count)
+{
+    if (count > (INT_MAX / sizeof(struct pollfd)))
+        return CLARINET_EINVAL;
+
+    return (int)(count * sizeof(struct pollfd));
+}
+
+int
+clarinet_socket_poll_context_getstatus(const void* restrict context,
+                                       size_t index,
+                                       uint16_t* restrict status)
+{
+    if (!context || index >= INT_MAX || !status)
+        return CLARINET_EINVAL;
+
+    const struct pollfd* pfd = (struct pollfd*)context;
+    *status = (uint16_t)pfd[index].revents;
+
+    return CLARINET_ENONE;
+}
+
+int
+clarinet_socket_poll(void* restrict context,
+                     const clarinet_socket_poll_target* restrict targets,
+                     size_t count,
+                     int timeout)
+{
+    if (!context || !targets || count == 0 || count > INT_MAX)
+        return CLARINET_EINVAL;
+
+    if (poll((struct pollfd*)context, (nfds_t)count, timeout) == SOCKET_ERROR)
         return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
 
     return CLARINET_ENONE;

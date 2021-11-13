@@ -38,9 +38,9 @@
 #endif
 
 #if CLARINET_ENABLE_IPV6 && defined(__wsl__)
-#define CLARINET_TEST_CASE_LIMITED_BY_WSL()         do { static bool _ = false; if (!_) { _ = true; WARN(CLARINET_TEST_STR_IPV6_AND_WSL_WARNING); } } while(0)
+#define CLARINET_TEST_CASE_LIMITED_ON_WSL()         do { static bool _ = false; if (!_) { _ = true; WARN(CLARINET_TEST_STR_IPV6_AND_WSL_WARNING); } } while(0)
 #else
-#define CLARINET_TEST_CASE_LIMITED_BY_WSL()         ((void)0)
+#define CLARINET_TEST_CASE_LIMITED_ON_WSL()         ((void)0)
 #endif
 
 

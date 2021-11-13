@@ -236,6 +236,7 @@ clarinet_error_from_sockapi_error(const int err)
             return CLARINET_ENOBUFS;
         case EISCONN:                       /* Socket is already connected */
             return CLARINET_EISCONN;
+        case EPIPE:                         /* The local end has been shut down on a connection oriented socket. May be returned by send(2) */
         case ENOTCONN:                      /* Socket is not connected */
             return CLARINET_ENOTCONN;
         case ESHUTDOWN:                     /* Cannot send after socket is shutdown */
