@@ -129,14 +129,14 @@ setnonblock(SOCKET sockfd,
 /* region Socket */
 
 /** Returns a handle for the socket pointed to by @p s */
-#define clarinet_socket_handle(s)           ((SOCKET)((s)->handle))
+#define clarinet_socket_handle(s) ((SOCKET)((s)->handle))
 
 /**
  * Returns true (non-zero) if the socket pointed to by @p s is valid, otherwise false (0). We only compare to 0 (NULL)
  * here because we never store an INVALID_SOCKET and Windows can already reject an eventual INVALID_SOCKET passed by
  * chance from a pointer to uninitialized memory.
  */
-#define clarinet_socket_handle_is_valid(s)  (clarinet_socket_handle(s) != (SOCKET)0)
+#define clarinet_socket_handle_is_valid(s) (clarinet_socket_handle(s) != (SOCKET)0)
 
 void
 clarinet_socket_init(clarinet_socket* sp)
@@ -732,6 +732,16 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                 #endif /* CLARINET_ENABLE_IPV6 */
             }
             break;
+        case CLARINET_IP_BROADCAST:
+            if (optlen == sizeof(int32_t))
+            {
+                const DWORD val = *(const int32_t*)optval ? 1 : 0;
+                if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (const char*)&val, sizeof(val)) == SOCKET_ERROR)
+                    return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                return CLARINET_ENONE;
+            }
+            break;
         default:
             break;
     }
@@ -1088,6 +1098,23 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                     return CLARINET_ENONE;
                 }
                 #endif /* CLARINET_ENABLE_IPV6 */
+            }
+            break;
+        case CLARINET_IP_BROADCAST:
+            if (*optlen >= sizeof(int32_t))
+            {
+                DWORD val = 0;
+                int len = sizeof(val);
+                if (getsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (char*)&val, &len) == SOCKET_ERROR)
+                    return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                if (len < 0 || len > sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
+                return CLARINET_ENONE;
             }
             break;
         default:

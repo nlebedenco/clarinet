@@ -11,7 +11,7 @@ TEST_CASE("Address Init", "[address]")
 {
     clarinet_addr src = { 0 };
     REQUIRE(src.family == 0);
-    REQUIRE(src.as.ipv4.u.dword == 0);
+    REQUIRE(src.as.ipv4.u.dword[0] == 0);
     REQUIRE(src.as.ipv6.flowinfo == 0);
     REQUIRE(src.as.ipv6.u.dword[0] == 0);
     REQUIRE(src.as.ipv6.u.dword[1] == 0);
@@ -26,7 +26,7 @@ TEST_CASE("Address Size", "[address]")
     REQUIRE(sizeof(((clarinet_addr*)nullptr)->family) == sizeof(uint16_t));
     REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.byte[0]) == sizeof(uint8_t));
     REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.word[0]) == sizeof(uint16_t));
-    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.dword) == sizeof(uint32_t));
+    REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv4.u.dword[0]) == sizeof(uint32_t));
     REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.byte[0]) == sizeof(uint8_t));
     REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.word[0]) == sizeof(uint16_t));
     REQUIRE(sizeof(((clarinet_addr*)nullptr)->as.ipv6.u.dword[0]) == sizeof(uint32_t));
@@ -47,7 +47,7 @@ TEST_CASE("IPv4 Address Any", "[address][ipv4][any]")
 {
     clarinet_addr actual = clarinet_addr_any_ipv4;
     REQUIRE(actual.family == CLARINET_AF_INET);
-    REQUIRE(actual.as.ipv4.u.dword == 0);
+    REQUIRE(actual.as.ipv4.u.dword[0] == 0);
     REQUIRE(actual.as.ipv4.u.word[0] == 0);
     REQUIRE(actual.as.ipv4.u.word[1] == 0);
     REQUIRE(actual.as.ipv4.u.byte[0] == 0);

@@ -71,7 +71,12 @@ setnonblock(int sockfd,
 /** Returns a handle for the socket pointed to by @p s */
 #define clarinet_socket_handle(s)               ((s)->handle)
 
-/** Check the socket is of the expected type. */
+/**
+ * Check the socket is of the expected type. This is used to ensure an option can only be get/set with a certain socket
+ * type. Some platforms allow certain options to be get/set even when not applicable (e.g. Linux) but other platforms
+ * (e.g Windows) are more restrictive. Since we cannot modify a platform to be more tolerant, the only alternative is to
+ * make the socket get/set functions equaly strict.
+ */
 #define CLARINET_SOCKET_CHECK_TYPE(S, V, L, T) do { \
     if (getsockopt((S), SOL_SOCKET, SO_TYPE, &(V), &(L)) == SOCKET_ERROR) \
         return CLARINET_ESYS; \
@@ -494,7 +499,8 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                 if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT_LB, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
                 #elif defined(SO_REUSEPORT)
-                /* SO_REUSEPORT is only supported on Linux >= 3.9 but also promotes load balancing on UDP - may be present on some patched 2.6 kernels (e.g. REHL 2.6.32) */
+                /* SO_REUSEPORT is only supported on Linux >= 3.9 but also promotes load balancing on UDP - may be
+                 * present on some patched 2.6 kernels (e.g. REHL 2.6.32) */
                 if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)) == SOCKET_ERROR)
                     return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
                 #endif /* defined(SO_REUSEPORT) */
@@ -570,9 +576,6 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                 int val = 0;
                 socklen_t len = sizeof(val);
 
-                /* Ensure this option can only be used with TCP (SOCK_STREAM). Despite some platforms (e.g. Linux)
-                 * allowing it to be used with other sp types (e.g. UDP) it's only supported by TCP and ignored by
-                 * other protocols. */
                 CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_STREAM);
 
                 val = *(const int32_t*)optval ? 1 : 0;
@@ -588,9 +591,6 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                 int val = 0;
                 socklen_t len = sizeof(val);
 
-                /* Ensure this option can only be used with TCP (SOCK_STREAM). Despite some platforms (e.g. Linux)
-                 * allowing it to be used with other sp types (e.g. UDP) it's unclear whether this option would have
-                 * any effect. */
                 CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_STREAM);
 
                 const clarinet_linger* optret = (const clarinet_linger*)optval;
@@ -609,9 +609,6 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                 int val = 0;
                 socklen_t len = sizeof(val);
 
-                /* Ensure this option can only be used with TCP (SOCK_STREAM). Despite some platforms (e.g. Linux)
-                 * allowing it to be used with other sp types (e.g. UDP) it's unclear whether this option would have
-                 * any effect. */
                 CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_STREAM);
 
                 struct linger linger;
@@ -741,6 +738,21 @@ clarinet_socket_setopt(clarinet_socket* restrict sp,
                 #endif /* CLARINET_ENABLE_IPV6 */
             }
             break;
+        case CLARINET_IP_BROADCAST:
+            if (optlen == sizeof(int32_t))
+            {
+                int val = 0;
+                socklen_t len = sizeof(val);
+
+                CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_DGRAM);
+
+                val = *(const int32_t*)optval ? 1 : 0;
+                if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)) == SOCKET_ERROR)
+                    return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                return CLARINET_ENONE;
+            }
+            break;
         default:
             break;
     }
@@ -855,9 +867,6 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                 int val = 0;
                 socklen_t len = sizeof(val);
 
-                /* Ensure this option can only be used with TCP (SOCK_STREAM). Despite some platforms (e.g. Linux)
-                 * allowing it to be used with other sp types (e.g. UDP) it's only supported by TCP and ignored by
-                 * other protocols. */
                 CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_STREAM);
 
                 if (getsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &val, &len) == SOCKET_ERROR)
@@ -878,9 +887,6 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                 int val = 0;
                 socklen_t len = sizeof(val);
 
-                /* Ensure this option can only be used with TCP (SOCK_STREAM). Despite some platforms (e.g. Linux)
-                 * allowing it to be used with other sp types (e.g. UDP) it's only supported by TCP and ignored by
-                 * other protocols. */
                 CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_STREAM);
 
                 struct linger linger = { 0 };
@@ -905,9 +911,6 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                 int val = 0;
                 socklen_t len = sizeof(val);
 
-                /* Ensure this option can only be used with TCP (SOCK_STREAM). Despite some platforms (e.g. Linux)
-                 * allowing it to be used with other sp types (e.g. UDP) it's only supported by TCP and ignored by
-                 * other protocols. */
                 CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_STREAM);
 
                 struct linger linger = { 0 };
@@ -1120,6 +1123,26 @@ clarinet_socket_getopt(clarinet_socket* restrict sp,
                     return CLARINET_ENONE;
                 }
                 #endif /* CLARINET_ENABLE_IPV6 */
+            }
+            break;
+        case CLARINET_IP_BROADCAST:
+            if (*optlen >= sizeof(int32_t))
+            {
+                int val = 0;
+                socklen_t len = sizeof(val);
+
+                CLARINET_SOCKET_CHECK_TYPE(sockfd, val, len, SOCK_DGRAM);
+
+                if (getsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &val, &len) == SOCKET_ERROR)
+                    return clarinet_error_from_sockapi_error(clarinet_get_sockapi_error());
+
+                if (len != sizeof(val)) /* sanity check */
+                    return CLARINET_ESYS;
+
+                *(int32_t*)optval = (int32_t)val;
+                *optlen = sizeof(int32_t);
+
+                return CLARINET_ENONE;
             }
             break;
         default:

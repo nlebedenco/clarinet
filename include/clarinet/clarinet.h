@@ -1,19 +1,26 @@
 /**
- * @defgroup clarinet Portable Socket API
+ * @defgroup library Library Info
+ *
+ * @defgroup addr Addresses
+ *
+ * Network layer address definitions and transport endpoint definitions are common to UDP and TCP.
+ *
+ * Custom types are defined for mac,  inet and inet6 addresses to mantain the public API as system agnostic as possible
+ * and avoid creating a dependency on non-standard headers for <tt>struct sockaddr, struct sockaddr_in,
+ * struct sockaddr_in6 and sockaddr_storage</tt>.
+ *
+ * @defgroup iface Interfaces
+ *
+ * @defgroup socket Sockets
  *
  * This module provides a socket abstraction with consistent behaviour across multiple platforms and when complete
  * conformity is not entirely possible, a clear definition of the differences with minimum divergence.
  *
  * Only UDP and TCP sockets are supported out-of-the box. Refer to @ref clarinettls for TLS/DTLS support. For an
- * alternative connection-oriented secure protocol that supports IP mobility and partial reliability refer to
+ * alternative connection-oriented protocol with support to IP mobility, security and partial reliability refer to
  * @ref clarinetdtp.
  *
  * @par Details
- *
- * All boolean values are represented as integers where 0 evaluates to false and any non-zero value evaluates to true,
- * including negative values!. Mind that <c>if (var == 0)</c> is equivalent to <c> if (var == FALSE) </c> but the
- * opposite is not necessarily true, that is, <c>if (var == 1)</c> IS NOT equivalent to <c> if (var == TRUE) </c>.
- * Boolean variables should always be evaluated implicitly as in <c>if (var) { ... } </c> instead.
  *
  * A socket must be open and bound to a local address in two distinct operations following the same conventions of
  * BSD-sockets. Note that certain options may only be set BEFORE the socket is bound
@@ -72,6 +79,11 @@
  *
  * @file
  *
+ * @note All boolean values are represented as integers where 0 evaluates to false and any non-zero value evaluates to
+ * true, including negative values! Mind that <tt>if (var == 0)</tt> is equivalent to <tt>if (var == FALSE)</tt> but the
+ * opposite is not necessarily true, that is, <tt>if (var == 1)</tt> IS NOT equivalent to <tt>if (var == TRUE)</tt>.
+ * Boolean variables should always be evaluated implicitly as in <tt>if (var) { ... }</tt> instead.
+ *
  * @note Public macros that receive arguments are normally defined in lower case following the same name convention of
  * functions, so no builds should break if we eventually replace those macros with actual function calls.
  *
@@ -84,9 +96,16 @@
  * @note All structs and @c clarinet_addr in particular must be compared member by member. It's not safe to compare
  * structs using @c memcmp() because content of padding spaces is undefined and @c memcmp() will blindly compare every
  * byte of allocated memory.
+ *
+ * @note Unfortunately, C99 does not support anonymous unions, so we have to use an additional member for those.
+ * Anonymous bitfields are not supported either, so we have to rely on named members for padding.
+ *
+ * @note Structs and unions declared just for structural purposes do not have typedefs because users should not normally
+ * have to deal with them and if they ever do it is best they have to be explicit about it.
 
  * @note In the POSIX standard, names ending with @a _t are reserved. Since we're targeting at least one POSIX system
  * (i.e. Linux) typenames defined in this file NEVER end with @a _t.
+ *
  */
 #pragma once
 #ifndef CLARINET_H
@@ -142,21 +161,17 @@ extern "C" {
 /* region API symbols */
 
 /**
- * @addtogroup clarinet
- *
- * @note @b WINDOWS: According to the documentation
- * <a href="https://docs.microsoft.com/en-us/cpp/build/importing-into-an-application-using-declspec-dllimport?view=msvc-160">
- * here </a> headers accompanying DLLs should declare consumed symbols with @c __declspec(dllimport) because the
- * compiler can alledgedly produce more efficient code if that attribute is present.
- */
-
-/**
  * @file
  *
  * @note The macro @c CLARINET_EXPORT is defined by the build system when building as a shared library. In this case
  * we can arrange to export only the necessary symbols by defining @c CLARINET_EXTERN. Similarly @c CLARINET_IMPORT is
  * defined by the build system for targets consuming this header with a shared library. It is an error to have both @c
  * CLARINET_EXPORT and @c CLARINET_IMPORT defined at the same time.
+ *
+ * @note @b WINDOWS: According to the documentation
+ * <a href="https://docs.microsoft.com/en-us/cpp/build/importing-into-an-application-using-declspec-dllimport?view=msvc-160">
+ * here </a> headers accompanying DLLs should declare consumed symbols with @c __declspec(dllimport) because the
+ * compiler can alledgedly produce more efficient code if that attribute is present.
  */
 
 /* @formatter:off */
@@ -417,13 +432,14 @@ clarinet_proto_description(int proto);
 /* region Socket Options (each one must have a unique identifier) */
 
 /**
- * Enable/disable non-blocking mode. This option is write-only.
+ * Enable/disable non-blocking mode. @a optval is @c uint32_t. Valid values are limited to 0 (false) and non-zero
+ * (true). This option is write-only.
  */
 #define CLARINET_SO_NONBLOCK        1
 
 /**
- * Controls how @c clarinet_socket_bind() should handle local address/port conflicts. This option stores a 32-bit
- * integer value. Valid values are limited to 0 (false) and non-zero (true).
+ * Controls how @c clarinet_socket_bind() should handle local address/port conflicts. @a optval is a 32-bit integer.
+ * Valid values are limited to 0 (false) and non-zero (true).
  *
  * @details A <b>partial conflict</b> is said to occur when a socket tries to bind to a specific local address despite a
  * pre-existing socket bound to a wildcard in the same address space.
@@ -468,7 +484,7 @@ clarinet_proto_description(int proto);
  * the result depending on what flags are enabled
  * [<a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/network/sharing-transport-addresses">source</a>]:
  *
- * @note @code
+ * @note @verbatim
  *
  *                                   +--------------------------------------------+
  *                                   |                  FIRST SOCKET              |
@@ -488,7 +504,7 @@ clarinet_proto_description(int proto);
  *  W = wildcard; S = specific;
  *  0 = failure; 1 = success; ? = depends on security credentials probably success
  *
- * @endcode
+ * @endverbatim
  *
  * @note @b SOLARIS: There is no @c SO_REUSEPORT. @c SO_REUSEADDR only allows partial conflicts (i.e. specific to
  * wildcard). @c SO_EXCLBIND is like @c SO_EXCLUSIVEADDRUSE on Windows and can be used to disallow any reuse of specifc
@@ -503,7 +519,7 @@ clarinet_proto_description(int proto);
  * @c SO_EXCLBIND. Instead, @c CLARINET_SO_REUSEADDR values 1 and 0 translates to different combinations of platform
  * dependent socket options as shown in the following table:
  *
- * @note @code
+ * @note @verbatim
  *
  *     +--------------+-----------------------+---+---+
  *     | Clarinet     | CLARINET_SO_REUSEADDR | 1 | 0 |
@@ -523,13 +539,13 @@ clarinet_proto_description(int proto);
  *     |              | SO_EXCLBIND           | 0 | 1 |
  *     +--------------+-----------------------+---+---+
  *
- * @endcode
+ * @endverbatim
  *
  * @note This way all expected results are supported by the majority of the platforms and the complete behaviour of
  * @c CLARINET_SO_REUSEADDR regarding two sockets bound using @c clarinet_socket_bind() can be completely defined as
  * follows:
  *
- * @note @code
+ * @note @verbatim
  *
  * +------------------------+-------------------+---------------------+------------+
  * |  # | First Socket      | Second Socket     | Result              | Platform   |
@@ -649,14 +665,14 @@ clarinet_proto_description(int proto);
  *   V6O = CLARINET_IP_V6ONLY; RA = CLARINET_SO_REUSEADDR;
  *   W = wildcard address; S = specific unicast address
  *
- * @endcode
+ * @endverbatim
  */
 #define CLARINET_SO_REUSEADDR       2
 
 /**
- * Socket buffer size for output. This option is stored as a 32-bit integer value. Valid values are limited to the range
- * [1, INT_MAX]. Behaviour is undefined for negative values. A value of zero (0) may yield different results depending
- * on the platform but these should be well defined (see notes).
+ * Socket buffer size for output. @a optval is @c int32_t. Valid values are limited to the range [1, INT_MAX].
+ * Behaviour is undefined for negative values. A value of zero (0) may yield different results depending on the platform
+ * but these should be well defined (see notes).
  *
  * @details The options @c CLARINET_SO_SNDBUF and @c CLARINET_SO_RCVBUF correspond to the underlying @c SO_SNDBUF and
  * @c SO_RCVBUF socket options respectively. In the case of TCP sockets these values may affect the host's send and
@@ -713,14 +729,14 @@ clarinet_proto_description(int proto);
  * [<a href="https://elixir.bootlin.com/linux/v4.5/source/net/core/sock.c#L265">source</a>].
  *
  * @note Note that the <a href="https://man7.org/linux/man-pages/man7/unix.7.html">unix(7) man page</a> is not accurate
- * when it states that: "For datagram sockets, the SO_SNDBUF value imposes an upper limit on the size of outgoing
+ * when it states that "for datagram sockets, the SO_SNDBUF value imposes an upper limit on the size of outgoing
  * datagrams. This limit is calculated as the doubled (see socket(7)) option value less 32 bytes used for overhead." The
- * part about doubling is valid but all the rest is wrong. Alsoa according to the socket(7) man page, the send buffer
- * has a hard minimum value of 2048 and the recv buffer a minimum of 256 but kernel code shows that the minimum
- * send-buffer size is 4096+480 bytes on x64 (4096+384 on x86) and the minimum recv buffer is 2048+244 on x64
- * (2048+192 on x86). Default and maximum values can be verified and adjusted by the following sysctl variables:
+ * part about doubling is correct but all the rest is not. Also according to the socket(7) man page, the send buffer has
+ * a hard minimum value of 2048 and the recv buffer a minimum of 256 but kernel code shows that the minimum send-buffer
+ * size is 4096+480 bytes on x64 (4096+384 on x86) and the minimum recv buffer is 2048+244 on x64 (2048+192 on x86).
+ * Default and maximum values can be verified and adjusted by the following sysctl settings:
  *
- * @note @code
+ * @note @verbatim
  *
  *   net.core.rmem_default=212992
  *   net.core.wmem_default=212992
@@ -728,18 +744,18 @@ clarinet_proto_description(int proto);
  *   net.core.wmem_max=212992
  *   net.core.netdev_max_backlog=1000
  *
- * @endcode
+ * @endverbatim
  *
  * @note The following system settings are calculated at boot according to total system memory and apply to both ipv4
  * and ipv6 (despite the name) [<a href="https://man7.org/linux/man-pages/man7/udp.7.html">source</a>]:
  *
- * @note @code
+ * @note @verbatim
  *
  *   net.ipv4.udp_mem.min
  *   net.ipv4.udp_mem.pressure
  *   net.ipv4.udp_mem.max
  *
- * @endcode
+ * @endverbatim
  *
  * @note The large memory overhead per packet is one of the reasons why Linux doubles the values passed to
  * @c setsockopt(2) for @c SO_SNDBUF/SO_RCVBUF but the actual buffer space consumed can be in fact much larger. This is
@@ -753,7 +769,7 @@ clarinet_proto_description(int proto);
  * @note Real buffer occupation can be verified by inspecting /proc/net/udp and on Ubuntu 20.04 x64 buffer sizes relate
  * to payload sizes as follows:
  *
- * @note @code
+ * @note @verbatim
  *
  *     | Buffer Size   | IPv4 Payload Size | IPv6 Payload Size |
  *     |---------------+-------------------+-------------------|
@@ -764,7 +780,7 @@ clarinet_proto_description(int proto);
  *     | 8448          | 3654-3999         | 3641-3999         |
  *     +---------------+-------------------+-------------------+
  *
- * @endcode
+ * @endverbatim
  *
  * @note For consistency with other platforms, @c CLARINET_SO_SNDBUF and @c CLARINET_SO_RCVBUF are halfed on LINUX
  * before calling @c setsockopt(2) so actual values will be closer to what an unsuspecting user would expect like on
@@ -785,7 +801,7 @@ clarinet_proto_description(int proto);
  * (net.inet.udp.recvspace) but not a send buffer size - one is only defined for TCP. The recv buffer size overhead, if
  * it exists, remains to be determined. Default and maximum values are affected by the following sysctl variables:
  *
- * @note @code
+ * @note @verbatim
  *
  *     # maximum datagram that can be transmitted
  *     # (does not apply to the loopback interface)
@@ -817,7 +833,7 @@ clarinet_proto_description(int proto);
  *     # of memory to handle all 1000 connections.
  *     kern.ipc.nmbclusters=65536
  *
- * @endcode
+ * @endverbatim
  *
  * @note Note that FeeeBSD (and possibly Darwin) adjusts the value from kern.ipc.maxsockbuf as follows
  * [<a href="https://github.com/freebsd/freebsd-src/blob/de1aa3dab23c06fec962a14da3e7b4755c5880cf/sys/kern/uipc_sockbuf.c#L599">source</a>]:
@@ -860,47 +876,42 @@ clarinet_proto_description(int proto);
 #define CLARINET_SO_SNDBUF          3
 
 /**
- * Socket buffer size for input.  This option is stored as a 32-bit integer value. Valid values are limited to
- * [1, INT_MAX]
+ * Socket buffer size for input.  @a optval is @c int32_t. Valid values are limited to [1, INT_MAX].
  *
- * @details See @c CLARINET_SO_SNDBUF for complete details and notes.
+ * @details See @c CLARINET_SO_SNDBUF for a complete description and notes.
  */
 #define CLARINET_SO_RCVBUF          4
 
-#define CLARINET_SO_SNDTIMEO        5           /**< Send buffer timeout */
-
-#define CLARINET_SO_RCVTIMEO        6           /**< Receive buffer timeout */
+/**
+ * Socket send timeout in milliseconds. @a optval is @c int32_t. Valid values are limited to [1, INT_MAX].
+ */
+#define CLARINET_SO_SNDTIMEO        5
 
 /**
- * Enable/disable keepalive if supported by the protocol
- *
- * @details Only supported by TCP sockets.
- *
- * @return @c CLARINET_EPROTONOSUPPORT Option is not supported by the socket protocol.
+ * Socket receive timeout in milliseconds. @a optval is @c int32_t. Valid values are limited to [1, INT_MAX].
+ */
+#define CLARINET_SO_RCVTIMEO        6
+
+/**
+ * Enable/disable keepalive. @a optval is @c uint32_t. Valid values are limited to 0 (false) and non-zero (true). Only
+ * supported by TCP sockets.
  */
 #define CLARINET_SO_KEEPALIVE       7
 
 /**
- * Socket linger timeout. This option is stored as a @c clarinet_linger value.
- *
- * @details Only supported by TCP sockets.
- *
- * @return @c CLARINET_EPROTONOSUPPORT Option is not supported by the socket protocol.
+ * Socket linger timeout. @a optval is @c clarinet_linger. Only supported by TCP sockets.
  */
 #define CLARINET_SO_LINGER          8
 
 /**
- * Enable/disable linger without affecting the timeout already configured. This option is stored as a 32-bit integer
- * value. Valid values are limited to 0 (false) and non-zero (true).
- *
- * @details Only supported by TCP sockets.
- *
- * @return @c CLARINET_EPROTONOSUPPORT Option is not supported by the socket protocol.
+ * Enable/disable linger without affecting the timeout already configured. @a optval is @c uint32_t. Valid values are
+ * limited to 0 (false) and non-zero (true). Only supported by TCP sockets.
  */
 #define CLARINET_SO_DONTLINGER      9
 
 /**
- * Socket error status. This option is stored as a 32-bit integer value. The value is reset after being retrieved.
+ * Error status of the socket. @a optval is @c int32_t. The value is reset after being retrieved. This option is
+ * read-only.
  *
  * @details Only supported in @c clarinet_socket_getopt().
  *
@@ -917,10 +928,10 @@ clarinet_proto_description(int proto);
 #define CLARINET_SO_ERROR           10
 
 /**
- * Enable/Disable Dual Stack on an IPV6 socket. This option is stored as a 32-bit integer value. Valid values are
- * limited to 0 (false) and non-zero (true).
+ * Enable/Disable Dual Stack on an IPV6 socket. @a optval is @c uint32_t. Valid values are limited to 0 (false) and
+ * non-zero (true). Only supported by IPv6 sockets.
  *
- * @details If this options is set to 1 , then the socket is restricted to sending and receiving IPv6 packets only.  In
+ * @details If this options is set to 1, then the socket is restricted to sending and receiving IPv6 packets only.  In
  * this case, an IPv4 and an IPv6 application can bind to a single port at the same time. If this flag is set to false
  * (zero), then the socket can be used to send and receive packets to and from an IPv6 address or an IPv4 mapped to IPv6
  * address.
@@ -939,23 +950,75 @@ clarinet_proto_description(int proto);
 #define CLARINET_IP_V6ONLY          100
 
 /**
- * Unicast Time-To-Live for IPv4 or Hop Limit for IPv6. This option is stored as a 32-bit integer value. Valid values
+ * Time-To-Live for IPv4 and (Hop Limit for) IPv6 for outgoing @b unicast packets. @a optval is @c int32_t. Valid values
  * are limited to the range [1, 255].
  *
  * @details This is the value used in the IP header when sending unicast packets. This option is considered a hint to
  * the system and not a strict requirement. Underlying IP stacks may ignore this option without returning an error.
  *
- * @note On WINDOWS default TTL is defined by @c KEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\DefaultTTL.
- * Winsock implementations are not required to return an error if the corresponding underlying socket option is not
- * supported. Users are supposed to check if the value was effectively set by calling @c clarinet_socket_getopt() which
- * usually will return an error if the option is not supported by the platform. In any case, all Windows versions since
- * Windows 95 support this option for IPv4 and all since Windows Vista, for IPv6.
+ * @note @b WINDOWS: Default value is defined by
+ * @c KEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\DefaultTTL. Winsock implementations are
+ * not required to return an error if the corresponding underlying socket option is not supported. Users are supposed to
+ * check if the value was effectively set by calling @c clarinet_socket_getopt() which usually will return an error if
+ * the option is not supported by the platform. In any case, all Windows versions since Windows 95 support this option
+ * for IPv4 and all since Windows Vista, for IPv6.
  */
 #define CLARINET_IP_TTL             101
 
-#define CLARINET_IP_MTU             102         /**< Get the current known path MTU of the current socket. */
+/**
+ * Current known path MTU of the socket. @a optval is @c int32_t. This option is read-only.
+ */
+#define CLARINET_IP_MTU             102
 
-#define CLARINET_IP_MTU_DISCOVER    103         /**< Enable/disable path MTU discovery mode. */
+/**
+ * Enable/disable path MTU discovery mode. @a optval is <tt>enum clarinet_pmtud</tt>. This option is read-only.
+ */
+#define CLARINET_IP_MTU_DISCOVER    103
+
+/**
+ * Enable/disable the ability to send and receive broadcast packets. @a optval is @c uint32_t. Valid values are
+ * limited to 0 (false) and non-zero (true). Only supported by UDP sockets.
+ */
+#define CLARINET_IP_BROADCAST       104
+
+/**
+ * Time-To-Live for IPv4 and (Hop Limit for) IPv6 for outgoing @b multicast packets. @a optval is @c uint32_t. Valid
+ * values are limited to the range [1, 255]. Only supported by UDP sockets.
+ *
+ * @details Multicast packets with a TTL of 1 are not forwarded beyond the local network. Those with a TTL of 0 will not
+ * be transmitted on any network, but may be delivered locally if the sending host belongs to the destination group and
+ * if multicast loopback has not been disabled on the sending socket (see @ CLARINET_IP_MCAST_LOOP). Multicast packets
+ * with TTL greater than 1 may be forwarded to other networks if a multicast router is attached to the local network.
+ */
+#define CLARINET_IP_MCAST_TTL       105
+
+/**
+ * Enable/disable whether data sent by an application on the local computer (not necessarily by the same socket) in a
+ * multicast session will be received by a socket joined to the multicast destination group on the loopback interface.
+ * @a optval is @c uint32_t. Valid values are limited to the range [1, 255]. Only supported by UDP sockets.
+ *
+ * @details A value of true causes multicast data sent by an application on the local computer to be delivered to a
+ * listening socket on the loopback interface. A value of false prevents multicast data sent by an application on the
+ * local computer from being delivered to a listening socket on the loopback interface.
+ *
+ * @note @b WINDOWS: Default value is true.
+ *
+ * @note @b DARWIN/BSD: The sysctl setting @c net.inet.ip.mcast.loop controls the default setting of this socket option
+ * for new sockets.
+ */
+#define CLARINET_IP_MCAST_LOOP      106
+
+/**
+ * Add the socket to the supplied multicast group on the specified interface. @a optval is @c clarinet_mcast_group.
+ * This option is write-only. Only supported by UDP sockets.
+ */
+#define CLARINET_IP_MCAST_JOIN      107
+
+/**
+ * Remove the socket from the supplied multicast group on the specified interface. @a optval is @c clarinet_mcast_group.
+ * This option is write-only. Only supported by UDP sockets.
+ */
+#define CLARINET_IP_MCAST_LEAVE     108
 
 /* endregion */
 
@@ -998,29 +1061,52 @@ clarinet_proto_description(int proto);
 
 /* region MTU Discovery Modes */
 
-#define CLARINET_PMTUD_UNSPEC       0           /**< Use per-route settings. Socket will set DF=0 and fragment datagrams larger than IP_MTU, otherwise will set DF=1 before sending.*/
-#define CLARINET_PMTUD_ON           1           /**< Always do Path MTU Discovery. Socket will set DF=1 and fail to send datagrams larger than IP_MTU. */
+#define CLARINET_PMTUD_MODES(E) \
+    E(CLARINET_PMTUD_UNSPEC,      0, "PMTUD Unspecified") \
+    E(CLARINET_PMTUD_ON,          1, "PMTUD Enabled") \
+    E(CLARINET_PMTUD_OFF,         2, "PMTUD Disabled") \
+    E(CLARINET_PMTUD_PROBE,       3, "PMTUD Probe") \
 
+/** Path MTU Discovery Modes.  */
+enum clarinet_pmtud
+{
+    CLARINET_PMTUD_MODES(CLARINET_DECLARE_ENUM_ITEM)
+};
 
 /**
- * Never do Path MTU Discovery.
- *
+ * @var clarinet_pmtud::CLARINET_PMTUD_UNSPEC
+ * @details ??
+ */
+
+/**
+ * @var clarinet_pmtud::CLARINET_PMTUD_ON
+ * @details Always do Path MTU Discovery. Socket will set DF=1 and fail to send datagrams larger than IP_MTU.
+ */
+
+/**
+ * @var clarinet_pmtud::CLARINET_PMTUD_OFF
  * @details Socket will set DF=0 and fragment datagrams larger than the interfce MTU, except on Linux <= 3.15 where the
  * fragmentation does not occur and the send operation will fail instead (see notes).
  *
- * @note On Linux @c IP_PMTUDISC_DONT will handle ICMP Type 3 Code 4 packets even though datagrams are only sent with
- * DF=0 (WTF!?). So in kernel 3.13 a new mode was introduced, @c IP_PMTUDISC_INTERFACE, to ignore the path MTU estimate
- * and always use the interface MTU instead. ICMP packets, which are clearly spoofed in this case, are ignored and
- * datagrams are sent with DF=0. However @c send(2) will fail if the datagram is larger than the interface MTU
- * (WTF again!?). In kernel 3.15 another mode was introduced, @c IP_PMTUDISC_OMIT, which behaves exactly like
- * @c IP_PMTUDISC_INTERFACE but fragments datagrams larger than the interface MTU.
+ * @note @b LINUX: The underlying system flag @c IP_PMTUDISC_DONT will handle ICMP Type 3 Code 4 packets even though
+ * datagrams are only sent with DF=0 (WTF!?). So in kernel 3.13 a new flag was introduced, @c IP_PMTUDISC_INTERFACE, to
+ * ignore the path MTU estimate and always use the interface MTU instead. ICMP packets, which are clearly spoofed in
+ * this case, are simply ignored and datagrams are always sent with DF=0. However @c send(2) will fail if the user data
+ * buffer produces a datagrams larger than the interface MTU (WTF again!?). So in kernel 3.15 another flag was
+ * introduced, @c IP_PMTUDISC_OMIT, which behaves exactly like @c IP_PMTUDISC_INTERFACE but can fragment datagrams
+ * larger than the interface MTU.
  *
- * @note On Windows this flag has the correct semantics and will fragment packets larger then the interface MTU.
+ * @note @b WINDOWS: This flag has the expected semantics that is packets are sent with DF=0 and data buffers will be
+ * fragmented if larger then the interface MTU.
  *
- * @note On Windows this flag has the correct semantics and will fragment packets larger then the interface MTU.
+ * @note @b BSD/DARWIN: This flag has the expected semantics that is packets are sent with DF=0 and data buffers will be
+ * fragmented if larger then the interface MTU.
  */
-#define CLARINET_PMTUD_OFF          2
-#define CLARINET_PMTUD_PROBE        3           /**< Socket will set DF=1 and send the datagram (unfragmented) even if it is larger than IP_MTU. */
+
+/**
+ * @var clarinet_pmtud::CLARINET_PMTUD_PROBE
+ * @details Socket will set DF=1 and send data unfragmented even if it is larger than IP_MTU.
+ */
 
 /* endregion */
 
@@ -1042,10 +1128,10 @@ clarinet_proto_description(int proto);
 #define CLARINET_ENDPOINT_STRLEN    (CLARINET_ADDR_STRLEN + 8)
 
 /** Maximum string length required to store a hostname */
-#define CLARINET_HOSTNAME_STRLEN    (255+1)
+#define CLARINET_HOSTNAME_STRLEN    (256+1)
 
 /** Maximum string length required to store an interface name */
-#define CLARINET_IFNAME_STRLEN      (15+1)
+#define CLARINET_IFNAME_STRLEN      (256+1)
 
 /* endregion */
 
@@ -1075,47 +1161,47 @@ clarinet_get_features(void);
 
 /* region Address */
 
-/* Network layer address definitions and transport endpoint definitions are common to UDP and TCP.
+/**
+ *  @file
  *
- * We define our own structures for inet and inet6 addresses to mantain the public API as system agnostic as possible
- * and avoid creating a dependency on non-standard headers for sockaddr, sockaddr_in, sockaddr_in6 and sockaddr_storage.
- *
- * Unfortunately, C99 does not support anonymous unions, so we have to use an additional name for those. Anonymous
- * bitfields are not supported either, so we have to rely on named members for padding.
- *
- * Structs/Unions declared just for structural purposes do not have typedefs because users should not normally have to
- * deal with them and if they ever do it is best they have to be explicit about it.
+ * @note Constants defining the number of octets for each address family are defined for internal use only. Deverlopers
+ * should not change them expecting that everything will magically work. For example, at least the function-like macros
+ * used for address checking will certainly have to be adjusted but functions that manipulate addresses may as well
+ * rely on specific values.
  */
 
-/**
- *
- */
-union clarinet_ipv4_octets
-{
-    uint8_t byte[4];
-    uint16_t word[2];
-    uint32_t dword;
-};
+#define CLARINET_MAC_OCTETS_SIZE    8
+#define CLARINET_IPV4_OCTETS_SIZE   4
+#define CLARINET_IPV6_OCTETS_SIZE   16
 
-/**
- *
- */
-union clarinet_ipv6_octets
-{
-    uint8_t byte[16];
-    uint16_t word[8];
-    uint32_t dword[4];
-};
 
-/**
- *
- */
+/** MAC address bytes in network order. */
 union clarinet_mac_octets
 {
-    uint8_t byte[8];    /**< Using 8 octets instead of 6 to keep a nice memory alignment of 4 bytes. The 2 most significant octets (index 0 and 1) must be 0. */
-    uint16_t word[4];
-    uint32_t dword[2];
+    uint8_t byte[CLARINET_MAC_OCTETS_SIZE];
+    uint16_t word[CLARINET_MAC_OCTETS_SIZE / 2];
+    uint32_t dword[CLARINET_MAC_OCTETS_SIZE / 4];
 };
+
+/** IPv4 address bytes in network order. */
+union clarinet_ipv4_octets
+{
+    uint8_t byte[CLARINET_IPV4_OCTETS_SIZE];
+    uint16_t word[CLARINET_IPV4_OCTETS_SIZE / 2];
+    uint32_t dword[CLARINET_IPV4_OCTETS_SIZE / 4];
+};
+
+/** IPv6 address bytes in network order. */
+union clarinet_ipv6_octets
+{
+    uint8_t byte[CLARINET_IPV6_OCTETS_SIZE];
+    uint16_t word[CLARINET_IPV6_OCTETS_SIZE / 2];
+    uint32_t dword[CLARINET_IPV6_OCTETS_SIZE / 4];
+};
+
+#undef CLARINET_MAC_OCTETS_SIZE
+#undef CLARINET_IPV4_OCTETS_SIZE
+#undef CLARINET_IPV6_OCTETS_SIZE
 
 /**
  * IPv4 address information (consider using clarinet_addr instead). Padding is used to align an IPv4 address struct with 
@@ -1128,7 +1214,10 @@ struct clarinet_ipv4
     uint32_t rffu_1 CLARINET_UNUSED;
     uint32_t rffu_2 CLARINET_UNUSED;
     uint32_t rffu_3 CLARINET_UNUSED;
+
+    /** Address octets in network byte order */
     union clarinet_ipv4_octets u;
+
     uint32_t rffu_4 CLARINET_UNUSED;
 };
 
@@ -1138,27 +1227,59 @@ struct clarinet_ipv4
  */
 struct clarinet_ipv6
 {
+    /** Flow label as specified in <a href="https://datatracker.ietf.org/doc/html/rfc6437">RFC6437</a>. */
     uint32_t flowinfo;
+
+    /** Address octets in network byte order */
     union clarinet_ipv6_octets u;
+
+    /**
+     * Used when an address is valid in multiple scopes. IPv6 link-local addresses for example are valid on every IPv6
+     * interface, but routing them from one interface to another is not possible. So if you want to communicate with
+     * link-local addresses you have to specify which interface to use. The scope-id is the interface index as obtained
+     * by @c clarinet_iface_getlist() or @c clarinet_iface_getindex().
+     */
     uint32_t scope_id;
 };
 
+/**
+ * Media Access Control (MAC) address
+ *
+ * @details The maximum physical address length in all supported platforms is 8. Address bytes are aligned to the right
+ * in big-endian notation which means that any non-significant excess bytes will always be zeros to the left.
+ * For example, ethernet addresses are represented with <tt>clarinet_mac::length == 6</tt>,
+ * <tt>clarinet_mac:u::byte[0] == 0</tt>, <tt>clarinet_mac::u::byte[1] == 0</tt> and then positions 2 to 7
+ * in @c clarinet_mac::u::byte[] must contain the ethernet 6-byte address.
+ */
 struct clarinet_mac
 {
     uint32_t rffu_0 CLARINET_UNUSED;
     uint32_t rffu_1 CLARINET_UNUSED;
-    uint32_t rffu_2 CLARINET_UNUSED;
+
+    /** Address length. Different physical layers may produce MAC addresses of different lengths. Maximum value is
+     * <tt>sizeof(union clarinet_mac_octets)</tt>.
+     */
+    uint32_t length;
+
+    /**
+     * Address octets in network byte order.
+     *
+     * @note Octets are aligned to the right with leading zeros when @c clarinet_mac::length is lower than
+     * <tt>sizeof(union clarinet_mac_octets)</tt>.
+     */
     union clarinet_mac_octets u;
+
     uint32_t rffu_3 CLARINET_UNUSED;
 };
 
 /**
  * IP address representation.
  *
- * @details It can represent both IPv4 and IPv6 addresses. The member 'family' indicates which IP version is represented
- * and may contain any constant value defined with the prefix @c CLARINET_AF_. Note that an IPv4 mapped to IPv6 @b is an
- * IPv6 address that follows a specific format specified in RFC4291. clarinet_addr_is_ipv4mapped(addr) can be used to
- * check if an address is an IPv4 mapped to IPv6 address.
+ * @details This structure can represent both IPv4 and IPv6 addresses. The member 'family' indicates which IP version is
+ * represented and may contain any constant value defined in <tt>enum clarinet_family</tt>.
+ *
+ * @note An IPv4 mapped to IPv6 @b is an IPv6 address that follows a specific format specified in RFC4291.
+ * @c clarinet_addr_is_ipv4mapped() can be used to check if an address is an IPv4 mapped to IPv6 address.
  */
 struct clarinet_addr
 {
@@ -1174,15 +1295,6 @@ struct clarinet_addr
 
 typedef struct clarinet_addr clarinet_addr;
 
-struct clarinet_endpoint
-{
-    clarinet_addr addr;
-    uint16_t port;
-    uint16_t rffu CLARINET_UNUSED;
-};
-
-typedef struct clarinet_endpoint clarinet_endpoint;
-
 CLARINET_EXTERN const clarinet_addr clarinet_addr_none;
 CLARINET_EXTERN const clarinet_addr clarinet_addr_any_ipv4;
 CLARINET_EXTERN const clarinet_addr clarinet_addr_any_ipv6;
@@ -1192,7 +1304,33 @@ CLARINET_EXTERN const clarinet_addr clarinet_addr_loopback_ipv4mapped;
 CLARINET_EXTERN const clarinet_addr clarinet_addr_broadcast_ipv4;
 
 /**
- * Obtains the smallest even unsigned integer that is greater than or equal to a base value.
+ * Multicast group representation.
+ *
+ * @details This structure is used with either IPv6 or IPv4 multicast addresses and is the data type handled by the
+ * @c CLARINET_IP_MCAST_JOIN and @c CLARINET_IP_MCAST_LEAVE socket options.
+ *
+ * @c clarinet_iface_getlist() can be used to retrieve a list of network interfaces and obtain the interface index
+ * information required for the @c clarinet_mcast_group::iface member.
+ */
+struct clarinet_mcast_group
+{
+    uint32_t iface;         /**< The index of the local interface on which the multicast group should be joined or dropped. */
+    clarinet_addr addr;     /**< The address of the multicast group. This may be either an IPv6 or IPv4 multicast address. */
+};
+
+typedef struct clarinet_mcast_group clarinet_mcast_group;
+
+struct clarinet_endpoint
+{
+    clarinet_addr addr;
+    uint16_t port;
+    uint16_t rffu CLARINET_UNUSED;
+};
+
+typedef struct clarinet_endpoint clarinet_endpoint;
+
+/**
+ * Returns the smallest even unsigned integer that is greater than or equal to a base value.
  *
  * @param [in] value: Unsigned integer value used as the base value
  * @return The smallest even unsigned integer that is greater than or equal to @p v.
@@ -1213,7 +1351,7 @@ CLARINET_EXTERN const clarinet_addr clarinet_addr_broadcast_ipv4;
    | (addr)->as.ipv6.u.word[4]) == 0) \
 && ((addr)->as.ipv6.u.word[5] == 0xFFFF))
 
-#define clarinet_addr_is_any_ipv4(addr)           (clarinet_addr_is_ipv4(addr) && ((addr)->as.ipv4.u.dword == 0))
+#define clarinet_addr_is_any_ipv4(addr)           (clarinet_addr_is_ipv4(addr) && ((addr)->as.ipv4.u.dword[0] == 0))
 
 #define clarinet_addr_is_any_ipv6(addr) \
   (clarinet_addr_is_ipv6(addr) \
@@ -1251,7 +1389,7 @@ CLARINET_EXTERN const clarinet_addr clarinet_addr_broadcast_ipv4;
 && ((addr)->as.ipv6.scope_id == 0))
 
 /** Returns true if the address is an IPv4 broadcast address. */
-#define clarinet_addr_is_broadcast_ipv4(addr)     (clarinet_addr_is_ipv4(addr) && ((addr)->as.ipv4.u.dword == 0xFFFFFFFF))
+#define clarinet_addr_is_broadcast_ipv4(addr)     (clarinet_addr_is_ipv4(addr) && ((addr)->as.ipv4.u.dword[0] == 0xFFFFFFFF))
 
 #define clarinet_addr_is_multicast_ipv6(addr) \
   (clarinet_addr_is_ipv6(addr) \
@@ -1342,8 +1480,8 @@ CLARINET_EXTERN const clarinet_addr clarinet_addr_broadcast_ipv4;
 #define clarinet_endpoint_is_equivalent(a, b)     (((a)->port == (b)->port) && clarinet_addr_is_equivalent(&(a)->addr, &(b)->addr))
 
 /**
- * Converts the IPv4MappedToIPv6 address pointed by src into an IPv4 address and copies it into the memory pointed by
- * dst. If src points to an IPv4 address then a simple copy is performed. On success returns CLARINET_ENONE. If either
+ * Converts the IPv4 mapped to IPv6 address pointed by src into an IPv4 address and copies it into the memory pointed
+ * by @p dst. If src points to an IPv4 address then a simple copy is performed. On success returns CLARINET_ENONE. If either
  * dst or src are NULL or the address pointed by src is neither an IPv4MappedToIPv6 nor an IPv4 address then
  * CLARINET_EINVAL is returned instead.
  */
@@ -1407,6 +1545,39 @@ int
 clarinet_addr_from_string(clarinet_addr* restrict dst,
                           const char* restrict src,
                           size_t srclen);
+
+/**
+ * Returns the CIDR prefix length corresponding to the network mask pointed to by @p addr.
+ *
+ * @param addr Pointer to an address struture containing the network mask to convert.
+ *
+ * @return A decimal number between 0 and 128 corresponding to the CIDR prefix length
+ * @return @c CLARINET_EAFNOSUPPORT: Address family not supported
+ * @return @c CLARINET_EINVAL: Invalid address pointer
+ */
+CLARINET_EXTERN
+int
+clarinet_netmask_to_decimal(const clarinet_addr* addr);
+
+/**
+ * Obtains the network mask corresponding to the CIDR prefix length provided by @p prefix according to a given @p family.
+ *
+ * @param prefix Number of consecutive leading 1-bits counted from left to right in big-endian notation for the network
+ * mask
+ * @param family Address family as defined in <tt>enum clarinet_family</tt>. This argument is required because prefix
+ * lengths lower than 33 are valid for multiple address families.
+ * @param addr Pointer to an address struture where the network mask is to be stored.
+
+ * @return @c CLARINET_ENONE: Success
+ * @return @c CLARINET_EAFNOSUPPORT: Address family not supported
+ * @return @c CLARINET_EINVAL: Invalid prefix length
+ * @return @c CLARINET_EINVAL: Invalid address pointer
+ */
+CLARINET_EXTERN
+int
+clarinet_netmask_from_decimal(uint8_t cidr,
+                              uint16_t family,
+                              clarinet_addr* addr);
 
 /**
  * Converts the endpoint pointed by src into a string in Internet standard format and store it in the buffer pointed by
@@ -1912,6 +2083,44 @@ clarinet_socket_poll(void* restrict context,
                      const clarinet_socket_poll_target* restrict targets,
                      size_t count,
                      int timeout);
+
+/* endregion */
+
+/* region Interface */
+
+struct clarinet_iface
+{
+    uint32_t index;          /* Interface index */
+
+    /**
+     * Interface address. It may be contain a link, inet or inet6 address.
+     *
+     * @note Link addresses contain the  of the interface. For example, on an Ethernet
+     * network this would be an Ethernet hardware address of 6 bytes. Other link layers may provide MAC addresses of
+     * different lengths.
+     */
+    clarinet_addr addr;
+
+    clarinet_addr netmask;   /*	Interface netmask associated with the interface address when applicable */
+};
+
+typedef struct clarinet_iface clarinet_iface;
+
+CLARINET_EXTERN
+int
+clarinet_iface_getlist(clarinet_iface* restrict list,
+                       size_t* len);
+
+CLARINET_EXTERN
+int
+clarinet_iface_getindex(const char* name,
+                        uint32_t* index);
+
+CLARINET_EXTERN
+int
+clarinet_iface_getname(uint32_t index,
+                       char* name,
+                       size_t len);
 
 /* endregion */
 

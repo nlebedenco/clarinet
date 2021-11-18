@@ -184,7 +184,7 @@ clarinet_addr_convert_to_ipv4(clarinet_addr* restrict dst,
         {
             memset(dst, 0, sizeof(clarinet_addr));
             dst->family = CLARINET_AF_INET;
-            dst->as.ipv4.u.dword = src->as.ipv4.u.dword;
+            dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
             return CLARINET_ENONE;
         }
         #else
@@ -213,7 +213,7 @@ clarinet_addr_convert_to_ipv6(clarinet_addr* restrict dst,
             memset(dst, 0, sizeof(clarinet_addr));
             dst->family = CLARINET_AF_INET6;
             dst->as.ipv6.u.word[5] = 0xFFFF;
-            dst->as.ipv4.u.dword = src->as.ipv4.u.dword;
+            dst->as.ipv4.u.dword[0] = src->as.ipv4.u.dword[0];
             return CLARINET_ENONE;
         }
         #else
